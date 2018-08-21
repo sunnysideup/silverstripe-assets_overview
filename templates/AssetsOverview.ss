@@ -75,11 +75,22 @@
 
   .one-image {
       position: relative;
-      display: block; float: left; height: 130px; width: auto; border: 1px solid #ddd; margin: 10px; background-color: #eee; min-width: 450px; overflow: hidden;
+      display: block;
+      float: left;
+      height: 150px;
+      width: auto;
+      border: 1px solid #ddd;
+      margin: 10px;
+      background-color: #eee;
+      min-width: 50px;
+      overflow: hidden;
       border-radius: 5px;
   }
   .one-image img {
-      display: block; height: 130px; margin-left: auto; margin-right: auto;
+      display: block;
+      height: 150px;
+      margin-left: auto;
+      margin-right: auto;
   }
 
   .one-image-info {
@@ -95,7 +106,7 @@
   }
   .one-image:hover .one-image-info {
       background-color: rgba(0,0,0, 0.5);
-      height: 70px;
+      height: 100px;
       padding: 7px;
       color: #fff;
   }

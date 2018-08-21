@@ -89,14 +89,13 @@ class View extends \ContentController
     {
         $this->title = 'By Dimensions';
         $this->createProperList('Pixels', 'HumanImageDimensions');
-
         return $this->renderWith('AssetsOverview');
     }
 
     public function byratio($request)
     {
         $this->title = 'By Dimensions';
-        $this->createProperList('Pixels', 'Ratio');
+        $this->createProperList('Ratio', 'Ratio');
 
         return $this->renderWith('AssetsOverview');
     }
