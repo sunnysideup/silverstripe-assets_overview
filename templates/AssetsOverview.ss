@@ -158,9 +158,10 @@
                 <li><a href="$Link(byfilename)">Name</a></li>
                 <li><a href="$Link(byfilesize)">File Size</a></li>
                 <li><a href="$Link(bydimensions)">Dimensions</a></li>
+                <li><a href="$Link(byratio)">Ratio</a></li>
                 <li><a href="$Link(bylastedited)">Last Edited</a></li>
                 <li><a href="$Link(bydatabasestatus)">Database Status</a></li>
-                <li><a href="$Link(bysimilarity)">Similarity (not so reliable)</a></li>
+                <li><a href="$Link(bysimilarity)">Similarity (broken!)</a></li>
             </ul>
 
 
