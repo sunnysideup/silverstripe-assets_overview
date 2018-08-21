@@ -1,0 +1,3 @@
+Director:
+  rules:
+    'assetsoverview//$Action/$ID/$OtherID': 'Sunnysideup\AssetsOverview\Control\View'

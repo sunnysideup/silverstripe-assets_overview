@@ -1,0 +1,7 @@
+---
+name: AssetsOverview
+---
+
+AssetAdmin:
+    extensions:
+        - 'Sunnysideup\AssetsOverview\Control\AssetAdminExtension'

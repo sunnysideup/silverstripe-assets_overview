@@ -1,0 +1,35 @@
+{
+    "name": "sunnysideup/assets_overview",
+    "type": "silverstripe-module",
+    "description": "Quick overview of all your assets",
+    "keywords": [
+        "Silverstripe-CMS",
+        "CMS",
+        "Silverstripe",
+        "assets",
+        "overview",
+        "images",
+        "files"
+    ],
+    "license": "BSD-3-Clause",
+    "authors": [
+        {
+            "name": "Nicolaas Francken",
+            "email": "modules@sunnysideup.co.nz",
+            "role": "lead developer"
+        }
+    ],
+    "require": {
+        "silverstripe/framework": "~3.6",
+        "silverstripe/cms": "~3.6",
+    },
+    "suggest": {
+        "inceddy/image-compare": "compare image similarities",
+        "thenakos/compare-images": "compare image similarities (https://github.com/thenakos/compare-images)"
+
+    },
+    "extra": {
+        "consider": "",
+        "installer-name": "assets_overview"
+    }
+}
