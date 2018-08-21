@@ -21,7 +21,7 @@
     ],
     "require": {
         "silverstripe/framework": "~3.6",
-        "silverstripe/cms": "~3.6",
+        "silverstripe/cms": "~3.6"
     },
     "suggest": {
         "inceddy/image-compare": "compare image similarities",
