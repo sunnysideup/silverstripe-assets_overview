@@ -9,6 +9,7 @@ class View extends \ContentController
         'byfolder' => 'ADMIN',
         'byfilename' => 'ADMIN',
         'bydimensions' => 'ADMIN',
+        'byratio' => 'ADMIN',
         'byfilesize' => 'ADMIN',
         'bydatabasestatus' => 'ADMIN',
         'bylastedited' => 'ADMIN',
@@ -88,6 +89,14 @@ class View extends \ContentController
     {
         $this->title = 'By Dimensions';
         $this->createProperList('Pixels', 'HumanImageDimensions');
+
+        return $this->renderWith('AssetsOverview');
+    }
+
+    public function byratio($request)
+    {
+        $this->title = 'By Dimensions';
+        $this->createProperList('Ratio', 'Ratio');
 
         return $this->renderWith('AssetsOverview');
     }
