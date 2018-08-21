@@ -111,18 +111,55 @@ class View extends \ContentController
     public function bysimilarity($request)
     {
         require_once(__DIR__.'../../../compare-images-master/image.compare.class.php');
+        $this->title = 'Level of Similarity';
         $engine = new compareImages();
         $this->buildImagesRaw();
         $alreadyDone = [];
-        foreach($this->imagesRaw as $image) {
-            
+        foreach($this->imagesRaw as $key => $image) {
+            $nameOne = $image->Path;
+            if(! in_array($nameOne, $alreadyDone)) {
+                $sortArray = [];
+                foreach($this->imagesRaw as $compareImage) {
+                    $nameTwo = $compareImage->Path;
+                    if($nameOne !== $nameTwo) {
+                        if($image->FileName === $compareImage->FileName) {
+                            $image->MostSimilarTo = $image->PathFromAssets;
+                            $compareImage->MostSimilarTo = $image->PathFromAssets;
+                            $alreadyDone[$nameTwo] = [$nameTwo];
+                            continue 2;
+                        } else {
+                            if($image->Ratio == $compareImage->Ratio) {
+                                $score = $engine->compare($nameOne, $nameTwo);
+                                $sortArray[$nameTwo] = $score;
+                            }
+                        }
+                    }
+                }
+                if(count($sortArray)) {
+                    asort($sortArray);
+                    reset($sortArray);
+                    $mostSimilarKey = key($sortArray);
+                    foreach($this->imagesRaw as $findImage) {
+                        if($findImage->Path === $mostSimilarKey) {
+                            $alreadyDone[$mostSimilarKey] = $mostSimilarKey;
+                            $image->MostSimilarTo = $image->Path;
+                            $findImage->MostSimilarTo = $image->Path;
+                        }
+                    }
+                } else {
+                    $image->MostSimilarTo = 'N/A';
+                }
+            }
         }
+        $this->createProperList('MostSimilarTo', 'MostSimilarTo');
+
         return $this->renderWith('AssetsOverview');
     }
 
     protected function createProperList($sortField, $headerField)
     {
         if($this->imagesSorted === null) {
+            //done only if not already done ...
             $this->buildImagesRaw();
             $this->imagesRaw = $this->imagesRaw->Sort($sortField);
             $this->imagesSorted = \ArrayList::create();
@@ -223,6 +260,7 @@ class View extends \ContentController
                 list($width, $height, $type, $attr) = getimagesize($absoluteLocation);
                 $imageSizeHuman = $width.'px wide by '.$height.'px high';
                 $intel = [];
+                $intel['Path'] = $absoluteLocation;
                 $intel['PathFromAssets'] = str_replace($assetsBaseFolder, '', $absoluteLocation);
                 $intel['PathFromRoot'] = str_replace($baseFolder, '', $absoluteLocation);
 
@@ -233,6 +271,7 @@ class View extends \ContentController
                 $intel['HumanFileSize'] = $this->humanFileSize($fileSize);
                 $intel['HumanFileSizeRounded'] = '~ '.$this->humanFileSize(round($fileSize / 1024) * 1024);
 
+                $intel['Ratio'] = round($width / $height, 3);
                 $intel['Pixels'] = $width * $height;
                 $intel['HumanImageDimensions'] = $imageSizeHuman;
                 $fileNameInDB = ltrim($intel['PathFromRoot'], DIRECTORY_SEPARATOR);
