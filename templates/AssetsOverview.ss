@@ -195,7 +195,7 @@
                 <li><a href="$Link(byfolder)">Folder</a></li>
                 <li><a href="$Link(byfilename)">Name</a></li>
                 <li><a href="$Link(byfilesize)">File Size</a></li>
-                <li><a href="$Link(byextension)">Extension</a></li>
+                <li><a href="$Link(byextension)">File Type</a></li>
                 <li><a href="$Link(bydimensions)">Dimensions</a></li>
                 <li><a href="$Link(byratio)">Ratio</a></li>
                 <li><a href="$Link(bylastedited)">Last Edited</a></li>
