@@ -4,8 +4,8 @@
     </a>
     <a href="$CMSEditLink" class="edit-icon <% if $IsInDatabase %><% else %>error<% end_if %>" target="_blank">✎</a>
     <div class="one-image-info">
-
-        <a href="$CMSEditLinkFolder" target="_blank">✎ $FolderNameShort</a> <strong>$FileName</strong><br />
+        <u>$DBTitle</u>
+        <a href="$CMSEditLinkFolder" target="_blank">✎ $FolderNameShort</a> <strong>$FileName</strong> . $Extension<br />
         $LastEdited<br />
         $HumanImageDimensions<br />
         $HumanFileSize

@@ -11,6 +11,7 @@ class View extends \ContentController
         'bydimensions' => 'ADMIN',
         'byratio' => 'ADMIN',
         'byfilesize' => 'ADMIN',
+        'byextension' => 'ADMIN',
         'bydatabasestatus' => 'ADMIN',
         'bylastedited' => 'ADMIN',
         'bysimilarity' => 'ADMIN'
@@ -80,6 +81,15 @@ class View extends \ContentController
     {
         $this->title = 'By File Size';
         $this->createProperList('FileSize', 'HumanFileSizeRounded');
+
+        return $this->renderWith('AssetsOverview');
+
+    }
+
+    public function byextension($request)
+    {
+        $this->title = 'By File Type';
+        $this->createProperList('Extension', 'Extension');
 
         return $this->renderWith('AssetsOverview');
 
@@ -222,7 +232,7 @@ class View extends \ContentController
         return in_array(strtolower($extension), ['jpg', 'gif', 'png', 'svg']);
     }
 
-    protected function humanFileSize($bytes, $decimals = 2) : string
+    protected function humanFileSize($bytes, $decimals = 0) : string
     {
         $size = array('B','kB','MB','GB','TB','PB','EB','ZB','YB');
         $factor = floor((strlen($bytes) - 1) / 3);
@@ -271,6 +281,7 @@ class View extends \ContentController
                 $intel['Path'] = $absoluteLocation;
                 $intel['PathFromAssets'] = str_replace($assetsBaseFolder, '', $absoluteLocation);
                 $intel['PathFromRoot'] = str_replace($baseFolder, '', $absoluteLocation);
+                $intel['Extension'] = $pathParts['extension'];
 
                 $intel['FileName'] = $pathParts['filename'];
                 $intel['FirstLetter'] = strtoupper(substr($pathParts['filename'], 0, 1));
@@ -291,11 +302,13 @@ class View extends \ContentController
                 if($file) {
                     $intel['IsInDatabase'] = true;
                     $intel['CMSEditLink'] = '/admin/assets/EditForm/field/File/item/'.$file->ID.'/edit';
+                    $intel['DBTitle'] = $file->Title;
                     $time = strtotime($file->LastEdited);
                 }
                 else {
                     $intel['IsInDatabase'] = false;
                     $intel['CMSEditLink'] = '/admin/assets/';
+                    $intel['DBTitle'] = 'no title set in database';
                     $time = filemtime($absoluteLocation);
                 }
                 $intel['HumanIsInDatabase'] = $intel['IsInDatabase'] ? 'In Database' : 'Not in Database';
