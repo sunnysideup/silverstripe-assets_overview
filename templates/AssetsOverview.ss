@@ -13,32 +13,49 @@
   <style>
   * {
       transition: all 0.2s ease;
+      font-family: arial, sans-serif;
+      color: rgb(79, 88, 97);
+      font-size: 13px;
   }
   p {margin: 0; padding: 0;}
   .break {
       clear: both;
-      border-top: 1px solid #ccc;
+      border-top: 1px dotted #ddd;
   }
   h1, h2, h3, h4 {
       display: block;
-      padding-top: 20px;
+      padding-top: 15px;
       padding-bottom: 0;
       margin-bottom: 0;
   }
   h1 {
-      border-top: 1px solid #000;
+      font-size: 20px;
   }
+  h2 {
+      font-size: 18px;
+
+  }
+  h3 {
+      font-size: 16px;
+
+  }
+  h4 {
+      font-size: 14px;
+  }
+
   a:link, a:visited {
       text-decoration: none;
-      color: navy;
+      color: #304e80;
   }
   a:hover {
       text-decoration: underline;
   }
+
   .padding {padding: 10px;}
   .results {
       width: 70%;
   }
+
   .toc {
       position: fixed;
       width: 30%;
@@ -46,11 +63,10 @@
       bottom: 0;
       right: 0;
       left: 70%;
-      background-color: pink;
+      background-color: #b0bec7;
       overflow-y: auto;
       font-family: sans-serif;
-      font-size: 13px;
-      border-left: 1px solid red;
+      border-left: 1px solid #304e80;
   }
   .toc ul {
       padding: 0px;
@@ -67,7 +83,7 @@
       display: block;
   }
   .toc li a:hover {
-      background-color: navy;
+      background-color: #304e80;
       color: #fff;
       text-decoration: none;
   }
@@ -82,7 +98,7 @@
       border: 1px solid #ddd;
       margin: 10px;
       background-color: #eee;
-      min-width: 50px;
+      min-width: 250px;
       overflow: hidden;
       border-radius: 5px;
   }
@@ -96,7 +112,6 @@
   .one-image-info {
       background-color: transparent;
       height: 0;
-      font-size: 13px;
       text-align: left;
       position: absolute;
       bottom: 0;
@@ -104,22 +119,33 @@
       right: 0;
       font-family: sans-serif;
   }
+
   .one-image:hover .one-image-info {
-      background-color: rgba(0,0,0, 0.5);
-      height: 100px;
+      background-color: rgba(0,0,0, 0.7);
+      height: 90px;
       padding: 7px;
       color: #fff;
   }
-  .one-image-info a {
-       color: #ccc;
-       font-weight: 600;
 
+  .one-image-info u {
+      color: #fff;
+      font-weight: bold;
+      display: block;
+      padding-bottom: 7px;
+      text-decoration: none;
+  }
+  .one-image-info strong {
+      color: #ddd;
+  }
+  .one-image-info a {
+       color: #eee!important;
    }
    .one-image-info a:hover {
        text-decoration: none;
-       color: navy;
+       color: #304e80;
    }
   .edit-icon {
+      z-index: 99;
       position: absolute;
       top: 10px;
       right: 10px;
@@ -137,10 +163,11 @@
   }
   .edit-icon:hover {
       background-color: green;
+      color: #fff;
       text-decoration: none!important;
   }
   .edit-icon.error {
-      background-color: red;
+      background-color: pink;
   }
 
   </style>
@@ -149,7 +176,6 @@
 <body>
     <div class="toc">
         <div class="padding">
-            <h4>TOC</h4>
             <% if ImagesSorted.count %>
                 <ul>
                     <li><a href="#top">View By Options ...</a><br /></li>
@@ -163,16 +189,17 @@
 
     <div id="top" class="results">
         <div class="padding">
+            <p>&laquo; <a href="/admin/assets/">back to CMS</a></p>
             <h1>View By ...</h1>
             <ul>
                 <li><a href="$Link(byfolder)">Folder</a></li>
                 <li><a href="$Link(byfilename)">Name</a></li>
                 <li><a href="$Link(byfilesize)">File Size</a></li>
+                <li><a href="$Link(byextension)">File Type</a></li>
                 <li><a href="$Link(bydimensions)">Dimensions</a></li>
                 <li><a href="$Link(byratio)">Ratio</a></li>
                 <li><a href="$Link(bylastedited)">Last Edited</a></li>
                 <li><a href="$Link(bydatabasestatus)">Database Status</a></li>
-                <li><a href="$Link(bysimilarity)">Similarity (not so reliable)</a></li>
             </ul>
 
 
