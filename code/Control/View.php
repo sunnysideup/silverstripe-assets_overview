@@ -91,7 +91,6 @@ class View extends \ContentController
         $this->createProperList('Extension', 'Extension');
 
         return $this->renderWith('AssetsOverview');
-
     }
 
     public function bydimensions($request)
