@@ -1,6 +1,6 @@
 {
     "name": "sunnysideup/assets_overview",
-    "type": "silverstripe-module",
+    "type": "silverstripe-vendormodule",
     "description": "Quick overview of all your assets",
     "keywords": [
         "Silverstripe-CMS",
@@ -20,16 +20,14 @@
         }
     ],
     "require": {
-        "silverstripe/framework": "~3.6",
-        "silverstripe/cms": "~3.6"
+        "composer/installers": "^1.6",
+        "silverstripe/recipe-cms": "^4.2"
     },
     "suggest": {
         "inceddy/image-compare": "compare image similarities",
         "thenakos/compare-images": "compare image similarities (https://github.com/thenakos/compare-images)"
-
     },
     "extra": {
-        "consider": "",
-        "installer-name": "assets_overview"
+        "consider": ""
     }
 }

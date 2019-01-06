@@ -1,8 +1,21 @@
 <?php
 
 namespace Sunnysideup\AssetsOverview\Control;
+use SilverStripe\Control\Director;
+use SilverStripe\Security\Permission;
+use SilverStripe\Security\Security;
+use SilverStripe\View\Requirements;
+use SilverStripe\Core\Extension;
+use SilverStripe\ORM\ArrayList;
+use SilverStripe\View\ArrayData;
+use SilverStripe\Assets\Image;
+use SilverStripe\ORM\FieldType\DBDate;
+use SilverStripe\ORM\FieldType\DBField;
+use SilverStripe\Assets\Folder;
+use SilverStripe\CMS\Controllers\ContentController;
 
-class View extends \ContentController
+
+class View extends ContentController
 {
     private static $allowed_actions = array(
         'byfolder' => 'ADMIN',
@@ -22,7 +35,7 @@ class View extends \ContentController
 
     public function Link($action = null)
     {
-        $base = \Director::absoluteBaseURL();
+        $base = Director::absoluteBaseURL();
         $link = $base . DIRECTORY_SEPARATOR . 'assetsoverview'  . DIRECTORY_SEPARATOR;
         if ($action) {
             $link .= $action . DIRECTORY_SEPARATOR;
@@ -49,10 +62,10 @@ class View extends \ContentController
     public function init()
     {
         parent::init();
-        if (!\Permission::check("ADMIN")) {
-            return \Security::permissionFailure($this);
+        if (!Permission::check("ADMIN")) {
+            return Security::permissionFailure($this);
         }
-        \Requirements::clear();
+        Requirements::clear();
     }
 
     public function index($request)
@@ -88,7 +101,7 @@ class View extends \ContentController
     public function byextension($request)
     {
         $this->title = 'By File Type';
-        $this->createProperList('Extension', 'Extension');
+        $this->createProperList(Extension::class, Extension::class);
 
         return $this->renderWith('AssetsOverview');
     }
@@ -178,9 +191,9 @@ class View extends \ContentController
             //done only if not already done ...
             $this->buildImagesRaw();
             $this->imagesRaw = $this->imagesRaw->Sort($sortField);
-            $this->imagesSorted = \ArrayList::create();
+            $this->imagesSorted = ArrayList::create();
 
-            $innerArray = \ArrayList::create();
+            $innerArray = ArrayList::create();
             $prevHeader = '';
 
             foreach ($this->imagesRaw as $image) {
@@ -192,7 +205,7 @@ class View extends \ContentController
                     );
                     $prevHeader = $newHeader;
                     unset($innerArray);
-                    $innerArray = \ArrayList::create();
+                    $innerArray = ArrayList::create();
                 }
                 $innerArray->push($image);
             }
@@ -212,7 +225,7 @@ class View extends \ContentController
             }
             $count = $this->imagesSorted->count();
             $this->imagesSorted->push(
-                \ArrayData::create(
+                ArrayData::create(
                     [
                         'Number' => $count,
                         'SubTitle' => $header,
@@ -245,13 +258,13 @@ class View extends \ContentController
 
     protected function assetsBaseDir() : string
     {
-        return \Director::baseFolder() . DIRECTORY_SEPARATOR . ASSETS_DIR;
+        return Director::baseFolder() . DIRECTORY_SEPARATOR . ASSETS_DIR;
     }
 
     protected function buildImagesRaw()
     {
         if ($this->imagesRaw === null) {
-            $this->imagesRaw = \ArrayList::create();
+            $this->imagesRaw = ArrayList::create();
 
             $path = $this->assetsBaseDir();
 
@@ -268,7 +281,7 @@ class View extends \ContentController
                     }
                 }
             }
-            $baseFolder = \Director::baseFolder();
+            $baseFolder = Director::baseFolder();
             $assetsBaseFolder = $this->assetsBaseDir();
             foreach ($array as $absoluteLocation => $fileObject) {
                 $pathParts = pathinfo($absoluteLocation);
@@ -279,7 +292,7 @@ class View extends \ContentController
                 $intel['Path'] = $absoluteLocation;
                 $intel['PathFromAssets'] = str_replace($assetsBaseFolder, '', $absoluteLocation);
                 $intel['PathFromRoot'] = str_replace($baseFolder, '', $absoluteLocation);
-                $intel['Extension'] = $pathParts['extension'];
+                $intel[Extension::class] = $pathParts['extension'];
 
                 $intel['FileName'] = $pathParts['filename'];
                 $intel['FirstLetter'] = strtoupper(substr($pathParts['filename'], 0, 1));
@@ -292,10 +305,10 @@ class View extends \ContentController
                 $intel['Pixels'] = $width * $height;
                 $intel['HumanImageDimensions'] = $imageSizeHuman;
                 $fileNameInDB = ltrim($intel['PathFromRoot'], DIRECTORY_SEPARATOR);
-                $file = \Image::get()->filter(['Filename' => $fileNameInDB])->first();
+                $file = Image::get()->filter(['Filename' => $fileNameInDB])->first();
                 if (! $file) {
                     $nameInDB = $intel['FileName'] . '.' . $pathParts['extension'];
-                    $file = \Image::get()->filter(['Name' => $nameInDB])->first();
+                    $file = Image::get()->filter(['Name' => $nameInDB])->first();
                 }
                 if ($file) {
                     $intel['IsInDatabase'] = true;
@@ -310,18 +323,18 @@ class View extends \ContentController
                 }
                 $intel['HumanIsInDatabase'] = $intel['IsInDatabase'] ? 'In Database' : 'Not in Database';
                 $intel['LastEditedTS'] = $time;
-                $intel['LastEdited'] = \DBField::create_field('Date', $time)->Ago();
+                $intel['LastEdited'] = DBField::create_field(DBDate::class, $time)->Ago();
                 $intel['FolderName'] = trim(str_replace($baseFolder, '', $pathParts['dirname']), DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR;
                 $intel['FolderNameShort'] = trim(str_replace($assetsBaseFolder, '', $pathParts['dirname']), DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR;
                 $intel['GrandParentFolder'] = dirname($intel['FolderNameShort']);
-                $folder = \Folder::get()->filter(['Filename' => $intel['FolderName']])->first();
+                $folder = Folder::get()->filter(['Filename' => $intel['FolderName']])->first();
                 if ($folder) {
                     $intel['CMSEditLinkFolder'] = '/admin/assets/show/'.$folder->ID;
                 } else {
                     $intel['CMSEditLinkFolder'] = '/assets/admin/';
                 }
                 $this->imagesRaw->push(
-                    \ArrayData::create($intel)
+                    ArrayData::create($intel)
                 );
                 unset($intel);
             }
