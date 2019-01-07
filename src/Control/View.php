@@ -1,6 +1,7 @@
 <?php
 
 namespace Sunnysideup\AssetsOverview\Control;
+
 use SilverStripe\Control\Director;
 use SilverStripe\Security\Permission;
 use SilverStripe\Security\Security;
@@ -13,7 +14,6 @@ use SilverStripe\ORM\FieldType\DBDate;
 use SilverStripe\ORM\FieldType\DBField;
 use SilverStripe\Assets\Folder;
 use SilverStripe\CMS\Controllers\ContentController;
-
 
 class View extends ContentController
 {

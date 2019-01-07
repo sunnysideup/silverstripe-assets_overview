@@ -1,9 +1,9 @@
 <?php
 
 namespace Sunnysideup\AssetsOverview\Control;
+
 use SilverStripe\Forms\LiteralField;
 use SilverStripe\Core\Extension;
-
 
 class AssetAdminExtension extends Extension
 {
