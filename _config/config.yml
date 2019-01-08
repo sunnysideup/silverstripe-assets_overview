@@ -2,6 +2,6 @@
 name: AssetsOverview
 ---
 
-AssetAdmin:
+SilverStripe\AssetAdmin\Controller\AssetAdmin:
     extensions:
         - 'Sunnysideup\AssetsOverview\Control\AssetAdminExtension'
