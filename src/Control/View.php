@@ -5,6 +5,8 @@ namespace Sunnysideup\AssetsOverview\Control;
 class View extends \ContentController
 {
 
+    private
+
     private static $allowed_actions = array(
         'byfolder' => 'ADMIN',
         'byfilename' => 'ADMIN',
