@@ -2,11 +2,10 @@
 
 namespace Sunnysideup\AssetsOverview\Control;
 
-use Sunnysideup\AssetsOverview\Api\CompareImages;
+use \Exception;
 
 use \RecursiveDirectoryIterator;
 use \RecursiveIteratorIterator;
-use \Exception;
 use Psr\SimpleCache\CacheInterface;
 use SilverStripe\Assets\File;
 use SilverStripe\Assets\Folder;
@@ -20,6 +19,7 @@ use SilverStripe\Security\Permission;
 use SilverStripe\Security\Security;
 use SilverStripe\View\ArrayData;
 use SilverStripe\View\Requirements;
+use Sunnysideup\AssetsOverview\Api\CompareImages;
 
 class View extends ContentController
 {
@@ -383,7 +383,6 @@ class View extends ContentController
             $cache = Injector::inst()->get(CacheInterface::class . '.assetsoverview');
             $cachekey = 'fullarray_' . implode('_', $this->allowedExtensions);
             if (! $cache->has($cachekey)) {
-
                 $rawArray = $this->getArrayOfFilesOnDisk();
                 $filesOnDiskArray = $this->getArrayOfFilesOnDisk();
                 foreach ($filesOnDiskArray as $relativeSrc) {
