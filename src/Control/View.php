@@ -117,6 +117,9 @@ class View extends \ContentController
         $this->baseFolder = \Director::baseFolder();
         $this->assetsBaseFolder = $this->getAssetBaseDir();
         $this->allowedExtensions = $this->Config()->get('allowed_extensions');
+        if($this->request->getParam('ext')) {
+            $this->allowedExtensions = explode(',', $ext);
+        }
     }
 
     public function index($request)
@@ -355,7 +358,7 @@ class View extends \ContentController
             $fullArray = [];
             $this->imagesRaw = \ArrayList::create();
             $cache = \SS_Cache::factory('assetsoverview');
-            $cachekey = 'fullarray';
+            $cachekey = 'fullarray_'.implode('_', $this->allowedExtensions);
             $fullArrayString = $cache->load($cachekey);
             if (! $fullArrayString)  {
                 $rawArray = $this->getArrayOfFilesOnDisk();
