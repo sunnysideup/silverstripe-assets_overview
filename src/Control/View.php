@@ -372,7 +372,7 @@ class View extends ContentController
 
     protected function getAssetBaseDir(): string
     {
-        return $this->baseFolder . DIRECTORY_SEPARATOR . ASSETS_DIR;
+        return ASSETS_PATH;
     }
 
     protected function buildFileCache()
