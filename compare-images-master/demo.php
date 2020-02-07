@@ -10,5 +10,5 @@ require 'image.compare.class.php';
         4. the same image with slightly different colors / lights etc. (returned number should be under 10)
     you will see how the returned number will represent the similarity of the images.
 */
-$class = new compareImages;
+$class = new CompareImages();
 echo $class->compare('1.jpg', '2.jpg');
