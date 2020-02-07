@@ -2,8 +2,11 @@
 
 namespace Sunnysideup\AssetsOverview\Control;
 
+use Sunnysideup\AssetsOverview\Api\CompareImages;
+
 use \RecursiveDirectoryIterator;
 use \RecursiveIteratorIterator;
+use \Exception;
 use Psr\SimpleCache\CacheInterface;
 use SilverStripe\Assets\File;
 use SilverStripe\Assets\Folder;
@@ -11,6 +14,7 @@ use SilverStripe\CMS\Controllers\ContentController;
 use SilverStripe\Control\Director;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\ORM\ArrayList;
+use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\FieldType\DBField;
 use SilverStripe\Security\Permission;
 use SilverStripe\Security\Security;
@@ -32,6 +36,8 @@ class View extends ContentController
     protected $totalFileCount = 0;
 
     protected $totalFileSize = 0;
+
+    protected $allowedExtensions = [];
 
     private static $allowed_extensions = [];
 
@@ -213,9 +219,8 @@ class View extends ContentController
 
     public function bysimilarity($request)
     {
-        require_once(__DIR__ . '../../../compare-images-master/image.compare.class.php');
         set_time_limit(240);
-        $engine = new compareImages();
+        $engine = new CompareImages();
         $this->buildFileCache();
         $a = clone $this->imagesRaw;
         $b = clone $this->imagesRaw;
@@ -378,7 +383,7 @@ class View extends ContentController
             $cache = Injector::inst()->get(CacheInterface::class . '.assetsoverview');
             $cachekey = 'fullarray_' . implode('_', $this->allowedExtensions);
             if (! $cache->has($cachekey)) {
-                $fullArrayString = $cache->get($cachekey);
+
                 $rawArray = $this->getArrayOfFilesOnDisk();
                 $filesOnDiskArray = $this->getArrayOfFilesOnDisk();
                 foreach ($filesOnDiskArray as $relativeSrc) {
@@ -396,6 +401,7 @@ class View extends ContentController
                 $fullArrayString = serialize($fullArray);
                 $cache->set($cachekey, $fullArrayString);
             } else {
+                $fullArrayString = $cache->get($cachekey);
                 $fullArray = unserialize($fullArrayString);
             }
             foreach ($fullArray as $intel) {
@@ -444,6 +450,8 @@ class View extends ContentController
         $intel['IsInFileSystem'] = false;
         $intel['HumanIsInFileSystem'] = 'file does not exist';
         $intel['ErrorParentID'] = true;
+        $intel['Type'] = $intel['Extension'];
+        $intel['Attribute'] = 'n/a';
 
         if ($fileExists) {
             $intel['IsInFileSystem'] = true;
@@ -461,6 +469,7 @@ class View extends ContentController
                 $intel['Ratio'] = round($width / $height, 3);
                 $intel['Pixels'] = $width * $height;
                 $intel['HumanIsImage'] = 'Is Image';
+                $intel['Type'] = $type;
             }
         }
 

@@ -3,8 +3,8 @@ name: AssetsOverview
 ---
 
 SilverStripe\AssetAdmin\Controller\AssetAdmin:
-    extensions:
-        - 'Sunnysideup\AssetsOverview\Control\AssetAdminExtension'
+  extensions:
+    - 'Sunnysideup\AssetsOverview\Control\AssetAdminExtension'
 
 SilverStripe\Core\Injector\Injector:
   Psr\SimpleCache\CacheInterface.myCache:

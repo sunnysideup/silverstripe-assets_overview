@@ -1,6 +1,6 @@
 <?php
 
-namespace Sunnysideup\AssetsOverview\Control;
+namespace Sunnysideup\AssetsOverview\Api;
 
 class CompareImages
 {
