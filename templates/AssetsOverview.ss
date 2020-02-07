@@ -187,14 +187,17 @@
     <div id="top" class="results">
         <div class="padding">
             <p>&laquo; <a href="/admin/assets/">back to CMS</a></p>
+
+            <h1>Totals</h1>
+            <p>$TotalFileCount files, totalling $TotalFileSize in storage</p>
+
             <h1>View By ...</h1>
             <ul>
                 <% loop $ActionMenu %>
                 <li class="$LinkingMode"><a href="$Link">$Title</a></li>
                 <% end_loop %>
             </ul>
-            <h1>Totals</h1>
-            <p>$TotalFileCount files, totalling $TotalFileSize in storage</p>
+
             <div>
             <% if ImagesSorted.count %>
                 <h1>$Title</h1>
