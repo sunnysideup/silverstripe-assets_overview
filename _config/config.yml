@@ -7,7 +7,7 @@ SilverStripe\AssetAdmin\Controller\AssetAdmin:
     - 'Sunnysideup\AssetsOverview\Control\AssetAdminExtension'
 
 SilverStripe\Core\Injector\Injector:
-  Psr\SimpleCache\CacheInterface.myCache:
+  Psr\SimpleCache\CacheInterface.assetsoverview:
     factory: SilverStripe\Core\Cache\CacheFactory
     constructor:
       namespace: "assetsoverview"
