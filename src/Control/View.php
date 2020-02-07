@@ -17,6 +17,9 @@ use SilverStripe\Assets\File;
 use SilverStripe\CMS\Controllers\ContentController;
 use \RecursiveIteratorIterator;
 use \RecursiveDirectoryIterator;
+use Psr\SimpleCache\CacheInterface;
+use SilverStripe\Core\Injector\Injector;
+
 
 class View extends ContentController
 {
@@ -373,10 +376,10 @@ class View extends ContentController
         if($this->imagesRaw === null) {
             $fullArray = [];
             $this->imagesRaw = ArrayList::create();
-            $cache = SS_Cache::factory('assetsoverview');
+            $cache = Injector::inst()->get(CacheInterface::class . '.assetsoverview');
             $cachekey = 'fullarray_'.implode('_', $this->allowedExtensions);
-            $fullArrayString = $cache->load($cachekey);
-            if (! $fullArrayString)  {
+            if (! $cache->has($cachekey))  {
+                $fullArrayString = $cache->get($cachekey);
                 $rawArray = $this->getArrayOfFilesOnDisk();
                 $filesOnDiskArray = $this->getArrayOfFilesOnDisk();
                 foreach($filesOnDiskArray as $relativeSrc) {
@@ -392,7 +395,7 @@ class View extends ContentController
                     $fullArray[$intel['Path']] = $intel;
                 }
                 $fullArrayString = serialize($fullArray);
-                $cache->save($fullArrayString, $cachekey);
+                $cache->set($cachekey, $fullArrayString);
             } else {
                 $fullArray = unserialize($fullArrayString);
             }
