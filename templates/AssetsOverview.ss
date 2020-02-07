@@ -1,8 +1,3 @@
-
-
-
-
-
 <!doctype html>
 
 <html lang="en">
@@ -55,7 +50,9 @@
   .results {
       width: 70%;
   }
-
+  li.current {
+      font-weight: bold;
+  }
   .toc {
       position: fixed;
       width: 30%;
@@ -93,7 +90,7 @@
       position: relative;
       display: block;
       float: left;
-      height: 150px;
+      height: 250px;
       width: auto;
       border: 1px solid #ddd;
       margin: 10px;
@@ -122,7 +119,7 @@
 
   .one-image:hover .one-image-info {
       background-color: rgba(0,0,0, 0.7);
-      height: 90px;
+      height: 200px;
       padding: 7px;
       color: #fff;
   }
@@ -192,17 +189,12 @@
             <p>&laquo; <a href="/admin/assets/">back to CMS</a></p>
             <h1>View By ...</h1>
             <ul>
-                <li><a href="$Link(byfolder)">Folder</a></li>
-                <li><a href="$Link(byfilename)">Name</a></li>
-                <li><a href="$Link(byfilesize)">File Size</a></li>
-                <li><a href="$Link(byextension)">File Type</a></li>
-                <li><a href="$Link(bydimensions)">Dimensions</a></li>
-                <li><a href="$Link(byratio)">Ratio</a></li>
-                <li><a href="$Link(bylastedited)">Last Edited</a></li>
-                <li><a href="$Link(bydatabasestatus)">Database Status</a></li>
+                <% loop $ActionMenu %>
+                <li class="$LinkingMode"><a href="$Link">$Title</a></li>
+                <% end_loop %>
             </ul>
-
-
+            <h1>Totals</h1>
+            <p>$TotalFileCount files, totalling $TotalFileSize in storage</p>
             <div>
             <% if ImagesSorted.count %>
                 <h1>$Title</h1>
