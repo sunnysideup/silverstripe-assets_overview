@@ -117,7 +117,7 @@ class View extends \ContentController
         $this->baseFolder = \Director::baseFolder();
         $this->assetsBaseFolder = $this->getAssetBaseDir();
         $this->allowedExtensions = $this->Config()->get('allowed_extensions');
-        if($this->request->getParam('ext')) {
+        if($ext = $this->request->getVar('ext')) {
             $this->allowedExtensions = explode(',', $ext);
         }
     }
@@ -277,7 +277,7 @@ class View extends \ContentController
 
             $innerArray = \ArrayList::create();
             $prevHeader = 'nothing here....';
-
+            $newHeader = '';
             foreach($this->imagesRaw as $image){
                 $newHeader = $image->$headerField;
                 if($newHeader !== $prevHeader) {
