@@ -124,7 +124,7 @@
 
   .one-image:hover .one-image-info {
       background-color: rgba(0,0,0, 0.7);
-      height: 90px;
+      height: 200px;
       padding: 7px;
       color: #fff;
   }
@@ -198,6 +198,8 @@
                 <li class="$LinkingMode"><a href="$Link">$Title</a></li>
                 <% end_loop %>
             </ul>
+            <h1>Totals</h1>
+            <p>$TotalFileCount files, totalling $TotalFileSize in storage</p>
             <div>
             <% if ImagesSorted.count %>
                 <h1>$Title</h1>
