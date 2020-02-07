@@ -2,31 +2,40 @@
 
 namespace Sunnysideup\AssetsOverview\Control;
 
+use \RecursiveDirectoryIterator;
+use \RecursiveIteratorIterator;
+use Psr\SimpleCache\CacheInterface;
+use SilverStripe\Assets\File;
+use SilverStripe\Assets\Folder;
+use SilverStripe\CMS\Controllers\ContentController;
 use SilverStripe\Control\Director;
+use SilverStripe\Core\Injector\Injector;
+use SilverStripe\ORM\ArrayList;
+use SilverStripe\ORM\FieldType\DBField;
 use SilverStripe\Security\Permission;
 use SilverStripe\Security\Security;
-use SilverStripe\View\Requirements;
-use SilverStripe\Core\Extension;
-use SilverStripe\ORM\ArrayList;
 use SilverStripe\View\ArrayData;
-use SilverStripe\Assets\Image;
-use SilverStripe\ORM\FieldType\DBDate;
-use SilverStripe\ORM\FieldType\DBField;
-use SilverStripe\Assets\Folder;
-use SilverStripe\Assets\File;
-use SilverStripe\CMS\Controllers\ContentController;
-use \RecursiveIteratorIterator;
-use \RecursiveDirectoryIterator;
-use Psr\SimpleCache\CacheInterface;
-use SilverStripe\Core\Injector\Injector;
-
+use SilverStripe\View\Requirements;
 
 class View extends ContentController
 {
+    protected $imagesRaw = null;
+
+    protected $title = '';
+
+    protected $imagesSorted = null;
+
+    protected $baseFolder = '';
+
+    protected $assetsBaseFolder = '';
+
+    protected $totalFileCount = 0;
+
+    protected $totalFileSize = 0;
 
     private static $allowed_extensions = [];
 
-    private static $allowed_actions = array(
+    private static $allowed_actions = [
         'byfolder' => 'ADMIN',
         'byfilename' => 'ADMIN',
         'byfilesize' => 'ADMIN',
@@ -42,9 +51,9 @@ class View extends ContentController
         'bylastedited' => 'ADMIN',
         'bysimilarity' => 'ADMIN',
         'rawlist' => 'ADMIN',
-    );
+    ];
 
-    private static $names = array(
+    private static $names = [
         'byfolder' => 'Folder',
         'byfilename' => 'Filename',
         'byfilesize' => 'Filesize',
@@ -60,32 +69,24 @@ class View extends ContentController
         'byratio' => 'Ratio',
         'bysimilarity' => 'Similarity (takes a long time!)',
         'rawlist' => 'Raw List',
-    );
-
-    protected $imagesRaw = null;
-    protected $title = '';
-    protected $imagesSorted = null;
-    protected $baseFolder = '';
-    protected $assetsBaseFolder = '';
-    protected $totalFileCount = 0;
-    protected $totalFileSize = 0;
+    ];
 
     public function Link($action = null)
     {
         $base = rtrim(Director::absoluteBaseURL(), DIRECTORY_SEPARATOR);
-        $link = $base .  DIRECTORY_SEPARATOR . 'assetsoverview'  . DIRECTORY_SEPARATOR;
-        if($action) {
+        $link = $base . DIRECTORY_SEPARATOR . 'assetsoverview' . DIRECTORY_SEPARATOR;
+        if ($action) {
             $link .= $action . DIRECTORY_SEPARATOR;
         }
 
         return $link;
     }
 
-    public function ActionMenu() : ArrayList
+    public function ActionMenu(): ArrayList
     {
         $al = ArrayList::create();
         $action = $this->request->param('Action') ?: 'byfolder';
-        foreach($this->Config()->get('names') as $key => $name) {
+        foreach ($this->Config()->get('names') as $key => $name) {
             $linkingMode = $key === $action ? 'current' : 'link';
             $array = [
                 'Link' => $this->Link($key),
@@ -98,45 +99,44 @@ class View extends ContentController
         return $al;
     }
 
-    public function getTitle() : string
+    public function getTitle(): string
     {
         $list = $this->Config()->get('names');
 
         return $list[$this->request->param('Action')] ?? 'By Folder';
     }
 
-    public function getImagesRaw() : ArrayList
+    public function getImagesRaw(): ArrayList
     {
         return $this->imagesRaw;
-
     }
 
-    public function getImagesSorted() : ArrayList
+    public function getImagesSorted(): ArrayList
     {
         return $this->imagesSorted;
     }
 
-    public function getTotalFileCount() : string
+    public function getTotalFileCount(): string
     {
         return (string) number_format($this->totalFileCount);
     }
 
-    public function getTotalFileSize() : string
+    public function getTotalFileSize(): string
     {
         return (string) $this->humanFileSize($this->totalFileSize);
     }
 
-    function init()
+    public function init()
     {
         parent::init();
-        if(!Permission::check("ADMIN")) {
+        if (! Permission::check('ADMIN')) {
             return Security::permissionFailure($this);
         }
         Requirements::clear();
         $this->baseFolder = Director::baseFolder();
         $this->assetsBaseFolder = $this->getAssetBaseDir();
         $this->allowedExtensions = $this->Config()->get('allowed_extensions');
-        if($ext = $this->request->getVar('ext')) {
+        if ($ext = $this->request->getVar('ext')) {
             $this->allowedExtensions = explode(',', $ext);
         }
     }
@@ -160,7 +160,6 @@ class View extends ContentController
     {
         return $this->createProperList('DBTitle', 'FirstLetterDBTitle');
     }
-
 
     public function byfilesize($request)
     {
@@ -214,7 +213,7 @@ class View extends ContentController
 
     public function bysimilarity($request)
     {
-        require_once(__DIR__.'../../../compare-images-master/image.compare.class.php');
+        require_once(__DIR__ . '../../../compare-images-master/image.compare.class.php');
         set_time_limit(240);
         $engine = new compareImages();
         $this->buildFileCache();
@@ -222,23 +221,23 @@ class View extends ContentController
         $b = clone $this->imagesRaw;
         $c = clone $this->imagesRaw;
         $alreadyDone = [];
-        foreach($a as $image) {
+        foreach ($a as $image) {
             $nameOne = $image->Path;
             $nameOneFromAssets = $image->PathFromAssets;
-            if(! in_array($nameOne, $alreadyDone)) {
+            if (! in_array($nameOne, $alreadyDone, true)) {
                 $easyFind = false;
                 $sortArray = [];
-                foreach($b as $compareImage) {
+                foreach ($b as $compareImage) {
                     $nameTwo = $compareImage->Path;
-                    if($nameOne !== $nameTwo) {
+                    if ($nameOne !== $nameTwo) {
                         $fileNameTest = $image->FileName && $image->FileName === $compareImage->FileName;
                         $fileSizeTest = $image->FileSize > 0 && $image->FileSize === $compareImage->FileSize;
-                        if($fileNameTest || $fileSizeTest) {
+                        if ($fileNameTest || $fileSizeTest) {
                             $easyFind = true;
                             $alreadyDone[$nameOne] = $nameOneFromAssets;
                             $alreadyDone[$compareImage->Path] = $nameOneFromAssets;
-                        } elseif($easyFind === false && $image->IsImage) {
-                            if($image->Ratio == $compareImage->Ratio && $image->Ratio > 0) {
+                        } elseif ($easyFind === false && $image->IsImage) {
+                            if ($image->Ratio === $compareImage->Ratio && $image->Ratio > 0) {
                                 $score = $engine->compare($nameOne, $nameTwo);
                                 $sortArray[$nameTwo] = $score;
                                 break;
@@ -246,13 +245,13 @@ class View extends ContentController
                         }
                     }
                 }
-                if($easyFind === false) {
-                    if(count($sortArray)) {
+                if ($easyFind === false) {
+                    if (count($sortArray)) {
                         asort($sortArray);
                         reset($sortArray);
                         $mostSimilarKey = key($sortArray);
-                        foreach($c as $findImage) {
-                            if($findImage->Path === $mostSimilarKey) {
+                        foreach ($c as $findImage) {
+                            if ($findImage->Path === $mostSimilarKey) {
                                 $alreadyDone[$nameOne] = $nameOneFromAssets;
                                 $alreadyDone[$findImage->Path] = $nameOneFromAssets;
                                 break;
@@ -264,7 +263,7 @@ class View extends ContentController
                 }
             }
         }
-        foreach($this->imagesRaw as $image) {
+        foreach ($this->imagesRaw as $image) {
             $image->MostSimilarTo = $alreadyDone[$image->Path] ?? '[N/A]';
         }
 
@@ -274,21 +273,21 @@ class View extends ContentController
     public function rawlist($request)
     {
         $this->createProperList('Path', 'Path');
-        foreach($this->imagesSorted as $image) {
-            echo '<hr  />'.$image->SubTitle;
+        foreach ($this->imagesSorted as $image) {
+            echo '<hr  />' . $image->SubTitle;
         }
         die(
             '
             <hr />
             <hr />
-            Total File Count: '.$this->getTotalFileCount().'<br />
-            Total File Size: '.$this->getTotalFileSize()
+            Total File Count: ' . $this->getTotalFileCount() . '<br />
+            Total File Size: ' . $this->getTotalFileSize()
         );
     }
 
     protected function createProperList($sortField, $headerField)
     {
-        if($this->imagesSorted === null) {
+        if ($this->imagesSorted === null) {
             //done only if not already done ...
             $this->buildFileCache();
             $this->imagesRaw = $this->imagesRaw->Sort($sortField);
@@ -297,9 +296,9 @@ class View extends ContentController
             $innerArray = ArrayList::create();
             $prevHeader = 'nothing here....';
             $newHeader = '';
-            foreach($this->imagesRaw as $image){
-                $newHeader = $image->$headerField;
-                if($newHeader !== $prevHeader) {
+            foreach ($this->imagesRaw as $image) {
+                $newHeader = $image->{$headerField};
+                if ($newHeader !== $prevHeader) {
                     $this->addToSortedArray(
                         $prevHeader, //correct! important ...
                         $innerArray
@@ -323,26 +322,26 @@ class View extends ContentController
 
     protected function addToSortedArray(string $header, $arrayList)
     {
-        if($arrayList->count()) {
+        if ($arrayList->count()) {
             $count = $this->imagesSorted->count();
             $this->imagesSorted->push(
                 ArrayData::create(
                     [
                         'Number' => $count,
                         'SubTitle' => $header,
-                        'Items' => $arrayList
+                        'Items' => $arrayList,
                     ]
                 )
             );
         }
     }
 
-    protected function isRegularImage(string $extension) : bool
+    protected function isRegularImage(string $extension): bool
     {
-        return in_array(strtolower($extension), ['jpg', 'gif', 'png']);
+        return in_array(strtolower($extension), ['jpg', 'gif', 'png'], true);
     }
 
-    protected function isImage(string $filename) : bool
+    protected function isImage(string $filename): bool
     {
         try {
             $outcome = exif_imagetype($filename) ? true : false;
@@ -353,44 +352,44 @@ class View extends ContentController
         return $outcome;
     }
 
-    protected function humanFileSize(int $bytes, int $decimals = 0) : string
+    protected function humanFileSize(int $bytes, int $decimals = 0): string
     {
-        $size = array('B','kB','MB','GB','TB','PB','EB','ZB','YB');
+        $size = ['B', 'kB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
         $factor = floor((strlen($bytes) - 1) / 3);
         return sprintf("%.{$decimals}f", $bytes / pow(1024, $factor)) . @$size[$factor];
     }
 
-    protected function getExtension(string $path) : string
+    protected function getExtension(string $path): string
     {
         $basename = basename($path);
         return substr($basename, strlen(explode('.', $basename)[0]) + 1);
     }
 
-    protected function getAssetBaseDir() : string
+    protected function getAssetBaseDir(): string
     {
         return $this->baseFolder . DIRECTORY_SEPARATOR . ASSETS_DIR;
     }
 
     protected function buildFileCache()
     {
-        if($this->imagesRaw === null) {
+        if ($this->imagesRaw === null) {
             $fullArray = [];
             $this->imagesRaw = ArrayList::create();
             $cache = Injector::inst()->get(CacheInterface::class . '.assetsoverview');
-            $cachekey = 'fullarray_'.implode('_', $this->allowedExtensions);
-            if (! $cache->has($cachekey))  {
+            $cachekey = 'fullarray_' . implode('_', $this->allowedExtensions);
+            if (! $cache->has($cachekey)) {
                 $fullArrayString = $cache->get($cachekey);
                 $rawArray = $this->getArrayOfFilesOnDisk();
                 $filesOnDiskArray = $this->getArrayOfFilesOnDisk();
-                foreach($filesOnDiskArray as $relativeSrc) {
-                    $absoluteLocation = $this->baseFolder. '/' . $relativeSrc;
-                    if(! isset($rawArray[$absoluteLocation])) {
-                        if($this->isPathWithAllowedExtion($absoluteLocation)) {
+                foreach ($filesOnDiskArray as $relativeSrc) {
+                    $absoluteLocation = $this->baseFolder . '/' . $relativeSrc;
+                    if (! isset($rawArray[$absoluteLocation])) {
+                        if ($this->isPathWithAllowedExtion($absoluteLocation)) {
                             $rawArray[$absoluteLocation] = false;
                         }
                     }
                 }
-                foreach($rawArray as $absoluteLocation => $fileExists){
+                foreach ($rawArray as $absoluteLocation => $fileExists) {
                     $intel = $this->getDataAboutOneFile($absoluteLocation, $fileExists);
                     $fullArray[$intel['Path']] = $intel;
                 }
@@ -399,7 +398,7 @@ class View extends ContentController
             } else {
                 $fullArray = unserialize($fullArrayString);
             }
-            foreach($fullArray as $intel) {
+            foreach ($fullArray as $intel) {
                 $this->totalFileCount++;
                 $this->totalFileSize += $intel['FileSize'];
                 $this->imagesRaw->push(
@@ -410,15 +409,15 @@ class View extends ContentController
         return $this->imagesRaw;
     }
 
-    protected function getDataAboutOneFile($absoluteLocation, $fileExists) : array
+    protected function getDataAboutOneFile($absoluteLocation, $fileExists): array
     {
         $intel = [];
         $pathParts = [];
-        if($fileExists) {
+        if ($fileExists) {
             $pathParts = pathinfo($absoluteLocation);
         }
-        $pathParts['extension'] = $pathParts['extension']  ?? '--no-extension';
-        $pathParts['filename'] =  $pathParts['filename'] ?? '--no-file-name';
+        $pathParts['extension'] = $pathParts['extension'] ?? '--no-extension';
+        $pathParts['filename'] = $pathParts['filename'] ?? '--no-file-name';
         $pathParts['dirname'] = $pathParts['dirname'] ?? '--no-parent-dir';
 
         $intel['Extension'] = $pathParts['extension'];
@@ -432,8 +431,8 @@ class View extends ContentController
         $intel['FirstLetter'] = strtoupper(substr($intel['FileName'], 0, 1));
         $intel['FileNameInDB'] = ltrim($intel['PathFromRoot'], DIRECTORY_SEPARATOR);
 
-        $intel['FolderName'] = trim(str_replace($this->baseFolder, '', $pathParts['dirname']), DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR;
-        $intel['FolderNameShort'] = trim(str_replace($this->assetsBaseFolder, '', $pathParts['dirname']), DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR;
+        $intel['FolderName'] = trim(str_replace($this->baseFolder, '', $pathParts['dirname']), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
+        $intel['FolderNameShort'] = trim(str_replace($this->assetsBaseFolder, '', $pathParts['dirname']), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
         $intel['GrandParentFolder'] = dirname($intel['FolderNameShort']);
 
         $intel['HumanImageDimensions'] = 'n/a';
@@ -446,19 +445,19 @@ class View extends ContentController
         $intel['HumanIsInFileSystem'] = 'file does not exist';
         $intel['ErrorParentID'] = true;
 
-        if($fileExists) {
+        if ($fileExists) {
             $intel['IsInFileSystem'] = true;
             $intel['HumanIsInFileSystem'] = 'file exists';
             $intel['FileSize'] = filesize($absoluteLocation);
             $intel['IsRegularImage'] = $this->isRegularImage($intel['Extension']);
-            if($intel['IsRegularImage']) {
+            if ($intel['IsRegularImage']) {
                 $intel['IsImage'] = true;
             } else {
                 $intel['IsImage'] = $this->isImage($absoluteLocation);
             }
-            if($intel['IsImage']) {
+            if ($intel['IsImage']) {
                 list($width, $height, $type, $attr) = getimagesize($absoluteLocation);
-                $intel['HumanImageDimensions'] = $width.'px wide by '.$height.'px high';
+                $intel['HumanImageDimensions'] = $width . 'px wide by ' . $height . 'px high';
                 $intel['Ratio'] = round($width / $height, 3);
                 $intel['Pixels'] = $width * $height;
                 $intel['HumanIsImage'] = 'Is Image';
@@ -466,55 +465,54 @@ class View extends ContentController
         }
 
         $intel['HumanFileSize'] = $this->humanFileSize($intel['FileSize']);
-        $intel['HumanFileSizeRounded'] = '~ '.$this->humanFileSize(round($intel['FileSize'] / 1024) * 1024);
+        $intel['HumanFileSizeRounded'] = '~ ' . $this->humanFileSize(round($intel['FileSize'] / 1024) * 1024);
         $file = DataObject::get_one(File::class, ['Filename' => $intel['FileNameInDB']]);
         $folderFromFileName = DataObject::get_one(Folder::class, ['Filename' => $intel['FolderName']]);
         $folder = null;
-        if($file) {
+        if ($file) {
             $folder = DataObject::get_one(Folder::class, ['ID' => $file->ParentID]);
         }
 
         //backup for folder
-        if(! $folder) {
+        if (! $folder) {
             $folder = $folderFromFileName;
         }
 
         //backup for file ...
-        if(! $file) {
-            if($folder) {
+        if (! $file) {
+            if ($folder) {
                 $nameInDB = $intel['FileName'] . '.' . $intel['Extension'];
                 $file = DataObject::get_one(File::class, ['Name' => $nameInDB, 'ParentID' => $folder->ID]);
             }
         }
         $time = 0;
-        if($file) {
+        if ($file) {
             $intel['ID'] = $file->ID;
             $intel['IsInDatabase'] = true;
-            $intel['CMSEditLink'] = '/admin/assets/EditForm/field/File/item/'.$file->ID.'/edit';
+            $intel['CMSEditLink'] = '/admin/assets/EditForm/field/File/item/' . $file->ID . '/edit';
             $intel['DBTitle'] = $file->Title;
             $intel['ErrorInFilenameCase'] = $intel['FileNameInDB'] !== $file->Filename;
             $time = strtotime($file->LastEdited);
-            if($folder) {
-                $intel['ErrorParentID'] = (int)$folder->ID !== (int)$file->ParentID;
-            } elseif((int) $file->ParentID === 0) {
+            if ($folder) {
+                $intel['ErrorParentID'] = (int) $folder->ID !== (int) $file->ParentID;
+            } elseif ((int) $file->ParentID === 0) {
                 $intel['ErrorParentID'] = false;
             }
-        }
-        else {
+        } else {
             $intel['ID'] = 0;
             $intel['IsInDatabase'] = false;
             $intel['CMSEditLink'] = '/admin/assets/';
             $intel['DBTitle'] = '-- no title set in database';
             $intel['ErrorInFilenameCase'] = true;
-            if($fileExists) {
+            if ($fileExists) {
                 $time = filemtime($absoluteLocation);
             }
         }
-        if($folder) {
+        if ($folder) {
             $intel['ParentID'] = $folder->ID;
             $intel['HasFolder'] = true;
             $intel['HumanHasFolder'] = 'in sub-folder';
-            $intel['CMSEditLinkFolder'] = '/admin/assets/show/'.$folder->ID;
+            $intel['CMSEditLinkFolder'] = '/admin/assets/show/' . $folder->ID;
         } else {
             $intel['ParentID'] = 0;
             $intel['HasFolder'] = false;
@@ -532,41 +530,40 @@ class View extends ContentController
         return $intel;
     }
 
-    protected function isPathWithAllowedExtion($path) : bool
+    protected function isPathWithAllowedExtion($path): bool
     {
         $extension = $this->getExtension($path);
         $count = count($this->allowedExtensions);
-        if($count === 0 || in_array($extension, $this->allowedExtensions)) {
+        if ($count === 0 || in_array($extension, $this->allowedExtensions, true)) {
             return true;
         }
         return false;
     }
 
-    protected function getArrayOfFilesOnDisk() : array
+    protected function getArrayOfFilesOnDisk(): array
     {
         $arrayRaw = new RecursiveIteratorIterator(
             new RecursiveDirectoryIterator($this->assetsBaseFolder),
             RecursiveIteratorIterator::SELF_FIRST
         );
         $array = [];
-        foreach($arrayRaw as $src){
-            if(is_dir($src)) {
+        foreach ($arrayRaw as $src) {
+            if (is_dir($src)) {
                 continue;
             }
-            if(strpos($src, '_resampled/') !== false) {
+            if (strpos($src, '_resampled/') !== false) {
                 continue;
             }
             $path = $src->getPathName();
-            if($this->isPathWithAllowedExtion($path)) {
+            if ($this->isPathWithAllowedExtion($path)) {
                 $array[$path] = true;
             }
         }
 
         return $array;
-
     }
 
-    protected function getArrayOfFilesInDatabase() : array
+    protected function getArrayOfFilesInDatabase(): array
     {
         return File::get()
             ->exclude(['ClassName' => Folder::class])

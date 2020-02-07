@@ -2,7 +2,7 @@
 
 namespace Sunnysideup\AssetsOverview\Control;
 
-class compareImages
+class CompareImages
 {
     public function compare($a, $b)
     {
@@ -10,7 +10,7 @@ class compareImages
         $i1 = $this->createImage($a);
         $i2 = $this->createImage($b);
 
-        if (!$i1 || !$i2) {
+        if (! $i1 || ! $i2) {
             return false;
         }
 
@@ -28,8 +28,8 @@ class compareImages
 
         $hammeringDistance = 0;
 
-        for ($a = 0;$a<64;$a++) {
-            if ($bits1[$a] != $bits2[$a]) {
+        for ($a = 0; $a < 64; $a++) {
+            if ($bits1[$a] !== $bits2[$a]) {
                 $hammeringDistance++;
             }
         }
@@ -41,7 +41,7 @@ class compareImages
     {
         /*returns array with mime type and if its jpg or png. Returns false if it isn't jpg or png*/
         $mime = getimagesize($i);
-        $return = array($mime[0],$mime[1]);
+        $return = [$mime[0], $mime[1]];
 
         switch ($mime['mime']) {
             case 'image/jpeg':
@@ -60,13 +60,12 @@ class compareImages
         /*retuns image resource or false if its not jpg or png*/
         $mime = $this->mimeType($i);
 
-        if ($mime[2] == 'jpg') {
+        if ($mime[2] === 'jpg') {
             return imagecreatefromjpeg($i);
-        } elseif ($mime[2] == 'png') {
+        } elseif ($mime[2] === 'png') {
             return imagecreatefrompng($i);
-        } else {
-            return false;
         }
+        return false;
     }
 
     private function resizeImage($i, $source)
@@ -86,26 +85,26 @@ class compareImages
     private function colorMeanValue($i)
     {
         /*returns the mean value of the colors and the list of all pixel's colors*/
-        $colorList = array();
+        $colorList = [];
         $colorSum = 0;
-        for ($a = 0;$a<8;$a++) {
-            for ($b = 0;$b<8;$b++) {
+        for ($a = 0; $a < 8; $a++) {
+            for ($b = 0; $b < 8; $b++) {
                 $rgb = imagecolorat($i, $a, $b);
                 $colorList[] = $rgb & 0xFF;
                 $colorSum += $rgb & 0xFF;
             }
         }
 
-        return array($colorSum/64,$colorList);
+        return [$colorSum / 64, $colorList];
     }
 
     private function bits($colorMean)
     {
         /*returns an array with 1 and zeros. If a color is bigger than the mean value of colors it is 1*/
-        $bits = array();
+        $bits = [];
 
         foreach ($colorMean[1] as $color) {
-            $bits[]= ($color>=$colorMean[0])?1:0;
+            $bits[] = $color >= $colorMean[0] ? 1 : 0;
         }
         return $bits;
     }
