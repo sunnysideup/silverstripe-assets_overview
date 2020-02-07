@@ -380,7 +380,7 @@ class View extends ContentController
         if ($this->imagesRaw === null) {
             $fullArray = [];
             $this->imagesRaw = ArrayList::create();
-            $cache = Injector::inst()->get(CacheInterface::class . '.assetsoverview');
+            $cache = Injector::inst()->get(CacheInterface::class . '.assetsoverviewCache');
             $cachekey = 'fullarray_' . implode('_', $this->allowedExtensions);
             if (! $cache->has($cachekey)) {
                 $rawArray = $this->getArrayOfFilesOnDisk();
