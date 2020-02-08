@@ -324,6 +324,7 @@ class View extends ContentController implements Flushable
         foreach ($this->imagesSorted as $group) {
             foreach ($group->Items as $item) {
                 $map = $item->toMap();
+                ksort($map);
                 echo '<li><strong>'. $item->FileNameInDB .'</strong>
                     <ul>
                         <li>
