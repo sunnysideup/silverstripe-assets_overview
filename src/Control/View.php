@@ -4,6 +4,7 @@ namespace Sunnysideup\AssetsOverview\Control;
 
 use \Exception;
 
+use SilverStripe\Core\Flushable;
 use \RecursiveDirectoryIterator;
 use \RecursiveIteratorIterator;
 use Psr\SimpleCache\CacheInterface;
@@ -21,7 +22,7 @@ use SilverStripe\View\ArrayData;
 use SilverStripe\View\Requirements;
 use Sunnysideup\AssetsOverview\Api\CompareImages;
 
-class View extends ContentController
+class View extends ContentController implements Flushable
 {
     protected $imagesRaw = null;
 
@@ -37,6 +38,8 @@ class View extends ContentController
 
     protected $totalFileSize = 0;
 
+    protected $limit = 1000;
+
     protected $allowedExtensions = [];
 
     private static $allowed_extensions = [];
@@ -46,6 +49,7 @@ class View extends ContentController
         'byfilename' => 'ADMIN',
         'byfilesize' => 'ADMIN',
         'byextension' => 'ADMIN',
+        'byextensionerror' => 'ADMIN',
         'bydatabasestatus' => 'ADMIN',
         'bydatabaseerror' => 'ADMIN',
         'byfoldererror' => 'ADMIN',
@@ -57,6 +61,7 @@ class View extends ContentController
         'bylastedited' => 'ADMIN',
         'bysimilarity' => 'ADMIN',
         'rawlist' => 'ADMIN',
+        'rawlistfull' => 'ADMIN',
     ];
 
     private static $names = [
@@ -65,6 +70,7 @@ class View extends ContentController
         'byfilesize' => 'Filesize',
         'bylastedited' => 'Last Edited',
         'byextension' => 'Extension',
+        'byextensionerror' => 'Extension Error',
         'bydatabasestatus' => 'Database Status',
         'bydatabaseerror' => 'Database Error',
         'byfoldererror' => 'Folder Error',
@@ -75,7 +81,15 @@ class View extends ContentController
         'byratio' => 'Ratio',
         'bysimilarity' => 'Similarity (takes a long time!)',
         'rawlist' => 'Raw List',
+        'rawlistfull' => 'Full Raw List',
     ];
+
+    public static function flush()
+    {
+        $cache = Injector::inst()->get(CacheInterface::class . '.assetsoverviewCache');
+        $cache->clear();
+    }
+
 
     public function Link($action = null)
     {
@@ -84,11 +98,20 @@ class View extends ContentController
         if ($action) {
             $link .= $action . DIRECTORY_SEPARATOR;
         }
-
-        return $link;
+        $getVars = [];
+        if ($ext = $this->request->getVar('ext')) {
+            $getVars['ext'] = $ext;
+        }
+        if ($limit = $this->request->getVar('limit')) {
+            $getVars['limit'] = $limit;
+        }
+        if (count($getVars)) {
+            $link .= '?' . http_build_query($getVars);
+        }
+        return $link ;
     }
 
-    public function ActionMenu(): ArrayList
+    public function getActionMenu(): ArrayList
     {
         $al = ArrayList::create();
         $action = $this->request->param('Action') ?: 'byfolder';
@@ -145,6 +168,9 @@ class View extends ContentController
         if ($ext = $this->request->getVar('ext')) {
             $this->allowedExtensions = explode(',', $ext);
         }
+        if ($limit = $this->request->getVar('limit')) {
+            $this->limit = $limit;
+        }
     }
 
     public function index($request)
@@ -174,7 +200,12 @@ class View extends ContentController
 
     public function byextension($request)
     {
-        return $this->createProperList('Extension', 'Extension');
+        return $this->createProperList('ExtensionAsLower', 'ExtensionAsLower');
+    }
+
+    public function byextensionerror($request)
+    {
+        return $this->createProperList('HasIrregularExtension', 'HumanHasIrregularExtension');
     }
 
     public function byisimage($request)
@@ -278,16 +309,41 @@ class View extends ContentController
     public function rawlist($request)
     {
         $this->createProperList('Path', 'Path');
-        foreach ($this->imagesSorted as $image) {
-            echo '<hr  />' . $image->SubTitle;
+        echo '<ul>';
+        foreach ($this->imagesSorted as $group) {
+            foreach ($group->Items as $item) {
+                echo '<li>'. $item->FileNameInDB .'</li>';
+            }
         }
-        die(
-            '
-            <hr />
-            <hr />
-            Total File Count: ' . $this->getTotalFileCount() . '<br />
-            Total File Size: ' . $this->getTotalFileSize()
-        );
+        echo '</ul>';
+    }
+    public function rawlistfull($request)
+    {
+        $this->createProperList('Path', 'Path');
+        echo '<ol>';
+        foreach ($this->imagesSorted as $group) {
+            foreach ($group->Items as $item) {
+                $map = $item->toMap();
+                echo '<li><strong>'. $item->FileNameInDB .'</strong>
+                    <ul>
+                        <li>
+                        '.
+                        implode(
+                            '</li><li>',
+                            array_map(
+                                function ($v, $k) {
+                                    return sprintf("<strong>%s</strong>: '%s'", $k, $v);
+                                },
+                                $map,
+                                array_keys($map)
+                            )
+                        ).'
+                        </li>
+                    </ul>
+                </li>';
+            }
+        }
+        echo '</ol>';
     }
 
     protected function createProperList($sortField, $headerField)
@@ -381,7 +437,7 @@ class View extends ContentController
             $fullArray = [];
             $this->imagesRaw = ArrayList::create();
             $cache = Injector::inst()->get(CacheInterface::class . '.assetsoverviewCache');
-            $cachekey = 'fullarray_' . implode('_', $this->allowedExtensions);
+            $cachekey = 'fullarray_' . implode('_', $this->allowedExtensions).'_'.$this->limit;
             if (! $cache->has($cachekey)) {
                 $rawArray = $this->getArrayOfFilesOnDisk();
                 $filesOnDiskArray = $this->getArrayOfFilesOnDisk();
@@ -393,9 +449,13 @@ class View extends ContentController
                         }
                     }
                 }
+                $count = 0;
                 foreach ($rawArray as $absoluteLocation => $fileExists) {
-                    $intel = $this->getDataAboutOneFile($absoluteLocation, $fileExists);
-                    $fullArray[$intel['Path']] = $intel;
+                    if ($count < $this->limit) {
+                        $intel = $this->getDataAboutOneFile($absoluteLocation, $fileExists);
+                        $fullArray[$intel['Path']] = $intel;
+                    }
+                    $count++;
                 }
                 $fullArrayString = serialize($fullArray);
                 $cache->set($cachekey, $fullArrayString);
@@ -403,8 +463,8 @@ class View extends ContentController
                 $fullArrayString = $cache->get($cachekey);
                 $fullArray = unserialize($fullArrayString);
             }
+            $this->totalFileCount = count($fullArray);
             foreach ($fullArray as $intel) {
-                $this->totalFileCount++;
                 $this->totalFileSize += $intel['FileSize'];
                 $this->imagesRaw->push(
                     ArrayData::create($intel)
@@ -424,8 +484,14 @@ class View extends ContentController
         $pathParts['extension'] = $pathParts['extension'] ?? '--no-extension';
         $pathParts['filename'] = $pathParts['filename'] ?? '--no-file-name';
         $pathParts['dirname'] = $pathParts['dirname'] ?? '--no-parent-dir';
+        $relativeDirFromBaseFolder = str_replace($this->baseFolder, '', $pathParts['dirname']);
+        $relativeDirFromAssetsFolder = str_replace($this->assetsBaseFolder, '', $pathParts['dirname']);
 
         $intel['Extension'] = $pathParts['extension'];
+        $intel['ExtensionAsLower'] = (string) strtolower($intel['Extension']);
+        $intel['HasIrregularExtension'] = $intel['Extension'] !== $intel['ExtensionAsLower'];
+        $intel['HumanHasIrregularExtension'] = $intel['HasIrregularExtension'] ?
+            'irregular extension' : 'normal extension';
         $intel['FileName'] = $pathParts['filename'];
 
         $intel['FileSize'] = 0;
@@ -434,10 +500,10 @@ class View extends ContentController
         $intel['PathFromAssets'] = str_replace($this->assetsBaseFolder, '', $absoluteLocation);
         $intel['PathFromRoot'] = str_replace($this->baseFolder, '', $absoluteLocation);
         $intel['FirstLetter'] = strtoupper(substr($intel['FileName'], 0, 1));
-        $intel['FileNameInDB'] = ltrim($intel['PathFromRoot'], DIRECTORY_SEPARATOR);
+        $intel['FileNameInDB'] = ltrim($intel['PathFromAssets'], DIRECTORY_SEPARATOR);
 
-        $intel['FolderName'] = trim(str_replace($this->baseFolder, '', $pathParts['dirname']), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
-        $intel['FolderNameShort'] = trim(str_replace($this->assetsBaseFolder, '', $pathParts['dirname']), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
+        $intel['FolderName'] = trim($relativeDirFromBaseFolder, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
+        $intel['FolderNameShort'] = trim($relativeDirFromAssetsFolder, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
         $intel['GrandParentFolder'] = dirname($intel['FolderNameShort']);
 
         $intel['HumanImageDimensions'] = 'n/a';
@@ -474,8 +540,8 @@ class View extends ContentController
 
         $intel['HumanFileSize'] = $this->humanFileSize($intel['FileSize']);
         $intel['HumanFileSizeRounded'] = '~ ' . $this->humanFileSize(round($intel['FileSize'] / 1024) * 1024);
-        $file = DataObject::get_one(File::class, ['Filename' => $intel['FileNameInDB']]);
-        $folderFromFileName = DataObject::get_one(Folder::class, ['Filename' => $intel['FolderName']]);
+        $file = DataObject::get_one(File::class, ['FileFilename' => $intel['FileNameInDB']]);
+        $folderFromFileName = DataObject::get_one(Folder::class, ['FileFilename' => $intel['FolderName']]);
         $folder = null;
         if ($file) {
             $folder = DataObject::get_one(Folder::class, ['ID' => $file->ParentID]);
@@ -538,7 +604,26 @@ class View extends ContentController
         return $intel;
     }
 
-    protected function isPathWithAllowedExtion($path): bool
+    protected function isRealFile(string $path) : bool
+    {
+        $fileName = basename($path);
+        $listOfItemsToSearchFor =[
+            '__FitMax',
+            '_resampled',
+            '__Fill',
+            '__Focus',
+            '__Scale',
+        ];
+        foreach ($listOfItemsToSearchFor as $test) {
+            if (strpos($path, $test)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    protected function isPathWithAllowedExtion(string $path): bool
     {
         $extension = $this->getExtension($path);
         $count = count($this->allowedExtensions);
@@ -559,7 +644,10 @@ class View extends ContentController
             if (is_dir($src)) {
                 continue;
             }
-            if (strpos($src, '_resampled/') !== false) {
+            if (strpos($src, '.protected')) {
+                continue;
+            }
+            if ($this->isRealFile($src) === false) {
                 continue;
             }
             $path = $src->getPathName();
@@ -577,4 +665,5 @@ class View extends ContentController
             ->exclude(['ClassName' => Folder::class])
             ->column('Filename');
     }
+
 }

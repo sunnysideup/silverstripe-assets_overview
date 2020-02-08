@@ -1,7 +1,7 @@
 <div class="one-image">
     <% if $IsImage %>
     <a href="$PathFromRoot" target="_blank">
-        <img src="$PathFromRoot" height="150" alt="PathFromRoot" />
+        <img src="$PathFromRoot" height="250" alt="PathFromRoot" />
     </a>
     <% end_if %>
     <a href="$CMSEditLink" class="edit-icon <% if $IsInDatabase %><% else %>error<% end_if %>" target="_blank">✎</a>

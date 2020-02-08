@@ -101,7 +101,7 @@
   }
   .one-image img {
       display: block;
-      height: 150px;
+      height: 250px;
       margin-left: auto;
       margin-right: auto;
   }
