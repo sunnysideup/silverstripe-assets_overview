@@ -542,7 +542,6 @@ class View extends ContentController implements Flushable
         $intel['HumanFileSize'] = $this->humanFileSize($intel['FileSize']);
         $intel['HumanFileSizeRounded'] = '~ ' . $this->humanFileSize(round($intel['FileSize'] / 1024) * 1024);
         $file = DataObject::get_one(File::class, ['FileFilename' => $intel['FileNameInDB']]);
-        $folderFromFileName = DataObject::get_one(Folder::class, ['FileFilename' => $intel['FolderName']]);
         $folder = null;
         if ($file) {
             $folder = DataObject::get_one(Folder::class, ['ID' => $file->ParentID]);
@@ -550,7 +549,7 @@ class View extends ContentController implements Flushable
 
         //backup for folder
         if (! $folder) {
-            $folder = $folderFromFileName;
+            $folder = DataObject::get_one(Folder::class, ['FileFilename' => $intel['FolderName']]);
         }
 
         //backup for file ...
@@ -563,6 +562,7 @@ class View extends ContentController implements Flushable
         $time = 0;
         if ($file) {
             $intel['ID'] = $file->ID;
+            $intel['ParentID'] = $file->ParentID;
             $intel['IsInDatabase'] = true;
             $intel['CMSEditLink'] = '/admin/assets/EditForm/field/File/item/' . $file->ID . '/edit';
             $intel['DBTitle'] = $file->Title;
@@ -575,6 +575,7 @@ class View extends ContentController implements Flushable
             }
         } else {
             $intel['ID'] = 0;
+            $intel['ParentID'] = 0;
             $intel['IsInDatabase'] = false;
             $intel['CMSEditLink'] = '/admin/assets/';
             $intel['DBTitle'] = '-- no title set in database';
@@ -584,12 +585,13 @@ class View extends ContentController implements Flushable
             }
         }
         if ($folder) {
-            $intel['ParentID'] = $folder->ID;
+            if (! $file) {
+                $intel['ParentID'] = $folder->ID;
+            }
             $intel['HasFolder'] = true;
             $intel['HumanHasFolder'] = 'in sub-folder';
             $intel['CMSEditLinkFolder'] = '/admin/assets/show/' . $folder->ID;
         } else {
-            $intel['ParentID'] = 0;
             $intel['HasFolder'] = false;
             $intel['HumanHasFolder'] = 'in root folder';
             $intel['CMSEditLinkFolder'] = '/assets/admin/';
@@ -615,8 +617,11 @@ class View extends ContentController implements Flushable
             '__Focus',
             '__Scale',
         ];
+        if (substr($fileName, 0, 1) === '.') {
+            return false;
+        }
         foreach ($listOfItemsToSearchFor as $test) {
-            if (strpos($path, $test)) {
+            if (strpos($fileName, $test)) {
                 return false;
             }
         }
