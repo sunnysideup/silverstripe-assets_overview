@@ -20,7 +20,7 @@
         }
     ],
     "require": {
-        "silverstripe/recipe-cms": "^4.2"
+        "silverstripe/assets": "~4"
     },
     "suggest": {
         "inceddy/image-compare": "compare image similarities",
