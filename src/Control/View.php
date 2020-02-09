@@ -29,13 +29,14 @@ use SilverStripe\Core\Flushable;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Forms\CheckboxSetField;
 use SilverStripe\Forms\DropdownField;
+use SilverStripe\Forms\FieldList;
 use SilverStripe\Forms\Form;
 use SilverStripe\Forms\FormAction;
 use SilverStripe\Forms\HiddenField;
 use SilverStripe\Forms\OptionsetField;
 use SilverStripe\ORM\ArrayList;
 use SilverStripe\ORM\DataObject;
-use SilverStripe\ORM\FieldType\DBField;
+use SilverStripe\ORM\FieldType\DBDate;
 use SilverStripe\Security\Permission;
 use SilverStripe\Security\Security;
 use SilverStripe\View\ArrayData;
@@ -191,7 +192,7 @@ class View extends ContentController implements Flushable
     protected $pageNumber = 1;
 
     /**
-     * @var int
+     * @var string
      */
     protected $filter = 'byfolder';
 
@@ -206,7 +207,7 @@ class View extends ContentController implements Flushable
     protected $availableExtensions = [];
 
     /**
-     * @var array
+     * @var bool
      */
     protected $isThumbList = true;
 
@@ -352,17 +353,19 @@ class View extends ContentController implements Flushable
 
     public function getForm(): Form
     {
-        $fieldList = FieldList(
+        $fieldList = FieldList::create(
             [
                 $this->createFormField('filter', 'Group By', $this->filter, $this->getFilterList()),
-                $this->createFormField('extensions', 'Extensions', $this->extension, $this->getExtensionList()),
+                $this->createFormField('extensions', 'Extensions', $this->allowedExtensions, $this->getExtensionList()),
                 $this->createFormField('limit', 'Items Per Page', $this->limit, $this->getLimitList()),
                 $this->createFormField('page', 'Page Number', $this->pageNumber, $this->getPageNumberList()),
             ]
         );
-        $actionList = [
-            FormAction::create('go', 'show'),
-        ];
+        $actionList = FieldList::create(
+            [
+                FormAction::create('go', 'show'),
+            ]
+        );
 
         $form = Form::create($this, 'go', $fieldList, $actionList);
         $form->setFormMethod('GET', true);
@@ -551,7 +554,7 @@ class View extends ContentController implements Flushable
                 foreach ($rawArray as $absoluteLocation => $fileExists) {
                     if ($count >= $this->startLimit && $count < $this->endLimit) {
                         $intel = $this->getDataAboutOneFile($absoluteLocation, $fileExists);
-                        $this->availableExtensions[$intel['Extension']] = $intel['Extension'];
+                        $this->availableExtensions[$intel['ExtensionAsLower']] = $intel['ExtensionAsLower'];
                         $fullArray[$intel['Path']] = $intel;
                     }
                     $count++;
@@ -696,7 +699,7 @@ class View extends ContentController implements Flushable
         }
 
         $intel['LastEditedTS'] = $time;
-        $intel['LastEdited'] = DBField::create_field('Date', $time)->Ago();
+        $intel['LastEdited'] = DBDate::create_field('Date', $time)->Ago();
         $intel['HumanIsInDatabase'] = $intel['IsInDatabase'] ? 'In Database' : 'Not in Database';
         $intel['HumanErrorInFilenameCase'] = $intel['ErrorInFilenameCase'] ? 'Error in Case' : 'Perfect Case';
         $intel['HumanErrorParentID'] = $intel['ErrorParentID'] ? 'Error in folder ID' : 'Perfect Folder ID';
@@ -830,7 +833,8 @@ class View extends ContentController implements Flushable
 
     protected function getExtensionList(): array
     {
-        return array_combine($this->extensions, $this->extensions);
+        sort($this->availableExtensions);
+        return array_combine($this->availableExtensions, $this->availableExtensions);
     }
 
     protected function getPageNumberList(): array
@@ -846,9 +850,10 @@ class View extends ContentController implements Flushable
     protected function getLimitList(): array
     {
         $step = 250;
+        $array = [];
         for ($i = $step; ($i - $step) < $this->limit; $i += $step) {
             $array[$i] = $i;
         }
-        return $i;
+        return $array;
     }
 }
