@@ -136,6 +136,7 @@ class View extends ContentController implements Flushable
         ],
     ];
 
+
     /**
      * @var ArrayList|null
      */
@@ -216,7 +217,7 @@ class View extends ContentController implements Flushable
      */
     private static $allowed_extensions = [];
 
-    private static $no_real_file_substrings = [
+    private static $not_real_file_substrings = [
         '__FitMax',
         '_resampled',
         '__Fill',
@@ -230,9 +231,9 @@ class View extends ContentController implements Flushable
         $cache->clear();
     }
 
-    public function getLink($action = null)
+    public function Link($action = null)
     {
-        return $this->getBaseFolder() . DIRECTORY_SEPARATOR . 'assetsoverview' . DIRECTORY_SEPARATOR;
+        return Director::absoluteURL(DIRECTORY_SEPARATOR . 'assetsoverview' . DIRECTORY_SEPARATOR) . $action;
     }
 
     public function getTitle(): string
@@ -278,7 +279,7 @@ class View extends ContentController implements Flushable
         $this->assetsBaseFolder = rtrim($this->getAssetBaseDir(), DIRECTORY_SEPARATOR);
         $this->allowedExtensions = $this->Config()->get('allowed_extensions');
         if ($extensions = $this->request->getVar('extensions')) {
-            $this->allowedExtensions = explode(', ', $extensions);
+            $this->allowedExtensions = $extensions;
         }
         if ($limit = $this->request->getVar('limit')) {
             $this->limit = $limit;
@@ -305,6 +306,8 @@ class View extends ContentController implements Flushable
         } else {
             user_error('Could not find filter');
         }
+
+        return $this->renderWith('AssetsOverview');
     }
 
     public function workoutRawList()
@@ -325,23 +328,25 @@ class View extends ContentController implements Flushable
             foreach ($group->Items as $item) {
                 $map = $item->toMap();
                 ksort($map);
-                $item->HTML = '<li><strong>' . $item->FileNameInDB . '</strong>
-                    <ul>
-                        <li>
-                        ' .
-                        implode(
-                            '</li><li>',
-                            array_map(
-                                function ($v, $k) {
-                                    return sprintf("<strong>%s</strong>: '%s'", $k, $v);
-                                },
-                                $map,
-                                array_keys($map)
-                            )
-                        ) . '
-                        </li>
-                    </ul>
-                </li>';
+                $item->HTML = '
+                    <li>
+                        <strong>' . $item->FileNameInDB . '</strong>
+                        <ul>
+                            <li>
+                            ' .
+                            implode(
+                                '</li><li>',
+                                array_map(
+                                    function ($v, $k) {
+                                        return sprintf("<strong>%s</strong>: '%s'", $k, $v);
+                                    },
+                                    $map,
+                                    array_keys($map)
+                                )
+                            ) . '
+                            </li>
+                        </ul>
+                    </li>';
             }
         }
         return [];
@@ -363,11 +368,11 @@ class View extends ContentController implements Flushable
         );
         $actionList = FieldList::create(
             [
-                FormAction::create('go', 'show'),
+                FormAction::create('index', 'show'),
             ]
         );
 
-        $form = Form::create($this, 'go', $fieldList, $actionList);
+        $form = Form::create($this, 'index', $fieldList, $actionList);
         $form->setFormMethod('GET', true);
         $form->disableSecurityToken();
 
@@ -819,6 +824,8 @@ class View extends ContentController implements Flushable
         if ($listCount) {
             $field->setSource($list);
         }
+
+        return $field;
     }
 
     protected function getFilterList(): array
@@ -833,8 +840,9 @@ class View extends ContentController implements Flushable
 
     protected function getExtensionList(): array
     {
-        sort($this->availableExtensions);
-        return array_combine($this->availableExtensions, $this->availableExtensions);
+        asort($this->availableExtensions);
+
+        return $this->availableExtensions;
     }
 
     protected function getPageNumberList(): array

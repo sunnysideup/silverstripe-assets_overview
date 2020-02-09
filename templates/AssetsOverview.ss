@@ -194,18 +194,39 @@
             <div class="form">
                 $Form
             </div>
-
-            <div>
             <% if ImagesSorted.count %>
                 <h1>$Title</h1>
-                <% loop ImagesSorted %>
-                    <div id="section-$Number" class="break">
-                        <h3>$SubTitle</h3>
+                <% if $isThumbList %>
+                    <% loop ImagesSorted %>
+                        <div id="section-$Number" class="break">
+                            <h3>$SubTitle</h3>
+                            <% loop Items %>
+                            <% include OneImage %>
+                            <% end_loop %>
+                        </div>
+                    <% end_loop %>
+                <% else %>
+                    <hr />
+                    <hr />
+                    <hr />
+                    <hr />
+                    <hr />
+                    <hr />
+                    <hr />
+                    <hr />
+                    <hr />
+                    <hr />
+                    <hr />
+                    <% loop ImagesSorted %>
                         <% loop Items %>
-                        <% include OneImage %>
+                            $HTML
                         <% end_loop %>
-                    </div>
-                <% end_loop %>
+                    <% end_loop %>
+                <% end_if %>
+            <% else %>
+                <p class="message warning">
+                    No files found.
+                </p>
             <% end_if %>
             </div>
         </div>
