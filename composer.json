@@ -20,8 +20,7 @@
         }
     ],
     "require": {
-        "silverstripe/assets": "*",
-        "silverstripe/framework": "~4.4"
+        "silverstripe/recipe-core: "~4.4"
     },
     "suggest": {
         "inceddy/image-compare": "compare image similarities",
