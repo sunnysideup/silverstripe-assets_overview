@@ -233,7 +233,7 @@ class View extends ContentController implements Flushable
 
     public function Link($action = null)
     {
-        return Director::absoluteURL(DIRECTORY_SEPARATOR . 'assetsoverview' . DIRECTORY_SEPARATOR) . $action;
+        return Director::absoluteURL(DIRECTORY_SEPARATOR . 'dev/assets' . DIRECTORY_SEPARATOR) . $action;
     }
 
     public function getTitle(): string
