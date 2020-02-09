@@ -189,14 +189,11 @@
             <p>&laquo; <a href="/admin/assets/">back to CMS</a></p>
 
             <h1>Totals</h1>
-            <p>$TotalFileCount files, totalling $TotalFileSize in storage</p>
+            <p>$TotalFileCount files, current selection uses total of $TotalFileSize in storage</p>
 
-            <h1>View By ...</h1>
-            <ul>
-                <% loop $ActionMenu %>
-                <li class="$LinkingMode"><a href="$Link">$Title</a></li>
-                <% end_loop %>
-            </ul>
+            <div class="form">
+                $Form
+            </div>
 
             <div>
             <% if ImagesSorted.count %>

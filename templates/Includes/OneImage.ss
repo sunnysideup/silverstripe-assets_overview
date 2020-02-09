@@ -1,3 +1,4 @@
+<% if $isThumbList %>
 <div class="one-image">
     <% if $IsImage %>
     <a href="$PathFromRoot" target="_blank">
@@ -17,3 +18,6 @@
         $HumanFileSize
     </div>
 </div>
+<% else %>
+    $HTML
+<% end_if %>

@@ -1,10 +1,23 @@
 <?php
 
+// if ($action) {
+//     $link .= $action . DIRECTORY_SEPARATOR;
+// }
+// $getVars = [];
+// if ($ext = $this->request->getVar('ext')) {
+//     $getVars['ext'] = $ext;
+// }
+// if ($limit = $this->request->getVar('limit')) {
+//     $getVars['limit'] = $limit;
+// }
+// if (count($getVars)) {
+//     $link .= '?' . http_build_query($getVars);
+// }
+
 namespace Sunnysideup\AssetsOverview\Control;
 
 use \Exception;
 
-use SilverStripe\Core\Flushable;
 use \RecursiveDirectoryIterator;
 use \RecursiveIteratorIterator;
 use Psr\SimpleCache\CacheInterface;
@@ -12,7 +25,14 @@ use SilverStripe\Assets\File;
 use SilverStripe\Assets\Folder;
 use SilverStripe\CMS\Controllers\ContentController;
 use SilverStripe\Control\Director;
+use SilverStripe\Core\Flushable;
 use SilverStripe\Core\Injector\Injector;
+use SilverStripe\Forms\CheckboxSetField;
+use SilverStripe\Forms\DropdownField;
+use SilverStripe\Forms\Form;
+use SilverStripe\Forms\FormAction;
+use SilverStripe\Forms\HiddenField;
+use SilverStripe\Forms\OptionsetField;
 use SilverStripe\ORM\ArrayList;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\FieldType\DBField;
@@ -24,115 +44,206 @@ use Sunnysideup\AssetsOverview\Api\CompareImages;
 
 class View extends ContentController implements Flushable
 {
-    protected $imagesRaw = null;
-
-    protected $title = '';
-
-    protected $imagesSorted = null;
-
-    protected $baseFolder = '';
-
-    protected $assetsBaseFolder = '';
-
-    protected $totalFileCount = 0;
-
-    protected $totalFileSize = 0;
-
-    protected $limit = 1000;
-
-    protected $allowedExtensions = [];
-
-    private static $allowed_extensions = [];
-
-    private static $allowed_actions = [
-        'byfolder' => 'ADMIN',
-        'byfilename' => 'ADMIN',
-        'byfilesize' => 'ADMIN',
-        'byextension' => 'ADMIN',
-        'byextensionerror' => 'ADMIN',
-        'bydatabasestatus' => 'ADMIN',
-        'bydatabaseerror' => 'ADMIN',
-        'byfoldererror' => 'ADMIN',
-        'byfilesystemstatus' => 'ADMIN',
-        'bydbtitle' => 'ADMIN',
-        'byisimage' => 'ADMIN',
-        'bydimensions' => 'ADMIN',
-        'byratio' => 'ADMIN',
-        'bylastedited' => 'ADMIN',
-        'bysimilarity' => 'ADMIN',
-        'rawlist' => 'ADMIN',
-        'rawlistfull' => 'ADMIN',
+    private const FILTERS = [
+        'byfolder' => [
+            'Title' => 'Folder',
+            'Sort' => 'FolderNameShort',
+            'Group' => 'FolderNameShort',
+        ],
+        'byfilename' => [
+            'Title' => 'Filename',
+            'Sort' => 'FileName',
+            'Group' => 'FirstLetter',
+        ],
+        'bydbtitle' => [
+            'Title' => 'Database Title',
+            'Sort' => 'DBTitle',
+            'Group' => 'FirstLetterDBTitle',
+        ],
+        'byfilesize' => [
+            'Title' => 'Filesize',
+            'Sort' => 'FileSize',
+            'Group' => 'HumanFileSizeRounded',
+        ],
+        'bylastedited' => [
+            'Title' => 'Last Edited',
+            'Sort' => 'LastEditedTS',
+            'Group' => 'LastEdited',
+        ],
+        'byextension' => [
+            'Title' => 'Extension',
+            'Sort' => 'ExtensionAsLower',
+            'Group' => 'ExtensionAsLower',
+        ],
+        'byextensionerror' => [
+            'Title' => 'Extension Error',
+            'Sort' => 'HasIrregularExtension',
+            'Group' => 'HumanHasIrregularExtension',
+        ],
+        'bydatabasestatus' => [
+            'Title' => 'Database Status',
+            'Sort' => 'IsInDatabase',
+            'Group' => 'HumanIsInDatabase',
+        ],
+        'bydatabaseerror' => [
+            'Title' => 'Database Error',
+            'Sort' => 'ErrorInFilenameCase',
+            'Group' => 'HumanErrorInFilenameCase',
+        ],
+        'byfoldererror' => [
+            'Title' => 'Folder Error',
+            'Sort' => 'ErrorParentID',
+            'Group' => 'HumanErrorParentID',
+        ],
+        'byfilesystemstatus' => [
+            'Title' => 'Filesystem Status',
+            'Sort' => 'HumanIsInFileSystemIsInFileSystem',
+            'Group' => '',
+        ],
+        'byisimage' => [
+            'Title' => 'Image vs Other Files',
+            'Sort' => 'IsImage',
+            'Group' => 'HumanIsImage',
+        ],
+        'bydimensions' => [
+            'Title' => 'Dimensions (small to big)',
+            'Sort' => 'Pixels',
+            'Group' => 'HumanImageDimensions',
+        ],
+        'byratio' => [
+            'Title' => 'Ratio',
+            'Sort' => 'Ratio',
+            'Group' => 'Ratio',
+        ],
+        'bysimilarity' => [
+            'Title' => 'Similarity (takes a long time!)',
+            'Sort' => 'MostSimilarTo',
+            'Group' => 'MostSimilarTo',
+            'Method' => 'workOutSimilarity',
+        ],
+        'rawlist' => [
+            'Title' => 'Raw List',
+            'Sort' => 'Path',
+            'Group' => 'Path',
+            'Method' => 'workoutRawList',
+        ],
+        'rawlistfull' => [
+            'Title' => 'Full Raw List',
+            'Sort' => 'Path',
+            'Group' => 'Path',
+            'Method' => 'workoutRawListFull',
+        ],
     ];
 
-    private static $names = [
-        'byfolder' => 'Folder',
-        'byfilename' => 'Filename',
-        'byfilesize' => 'Filesize',
-        'bylastedited' => 'Last Edited',
-        'byextension' => 'Extension',
-        'byextensionerror' => 'Extension Error',
-        'bydatabasestatus' => 'Database Status',
-        'bydatabaseerror' => 'Database Error',
-        'byfoldererror' => 'Folder Error',
-        'byfilesystemstatus' => 'Filesystem Status',
-        'bydbtitle' => 'File Title',
-        'byisimage' => 'Image vs Other Files',
-        'bydimensions' => 'Dimensions',
-        'byratio' => 'Ratio',
-        'bysimilarity' => 'Similarity (takes a long time!)',
-        'rawlist' => 'Raw List',
-        'rawlistfull' => 'Full Raw List',
+    /**
+     * @var ArrayList|null
+     */
+    protected $imagesRaw = null;
+
+    /**
+     * @var string
+     */
+    protected $title = '';
+
+    /**
+     * @var ArrayList|null
+     */
+    protected $imagesSorted = null;
+
+    /**
+     * @var string
+     */
+    protected $baseFolder = '';
+
+    /**
+     * @var string
+     */
+    protected $assetsBaseFolder = '';
+
+    /**
+     * @var int
+     */
+    protected $totalFileCount = 0;
+
+    /**
+     * @var int
+     */
+    protected $totalFileSize = 0;
+
+    /**
+     * @var int
+     */
+    protected $limit = 1000;
+
+    /**
+     * @var int
+     */
+    protected $startLimit = 0;
+
+    /**
+     * @var int
+     */
+    protected $endLimit = 0;
+
+    /**
+     * @var int
+     */
+    protected $pageNumber = 1;
+
+    /**
+     * @var int
+     */
+    protected $filter = 'byfolder';
+
+    /**
+     * @var array
+     */
+    protected $allowedExtensions = [];
+
+    /**
+     * @var array
+     */
+    protected $availableExtensions = [];
+
+    /**
+     * @var array
+     */
+    protected $isThumbList = true;
+
+    /**
+     * @var array
+     */
+    private static $allowed_extensions = [];
+
+    private static $no_real_file_substrings = [
+        '__FitMax',
+        '_resampled',
+        '__Fill',
+        '__Focus',
+        '__Scale',
     ];
 
     public static function flush()
     {
-        $cache = Injector::inst()->get(CacheInterface::class . '.assetsoverviewCache');
+        $cache = self::getCache();
         $cache->clear();
     }
 
-
-    public function Link($action = null)
+    public function getLink($action = null)
     {
-        $base = rtrim(Director::absoluteBaseURL(), DIRECTORY_SEPARATOR);
-        $link = $base . DIRECTORY_SEPARATOR . 'assetsoverview' . DIRECTORY_SEPARATOR;
-        if ($action) {
-            $link .= $action . DIRECTORY_SEPARATOR;
-        }
-        $getVars = [];
-        if ($ext = $this->request->getVar('ext')) {
-            $getVars['ext'] = $ext;
-        }
-        if ($limit = $this->request->getVar('limit')) {
-            $getVars['limit'] = $limit;
-        }
-        if (count($getVars)) {
-            $link .= '?' . http_build_query($getVars);
-        }
-        return $link ;
-    }
-
-    public function getActionMenu(): ArrayList
-    {
-        $al = ArrayList::create();
-        $action = $this->request->param('Action') ?: 'byfolder';
-        foreach ($this->Config()->get('names') as $key => $name) {
-            $linkingMode = $key === $action ? 'current' : 'link';
-            $array = [
-                'Link' => $this->Link($key),
-                'Title' => $name,
-                'LinkingMode' => $linkingMode,
-            ];
-            $al->push(ArrayData::create($array));
-        }
-
-        return $al;
+        return $this->getBaseFolder() . DIRECTORY_SEPARATOR . 'assetsoverview' . DIRECTORY_SEPARATOR;
     }
 
     public function getTitle(): string
     {
-        $list = $this->Config()->get('names');
+        $list = self::FILTERS;
 
-        return $list[$this->request->param('Action')] ?? 'By Folder';
+        return $list[$this->filter]['Title'] ?? 'NO FILTER AVAILABLE';
+    }
+
+    public function getIsThumbList(): bool
+    {
+        return $this->isThumbList;
     }
 
     public function getImagesRaw(): ArrayList
@@ -162,93 +273,105 @@ class View extends ContentController implements Flushable
             return Security::permissionFailure($this);
         }
         Requirements::clear();
-        $this->baseFolder = Director::baseFolder();
-        $this->assetsBaseFolder = $this->getAssetBaseDir();
+        $this->baseFolder = $this->getBaseFolder();
+        $this->assetsBaseFolder = rtrim($this->getAssetBaseDir(), DIRECTORY_SEPARATOR);
         $this->allowedExtensions = $this->Config()->get('allowed_extensions');
-        if ($ext = $this->request->getVar('ext')) {
-            $this->allowedExtensions = explode(',', $ext);
+        if ($extensions = $this->request->getVar('extensions')) {
+            $this->allowedExtensions = explode(', ', $extensions);
         }
         if ($limit = $this->request->getVar('limit')) {
             $this->limit = $limit;
         }
+        if ($pageNumber = $this->request->getVar('page')) {
+            $this->pageNumber = $pageNumber;
+        }
+        if ($filter = $this->request->getVar('filter')) {
+            $this->filter = $filter;
+        }
+        $this->startLimit = $this->limit * ($this->pageNumber - 1);
+        $this->endLimit = $this->limit * $this->pageNumber;
     }
 
     public function index($request)
     {
-        return $this->createProperList('FolderNameShort', 'FolderNameShort');
+        $list = self::FILTERS;
+        $actionData = $list[$this->filter];
+        if (isset($list[$this->filter])) {
+            $this->workOutImagesSorted($actionData['Sort'], $actionData['Group']);
+            if (! empty($actionData['Method'])) {
+                $this->{$actionData['Method']}();
+            }
+        } else {
+            user_error('Could not find filter');
+        }
     }
 
-    public function byfolder($request)
+    public function workoutRawList()
     {
-        return $this->createProperList('FolderNameShort', 'FolderNameShort');
+        $this->isThumbList = false;
+        foreach ($this->imagesSorted as $group) {
+            foreach ($group->Items as $item) {
+                $item->HTML = '<li>' . $item->FileNameInDB . '</li>';
+            }
+        }
+        return [];
     }
 
-    public function byfilename($request)
+    public function workoutRawListFull()
     {
-        return $this->createProperList('FileName', 'FirstLetter');
+        $this->isThumbList = false;
+        foreach ($this->imagesSorted as $group) {
+            foreach ($group->Items as $item) {
+                $map = $item->toMap();
+                ksort($map);
+                $item->HTML = '<li><strong>' . $item->FileNameInDB . '</strong>
+                    <ul>
+                        <li>
+                        ' .
+                        implode(
+                            '</li><li>',
+                            array_map(
+                                function ($v, $k) {
+                                    return sprintf("<strong>%s</strong>: '%s'", $k, $v);
+                                },
+                                $map,
+                                array_keys($map)
+                            )
+                        ) . '
+                        </li>
+                    </ul>
+                </li>';
+            }
+        }
+        return [];
     }
 
-    public function bydbtitle($request)
+    ##############################################
+    # FORM
+    ##############################################
+
+    public function getForm(): Form
     {
-        return $this->createProperList('DBTitle', 'FirstLetterDBTitle');
+        $fieldList = FieldList(
+            [
+                $this->createFormField('filter', 'Group By', $this->filter, $this->getFilterList()),
+                $this->createFormField('extensions', 'Extensions', $this->extension, $this->getExtensionList()),
+                $this->createFormField('limit', 'Items Per Page', $this->limit, $this->getLimitList()),
+                $this->createFormField('page', 'Page Number', $this->pageNumber, $this->getPageNumberList()),
+            ]
+        );
+        $actionList = [
+            FormAction::create('go', 'show'),
+        ];
+
+        $form = Form::create($this, 'go', $fieldList, $actionList);
+        $form->setFormMethod('GET', true);
+        $form->disableSecurityToken();
+
+        return $form;
     }
 
-    public function byfilesize($request)
-    {
-        return $this->createProperList('FileSize', 'HumanFileSizeRounded');
-    }
-
-    public function byextension($request)
-    {
-        return $this->createProperList('ExtensionAsLower', 'ExtensionAsLower');
-    }
-
-    public function byextensionerror($request)
-    {
-        return $this->createProperList('HasIrregularExtension', 'HumanHasIrregularExtension');
-    }
-
-    public function byisimage($request)
-    {
-        return $this->createProperList('IsImage', 'HumanIsImage');
-    }
-
-    public function bydimensions($request)
-    {
-        return $this->createProperList('Pixels', 'HumanImageDimensions');
-    }
-
-    public function byratio($request)
-    {
-        return $this->createProperList('Ratio', 'Ratio');
-    }
-
-    public function bydatabasestatus($request)
-    {
-        return $this->createProperList('IsInDatabase', 'HumanIsInDatabase');
-    }
-
-    public function bydatabaseerror($request)
-    {
-        return $this->createProperList('ErrorInFilenameCase', 'HumanErrorInFilenameCase');
-    }
-
-    public function byfoldererror($request)
-    {
-        return $this->createProperList('ErrorParentID', 'HumanErrorParentID');
-    }
-
-    public function byfilesystemstatus($request)
-    {
-        return $this->createProperList('IsInFileSystem', 'HumanIsInFileSystem');
-    }
-
-    public function bylastedited($request)
-    {
-        return $this->createProperList('LastEditedTS', 'LastEdited');
-    }
-
-    public function bysimilarity($request)
+    protected function workOutSimilarity()
     {
         set_time_limit(240);
         $engine = new CompareImages();
@@ -302,52 +425,9 @@ class View extends ContentController implements Flushable
         foreach ($this->imagesRaw as $image) {
             $image->MostSimilarTo = $alreadyDone[$image->Path] ?? '[N/A]';
         }
-
-        return $this->createProperList('MostSimilarTo', 'MostSimilarTo');
     }
 
-    public function rawlist($request)
-    {
-        $this->createProperList('Path', 'Path');
-        echo '<ul>';
-        foreach ($this->imagesSorted as $group) {
-            foreach ($group->Items as $item) {
-                echo '<li>'. $item->FileNameInDB .'</li>';
-            }
-        }
-        echo '</ul>';
-    }
-    public function rawlistfull($request)
-    {
-        $this->createProperList('Path', 'Path');
-        echo '<ol>';
-        foreach ($this->imagesSorted as $group) {
-            foreach ($group->Items as $item) {
-                $map = $item->toMap();
-                ksort($map);
-                echo '<li><strong>'. $item->FileNameInDB .'</strong>
-                    <ul>
-                        <li>
-                        '.
-                        implode(
-                            '</li><li>',
-                            array_map(
-                                function ($v, $k) {
-                                    return sprintf("<strong>%s</strong>: '%s'", $k, $v);
-                                },
-                                $map,
-                                array_keys($map)
-                            )
-                        ).'
-                        </li>
-                    </ul>
-                </li>';
-            }
-        }
-        echo '</ol>';
-    }
-
-    protected function createProperList($sortField, $headerField)
+    protected function workOutImagesSorted($sortField, $headerField)
     {
         if ($this->imagesSorted === null) {
             //done only if not already done ...
@@ -361,7 +441,7 @@ class View extends ContentController implements Flushable
             foreach ($this->imagesRaw as $image) {
                 $newHeader = $image->{$headerField};
                 if ($newHeader !== $prevHeader) {
-                    $this->addToSortedArray(
+                    $this->addToImagesSorted(
                         $prevHeader, //correct! important ...
                         $innerArray
                     );
@@ -373,7 +453,7 @@ class View extends ContentController implements Flushable
             }
 
             //last one!
-            $this->addToSortedArray(
+            $this->addToImagesSorted(
                 $newHeader,
                 $innerArray
             );
@@ -382,7 +462,7 @@ class View extends ContentController implements Flushable
         return $this->renderWith('AssetsOverview');
     }
 
-    protected function addToSortedArray(string $header, $arrayList)
+    protected function addToImagesSorted(string $header, ArrayList $arrayList)
     {
         if ($arrayList->count()) {
             $count = $this->imagesSorted->count();
@@ -400,7 +480,11 @@ class View extends ContentController implements Flushable
 
     protected function isRegularImage(string $extension): bool
     {
-        return in_array(strtolower($extension), ['jpg', 'gif', 'png'], true);
+        return in_array(
+            strtolower($extension),
+            ['jpg', 'gif', 'png'],
+            true
+        );
     }
 
     protected function isImage(string $filename): bool
@@ -424,9 +508,21 @@ class View extends ContentController implements Flushable
     protected function getExtension(string $path): string
     {
         $basename = basename($path);
+
         return substr($basename, strlen(explode('.', $basename)[0]) + 1);
     }
 
+    /**
+     * @return string
+     */
+    protected function getBaseFolder(): string
+    {
+        return rtrim(Director::baseFolder(), DIRECTORY_SEPARATOR);
+    }
+
+    /**
+     * @return string
+     */
     protected function getAssetBaseDir(): string
     {
         return ASSETS_PATH;
@@ -435,25 +531,27 @@ class View extends ContentController implements Flushable
     protected function buildFileCache()
     {
         if ($this->imagesRaw === null) {
-            $fullArray = [];
             $this->imagesRaw = ArrayList::create();
-            $cache = Injector::inst()->get(CacheInterface::class . '.assetsoverviewCache');
-            $cachekey = 'fullarray_' . implode('_', $this->allowedExtensions).'_'.$this->limit;
+            $cache = self::getCache();
+            $cachekey = $this->getCacheKey();
             if (! $cache->has($cachekey)) {
+                $fullArray = [];
                 $rawArray = $this->getArrayOfFilesOnDisk();
                 $filesOnDiskArray = $this->getArrayOfFilesOnDisk();
                 foreach ($filesOnDiskArray as $relativeSrc) {
                     $absoluteLocation = $this->baseFolder . '/' . $relativeSrc;
                     if (! isset($rawArray[$absoluteLocation])) {
-                        if ($this->isPathWithAllowedExtion($absoluteLocation)) {
+                        if ($this->isPathWithAllowedExtension($absoluteLocation)) {
                             $rawArray[$absoluteLocation] = false;
                         }
                     }
                 }
                 $count = 0;
+                $this->totalFileCount = count($rawArray);
                 foreach ($rawArray as $absoluteLocation => $fileExists) {
-                    if ($count < $this->limit) {
+                    if ($count >= $this->startLimit && $count < $this->endLimit) {
                         $intel = $this->getDataAboutOneFile($absoluteLocation, $fileExists);
+                        $this->availableExtensions[$intel['Extension']] = $intel['Extension'];
                         $fullArray[$intel['Path']] = $intel;
                     }
                     $count++;
@@ -464,7 +562,6 @@ class View extends ContentController implements Flushable
                 $fullArrayString = $cache->get($cachekey);
                 $fullArray = unserialize($fullArrayString);
             }
-            $this->totalFileCount = count($fullArray);
             foreach ($fullArray as $intel) {
                 $this->totalFileSize += $intel['FileSize'];
                 $this->imagesRaw->push(
@@ -531,6 +628,7 @@ class View extends ContentController implements Flushable
             }
             if ($intel['IsImage']) {
                 list($width, $height, $type, $attr) = getimagesize($absoluteLocation);
+                $intel['Attribute'] = print_r($attr, 1);
                 $intel['HumanImageDimensions'] = $width . 'px wide by ' . $height . 'px high';
                 $intel['Ratio'] = round($width / $height, 3);
                 $intel['Pixels'] = $width * $height;
@@ -607,16 +705,10 @@ class View extends ContentController implements Flushable
         return $intel;
     }
 
-    protected function isRealFile(string $path) : bool
+    protected function isRealFile(string $path): bool
     {
         $fileName = basename($path);
-        $listOfItemsToSearchFor =[
-            '__FitMax',
-            '_resampled',
-            '__Fill',
-            '__Focus',
-            '__Scale',
-        ];
+        $listOfItemsToSearchFor = $this->Config()->get('not_real_file_substrings');
         if (substr($fileName, 0, 1) === '.') {
             return false;
         }
@@ -629,16 +721,27 @@ class View extends ContentController implements Flushable
         return true;
     }
 
-    protected function isPathWithAllowedExtion(string $path): bool
+    /**
+     * @param  string $path - does not have to be full path.
+     *
+     * @return bool
+     */
+    protected function isPathWithAllowedExtension(string $path): bool
     {
-        $extension = $this->getExtension($path);
         $count = count($this->allowedExtensions);
-        if ($count === 0 || in_array($extension, $this->allowedExtensions, true)) {
+        if ($count === 0) {
+            return true;
+        }
+        $extension = strtolower($this->getExtension($path));
+        if (in_array($extension, $this->allowedExtensions, true)) {
             return true;
         }
         return false;
     }
 
+    /**
+     * @return array
+     */
     protected function getArrayOfFilesOnDisk(): array
     {
         $arrayRaw = new RecursiveIteratorIterator(
@@ -657,7 +760,7 @@ class View extends ContentController implements Flushable
                 continue;
             }
             $path = $src->getPathName();
-            if ($this->isPathWithAllowedExtion($path)) {
+            if ($this->isPathWithAllowedExtension($path)) {
                 $array[$path] = true;
             }
         }
@@ -665,6 +768,9 @@ class View extends ContentController implements Flushable
         return $array;
     }
 
+    /**
+     * @return array
+     */
     protected function getArrayOfFilesInDatabase(): array
     {
         return File::get()
@@ -672,4 +778,77 @@ class View extends ContentController implements Flushable
             ->column('Filename');
     }
 
+    ##############################################
+    # CACHE
+    ##############################################
+
+    /**
+     * @return CacheInterface
+     */
+    protected static function getCache()
+    {
+        return Injector::inst()->get(CacheInterface::class . '.assetsoverviewCache');
+    }
+
+    protected function getCacheKey(): string
+    {
+        return 'fullarray_' .
+            implode('_', $this->allowedExtensions) . '_' .
+            $this->limit . '_' .
+            $this->pageNumber . '_';
+    }
+
+    protected function createFormField(string $name, string $title, $value, ?array $list = [])
+    {
+        $listCount = count($list);
+        if ($listCount === 0) {
+            $type = HiddenField::class;
+        } elseif ($name === 'extensions') {
+            $type = CheckboxSetField::class;
+        } elseif ($listCount < 13) {
+            $type = DropdownField::class;
+        } else {
+            $type = OptionsetField::class;
+        }
+
+        $field = $type::create($name, $title)
+            ->setValue($value);
+        if ($listCount) {
+            $field->setSource($list);
+        }
+    }
+
+    protected function getFilterList(): array
+    {
+        $array = [];
+        foreach (self::FILTERS as $key => $data) {
+            $array[$key] = $data['Title'];
+        }
+
+        return $array;
+    }
+
+    protected function getExtensionList(): array
+    {
+        return array_combine($this->extensions, $this->extensions);
+    }
+
+    protected function getPageNumberList(): array
+    {
+        return range(1, $this->getNumberOfPages());
+    }
+
+    protected function getNumberOfPages(): Int
+    {
+        return ceil($this->totalFileCount / $this->limit);
+    }
+
+    protected function getLimitList(): array
+    {
+        $step = 250;
+        for ($i = $step; ($i - $step) < $this->limit; $i += $step) {
+            $array[$i] = $i;
+        }
+        return $i;
+    }
 }
