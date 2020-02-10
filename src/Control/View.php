@@ -8,6 +8,7 @@ use SilverStripe\Forms\CheckboxField;
 use SilverStripe\Forms\CheckboxSetField;
 use SilverStripe\Forms\DropdownField;
 use SilverStripe\Forms\FieldList;
+use SilverStripe\Forms\TextField;
 use SilverStripe\Forms\Form;
 use SilverStripe\Forms\FormAction;
 use SilverStripe\Forms\HiddenField;
@@ -322,6 +323,7 @@ class View extends ContentController
                 $this->createFormField('extensions', 'Extensions', $this->allowedExtensions, $this->getExtensionList()),
                 $this->createFormField('limit', 'Items Per Page', $this->limit, $this->getLimitList()),
                 $this->createFormField('page', 'Page Number', $this->pageNumber, $this->getPageNumberList()),
+                TextField::create('compare', 'Compare With')->setDescription('add a link to a comparison file - e.g. http://oldsite.com/assets-overview/test.json'),
                 CheckboxField::create(
                     'flush',
                     'flush all data'
