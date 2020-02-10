@@ -33,11 +33,13 @@ class AllFilesInfo implements Flushable, FileInfo
     protected $listOfFiles = [];
 
     private static $not_real_file_substrings = [
-        '__FitMax',
         '_resampled',
+        '__Fit',
+        '__Pad',
         '__Fill',
         '__Focus',
         '__Scale',
+        '__ResizedImage',
     ];
 
     public function __construct($path)
@@ -105,16 +107,16 @@ class AllFilesInfo implements Flushable, FileInfo
             RecursiveIteratorIterator::SELF_FIRST
         );
         foreach ($arrayRaw as $src) {
-            if (is_dir($src)) {
-                continue;
-            }
-            if (strpos($src, '.protected')) {
-                continue;
-            }
-            if ($this->isRealFile($src) === false) {
-                continue;
-            }
             $path = $src->getPathName();
+            if (is_dir($path)) {
+                continue;
+            }
+            if (strpos($path, '.protected')) {
+                continue;
+            }
+            if ($this->isRealFile($path) === false) {
+                continue;
+            }
             $finalArray[$path] = $path;
         }
 

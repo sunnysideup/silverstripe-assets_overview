@@ -126,7 +126,7 @@ class OneFileInfo implements Flushable, FileInfo
             }
 
             $intel['HumanFileSize'] = $this->humanFileSize($intel['FileSize']);
-            $intel['HumanFileSizeRounded'] = '~ ' . $this->humanFileSize(round($intel['FileSize'] / 1024) * 1024);
+            $intel['HumanFileSizeRounded'] = '~ ' . $this->humanFileSize(round($intel['FileSize'] / 204800) * 204800);
             $file = DataObject::get_one(File::class, ['FileFilename' => $intel['FileNameInDB']]);
             $folder = null;
             if ($file) {

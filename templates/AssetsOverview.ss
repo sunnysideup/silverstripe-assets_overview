@@ -173,12 +173,18 @@
 <body>
     <div class="toc">
         <div class="padding">
-            <% if ImagesSorted.count %>
-                <ul>
-                    <li><a href="#top">View By Options ...</a><br /></li>
-                <% loop ImagesSorted %>
-                    <li><a href="#section-$Number">$SubTitle ($Items.Count)</a></li>
-                <% end_loop %>
+            <% if FilesAsSortedArrayList.count %>
+                <% if $FilesAsSortedArrayList.count > 100 %>
+                    <p>
+                        Too many options to show
+                    </p>
+                <% else %>
+                    <ul>
+                        <li><a href="#top">View By Options ...</a><br /></li>
+                    <% loop $FilesAsSortedArrayList %>
+                        <li><a href="#section-$Number">$SubTitle ($Items.Count)</a></li>
+                    <% end_loop %>
+                <% end_if %>
                 </ul>
             <% end_if %>
         </div>
@@ -194,10 +200,21 @@
             <div class="form">
                 $Form
             </div>
-            <% if ImagesSorted.count %>
+            <hr />
+            <p>
+                <strong>View:</strong>
+                <a href="$Link(json)">file list</a>,
+                <a href="$Link(jsonfull)">full details</a>
+                |
+                <strong>Download:</strong>
+                <a href="$Link(json)?download=1">file list</a>,
+                <a href="$Link(jsonfull)?download=1">full details</a>
+            </p>
+            <hr />
+            <% if FilesAsSortedArrayList.count %>
                 <h1>$Title</h1>
                 <% if $isThumbList %>
-                    <% loop ImagesSorted %>
+                    <% loop FilesAsSortedArrayList %>
                         <div id="section-$Number" class="break">
                             <h3>$SubTitle</h3>
                             <% loop Items %>
@@ -208,7 +225,7 @@
                 <% else %>
                     <hr />
                     <hr />
-                    <% loop ImagesSorted %>
+                    <% loop FilesAsSortedArrayList %>
                         <% loop Items %>
                             $HTML.RAW
                         <% end_loop %>

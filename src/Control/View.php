@@ -4,15 +4,16 @@ namespace Sunnysideup\AssetsOverview\Control;
 
 use SilverStripe\CMS\Controllers\ContentController;
 use SilverStripe\Control\Director;
+use SilverStripe\Control\HTTPRequest;
 use SilverStripe\Forms\CheckboxField;
 use SilverStripe\Forms\CheckboxSetField;
 use SilverStripe\Forms\DropdownField;
 use SilverStripe\Forms\FieldList;
-use SilverStripe\Forms\TextField;
 use SilverStripe\Forms\Form;
 use SilverStripe\Forms\FormAction;
 use SilverStripe\Forms\HiddenField;
 use SilverStripe\Forms\OptionsetField;
+use SilverStripe\Forms\TextField;
 use SilverStripe\ORM\ArrayList;
 use SilverStripe\Security\Permission;
 use SilverStripe\Security\Security;
@@ -84,8 +85,8 @@ class View extends ContentController
         ],
         'byfilesystemstatus' => [
             'Title' => 'Filesystem Status',
-            'Sort' => 'HumanIsInFileSystemIsInFileSystem',
-            'Group' => '',
+            'Sort' => 'IsInFileSystem',
+            'Group' => 'HumanIsInFileSystem',
         ],
         'byisimage' => [
             'Title' => 'Image vs Other Files',
@@ -104,8 +105,8 @@ class View extends ContentController
         ],
         'bysimilarity' => [
             'Title' => 'Similarity (takes a long time!)',
-            'Sort' => 'MostSimilarTo',
-            'Group' => 'MostSimilarTo',
+            'Sort' => '',
+            'Group' => '',
             'Method' => 'workOutSimilarity',
         ],
         'rawlist' => [
@@ -125,12 +126,12 @@ class View extends ContentController
     /**
      * @var ArrayList|null
      */
-    protected $imagesRaw = null;
+    protected $filesAsArrayList = null;
 
     /**
      * @var ArrayList|null
      */
-    protected $imagesSorted = null;
+    protected $filesAsSortedArrayList = null;
 
     /**
      * @var string
@@ -187,9 +188,23 @@ class View extends ContentController
      */
     protected $isThumbList = true;
 
+    /**
+     * Defines methods that can be called directly
+     * @var array
+     */
+    private static $allowed_actions = [
+        'index' => 'ADMIN',
+        'json' => 'ADMIN',
+        'jsonfull' => 'ADMIN',
+    ];
+
     public function Link($action = null)
     {
-        return Director::absoluteURL(DIRECTORY_SEPARATOR . 'assets-overview' . DIRECTORY_SEPARATOR) . $action;
+        $str = Director::absoluteURL(DIRECTORY_SEPARATOR . 'assets-overview' . DIRECTORY_SEPARATOR);
+        if ($action) {
+            $str = $action . DIRECTORY_SEPARATOR;
+        }
+        return $str;
     }
 
     public function getTitle(): string
@@ -204,14 +219,14 @@ class View extends ContentController
         return $this->isThumbList;
     }
 
-    public function getImagesRaw(): ArrayList
+    public function getfilesAsArrayList(): ArrayList
     {
-        return $this->imagesRaw;
+        return $this->filesAsArrayList;
     }
 
-    public function getImagesSorted(): ArrayList
+    public function getfilesAsSortedArrayList(): ArrayList
     {
-        return $this->imagesSorted;
+        return $this->filesAsSortedArrayList;
     }
 
     public function getTotalFileCount(): string
@@ -258,7 +273,9 @@ class View extends ContentController
         $list = self::FILTERS;
         $actionData = $list[$this->filter];
         if (isset($list[$this->filter])) {
-            $this->workOutImagesSorted($actionData['Sort'], $actionData['Group']);
+            if ($actionData['Sort'] && $actionData['Group']) {
+                $this->setFilesAsSortedArrayList($actionData['Sort'], $actionData['Group']);
+            }
             if (! empty($actionData['Method'])) {
                 $this->{$actionData['Method']}();
             }
@@ -269,10 +286,25 @@ class View extends ContentController
         return $this->renderWith('AssetsOverview');
     }
 
+    public function json($request)
+    {
+        return $this->sendJSON($this->getRawData());
+    }
+
+    public function jsonfull($request)
+    {
+        $array = [];
+        $this->setFilesAsArrayList();
+        foreach ($this->filesAsArrayList->toArray() as $item) {
+            $array[] = $item->toMap();
+        }
+        return $this->sendJSON($array);
+    }
+
     public function workoutRawList()
     {
         $this->isThumbList = false;
-        foreach ($this->imagesSorted as $group) {
+        foreach ($this->filesAsSortedArrayList as $group) {
             foreach ($group->Items as $item) {
                 $item->HTML = '<li>' . $item->FileNameInDB . '</li>';
             }
@@ -283,7 +315,7 @@ class View extends ContentController
     public function workoutRawListFull()
     {
         $this->isThumbList = false;
-        foreach ($this->imagesSorted as $group) {
+        foreach ($this->filesAsSortedArrayList as $group) {
             foreach ($group->Items as $item) {
                 $map = $item->toMap();
                 ksort($map);
@@ -343,14 +375,24 @@ class View extends ContentController
         return $form;
     }
 
+    protected function sendJSON($data)
+    {
+        $this->response->addHeader('Content-Type', 'application/json');
+        $fileData = json_encode($data, JSON_PRETTY_PRINT);
+        if ($this->request->getVar('download')) {
+            return HTTPRequest::send_file($fileData, 'files.json', 'text/json');
+        }
+        return $fileData;
+    }
+
     protected function workOutSimilarity()
     {
         set_time_limit(240);
         $engine = new CompareImages();
-        $this->buildFileCache();
-        $a = clone $this->imagesRaw;
-        $b = clone $this->imagesRaw;
-        $c = clone $this->imagesRaw;
+        $this->setFilesAsArrayList();
+        $a = clone $this->filesAsArrayList;
+        $b = clone $this->filesAsArrayList;
+        $c = clone $this->filesAsArrayList;
         $alreadyDone = [];
         foreach ($a as $image) {
             $nameOne = $image->Path;
@@ -394,26 +436,27 @@ class View extends ContentController
                 }
             }
         }
-        foreach ($this->imagesRaw as $image) {
+        foreach ($this->filesAsArrayList as $image) {
             $image->MostSimilarTo = $alreadyDone[$image->Path] ?? '[N/A]';
         }
+        $this->setFilesAsSortedArrayList('MostSimilarTo', 'MostSimilarTo');
     }
 
-    protected function workOutImagesSorted($sortField, $headerField)
+    protected function setfilesAsSortedArrayList($sortField, $headerField)
     {
-        if ($this->imagesSorted === null) {
-            $this->imagesSorted = ArrayList::create();
+        if ($this->filesAsSortedArrayList === null) {
             //done only if not already done ...
-            $this->buildFileCache();
-            $this->imagesRaw = $this->imagesRaw->Sort($sortField);
+            $this->setFilesAsArrayList();
+            $this->filesAsSortedArrayList = ArrayList::create();
+            $this->filesAsArrayList = $this->filesAsArrayList->Sort($sortField);
 
             $innerArray = ArrayList::create();
             $prevHeader = 'nothing here....';
             $newHeader = '';
-            foreach ($this->imagesRaw as $image) {
+            foreach ($this->filesAsArrayList as $image) {
                 $newHeader = $image->{$headerField};
                 if ($newHeader !== $prevHeader) {
-                    $this->addToImagesSorted(
+                    $this->addTofilesAsSortedArrayList(
                         $prevHeader, //correct! important ...
                         $innerArray
                     );
@@ -425,20 +468,20 @@ class View extends ContentController
             }
 
             //last one!
-            $this->addToImagesSorted(
+            $this->addTofilesAsSortedArrayList(
                 $newHeader,
                 $innerArray
             );
         }
 
-        return $this->imagesSorted;
+        return $this->filesAsSortedArrayList;
     }
 
-    protected function addToImagesSorted(string $header, ArrayList $arrayList)
+    protected function addTofilesAsSortedArrayList(string $header, ArrayList $arrayList)
     {
         if ($arrayList->count()) {
-            $count = $this->imagesSorted->count();
-            $this->imagesSorted->push(
+            $count = $this->filesAsSortedArrayList->count();
+            $this->filesAsSortedArrayList->push(
                 ArrayData::create(
                     [
                         'Number' => $count,
@@ -450,16 +493,13 @@ class View extends ContentController
         }
     }
 
-    protected function buildFileCache()
+    protected function setFilesAsArrayList(): ArrayList
     {
-        if ($this->imagesRaw === null) {
-            //get data
-            $class = self::ALL_FILES_INFO_CLASS;
-            $obj = new $class($this->getAssetsBaseFolder());
-            $rawArray = $obj->toArray();
+        if ($this->filesAsArrayList === null) {
+            $rawArray = $this->getRawData();
             //prepare loop
             $this->totalFileCount = count($rawArray);
-            $this->imagesRaw = ArrayList::create();
+            $this->filesAsArrayList = ArrayList::create();
             $count = 0;
             foreach ($rawArray as $absoluteLocation => $fileExists) {
                 if ($this->isPathWithAllowedExtension($absoluteLocation)) {
@@ -467,7 +507,7 @@ class View extends ContentController
                         $intel = $this->getDataAboutOneFile($absoluteLocation, $fileExists);
                         $this->availableExtensions[$intel['ExtensionAsLower']] = $intel['ExtensionAsLower'];
                         $this->totalFileSize += $intel['FileSize'];
-                        $this->imagesRaw->push(
+                        $this->filesAsArrayList->push(
                             ArrayData::create($intel)
                         );
                     }
@@ -475,7 +515,17 @@ class View extends ContentController
                 }
             }
         }
-        return $this->imagesRaw;
+
+        return $this->filesAsArrayList;
+    }
+
+    protected function getRawData(): array
+    {
+        //get data
+        $class = self::ALL_FILES_INFO_CLASS;
+        $obj = new $class($this->getAssetsBaseFolder());
+
+        return $obj->toArray();
     }
 
     protected function getDataAboutOneFile(string $absoluteLocation, ?bool $fileExists): array
@@ -511,7 +561,7 @@ class View extends ContentController
             $type = HiddenField::class;
         } elseif ($name === 'extensions') {
             $type = CheckboxSetField::class;
-        } elseif ($listCount < 13) {
+        } elseif ($listCount < 20) {
             $type = OptionsetField::class;
         } else {
             $type = DropdownField::class;
@@ -546,7 +596,12 @@ class View extends ContentController
     protected function getPageNumberList(): array
     {
         $list = range(1, $this->getNumberOfPages());
-        return array_combine($list, $list);
+        $list = array_combine($list, $list);
+        $list[(string) $this->pageNumber] = (string) $this->pageNumber;
+        if (count($list) < 2) {
+            return [];
+        }
+        return $list;
     }
 
     protected function getNumberOfPages(): Int
@@ -559,12 +614,12 @@ class View extends ContentController
         $step = 250;
         $array = [];
         for ($i = $step; ($i - $step) < $this->totalFileCount; $i += $step) {
-            if($i > $this->limit && ! isset($array[$this->limit])) {
+            if ($i > $this->limit && ! isset($array[$this->limit])) {
                 $array[$this->limit] = $this->limit;
             }
             $array[$i] = $i;
         }
-        if($i > $this->limit && ! isset($array[$this->limit])) {
+        if ($i > $this->limit && ! isset($array[$this->limit])) {
             $array[$this->limit] = $this->limit;
         }
         return $array;

@@ -12,8 +12,8 @@ trait FilesystemRelatedTraits
     protected $baseFolder = '';
 
     /**
-    * @var string
-    */
+     * @var string
+     */
     protected $publicBaseFolder = '';
 
     /**
@@ -62,6 +62,7 @@ trait FilesystemRelatedTraits
         }
         return $this->publicBaseFolder;
     }
+
     /**
      * @return string
      */
