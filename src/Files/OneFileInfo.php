@@ -34,6 +34,11 @@ class OneFileInfo implements Flushable, FileInfo
     protected $path = '';
 
     /**
+     * @var array
+     */
+    protected $intel = '';
+
+    /**
      * @var bool
      */
     protected $fileExists = false;

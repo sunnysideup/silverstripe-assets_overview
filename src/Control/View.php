@@ -246,6 +246,7 @@ class View extends ContentController
             return Security::permissionFailure($this);
         }
         Requirements::clear();
+        SSViewer::config()->update('theme_enabled', false);
         if ($filter = $this->request->getVar('filter')) {
             $this->filter = $filter;
         }

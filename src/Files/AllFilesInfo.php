@@ -31,18 +31,18 @@ class AllFilesInfo implements Flushable, FileInfo
     /**
      * @var array
      */
-    protected static $idListStaging = [];
+    protected static $dataStaging = [];
 
     /**
      *
      * @var array
      */
-    protected static $idListLive = [];
+    protected static $dataLive = [];
 
     /**
      * @var array
      */
-    protected $listOfFiles = [];
+    protected static $listOfFiles = [];
 
     private static $not_real_file_substrings = [
         '_resampled',
@@ -55,23 +55,94 @@ class AllFilesInfo implements Flushable, FileInfo
     ];
 
     /**
-     *
-     * @param  int $id [description]
+     * does the file exists in the database on staging?
+     * @param  int $id
      * @return bool
      */
-    public static function exists_on_staging($id) : bool
+    public static function exists_on_staging(int $id) : bool
     {
-        return isset(self::$idListStaging[$id]);
+        return isset(self::$dataStaging[$id]);
+    }
+
+    /**
+     * does the file exists in the database on live?
+     * @param  int $id
+     * @return bool
+     */
+    public static function exists_on_live(int $id) : bool
+    {
+        return isset(self::$dataLive[$id]);
+    }
+
+    /**
+     * get data from staging database row
+     * @param  string $fileName from the root of assets
+     * @return array
+     */
+    public static function get_staging_data(string $fileName) : array
+    {
+        $id = self::find_id_from_file_name(self::$dataLive, $filename);
+        if($id) {
+            return self::$dataStaging($id);
+        }
+    }
+
+    /**
+     * get data from live database row
+     * @param  string $fileName from the root of assets
+     * @return array
+     */
+    public static function get_live_data(string $fileName) : array
+    {
+        $id = self::find_id_from_file_name(self::$dataLive, $filename);
+        if($id) {
+            return self::$dataStaging($id);
+        }
+    }
+
+    /**
+    * find a value in a field in staging
+    * returns ID of row
+     * @param  string    $fieldName
+     * @param  mixed     $value
+     * @return int
+     */
+    public static function find_in_data_staging(string $fieldName, $value) : int
+    {
+        return self::find_in_data(self::$dataStaging, $fieldName, $value);
+    }
+
+    public static function find_in_data_live(string $fieldName, $value) : int
+    {
+        return self::find_in_data(self::$dataLive, $fieldName, $value);
+    }
+
+    protected static function find_id_from_file_name(array $data, string $filename) : int
+    {
+
+        $id = self::find_in_data($data, 'FileFilename', $filename);
+        if(! $id) {
+            $id = self::find_in_data($data, 'Filename', $filename);
+        }
+
+        return $id;
     }
 
     /**
      *
-     * @param  int $id [description]
-     * @return bool
+     * @param  array  $data
+     * @param  string $fieldName
+     * @param  mixed  $value
+     * @return int
      */
-    public static function exists_on_live($id) : bool
+    protected static function find_in_data(array $data, string $fieldName, $value) : int
     {
-        return isset(self::$idListLive[$id]);
+        foreach($data as $row) {
+            if($row[$fieldName] === $value) {
+                return (int) $id;
+            }
+        }
+        return 0;
     }
 
     public function __construct($path)
@@ -93,23 +164,25 @@ class AllFilesInfo implements Flushable, FileInfo
             //disk
             $diskArray = $this->getArrayOfFilesOnDisk();
             foreach ($diskArray as $path) {
-                $this->listOfFiles[$path] = true;
+                self::$listOfFiles[$path] = true;
             }
             //database
             $databaseArray = $this->getArrayOfFilesInDatabase();
             foreach ($databaseArray as $path) {
-                if (! isset($this->listOfFiles[$path])) {
-                    $this->listOfFiles[$path] = false;
+                if (! isset(self::$listOfFiles[$path])) {
+                    self::$listOfFiles[$path] = false;
                 }
             }
-            $fullArrayString = serialize($this->listOfFiles);
-            $cache->set($cachekey, $fullArrayString);
+            $cache->set($cachekey, serialize(self::$listOfFiles));
+            $cache->set($cachekey . 'dataStaging', serialize(self::$dataStaging));
+            $cache->set($cachekey . 'dataLive', serialize(self::$dataLive));
         } else {
-            $fullArrayString = $cache->get($cachekey);
-            $this->listOfFiles = unserialize($fullArrayString);
+            self::$listOfFiles = unserialize($cache->get($cachekey));
+            self::$dataStaging = unserialize($cache->get($cachekey . 'dataStaging'));
+            self::$dataLive = unserialize($cache->get($cachekey . 'dataLive'));
         }
 
-        return $this->listOfFiles;
+        return self::$listOfFiles;
     }
 
     protected function isRealFile(string $path): bool
@@ -162,14 +235,19 @@ class AllFilesInfo implements Flushable, FileInfo
     {
         $finalArray = [];
         foreach(['', '_Live'] as $stage) {
-            $sql = 'SELECT "ID", "FileFilename" FROM "File" "'.$stage.'" WHERE ClassName <> \''.Folder::class.'\';';
+            $sql = 'SELECT * FROM "File" "'.$stage.'" WHERE ClassName <> \''.Folder::class.'\';';
             $rows = DB::query($sql);
             foreach($rows as $row) {
-                $absoluteLocation = $this->path . DIRECTORY_SEPARATOR . $row['FileFilename'];
-                if ($stage === '') {
-                    self::$idListStaging[$row['ID']] = true;
+                if(empty($row['FileFilename'])) {
+                    $file = $row['Filename'];
                 } else {
-                    self::$idListLive[$row['ID']] = true;
+                    $file = $row['FileFilename'];
+                }
+                $absoluteLocation = $this->path . DIRECTORY_SEPARATOR . $file;
+                if ($stage === '') {
+                    self::$dataStaging[$row['ID']] = $row;
+                } else {
+                    self::$dataLive[$row['ID']] = $row;
                 }
                 $finalArray[$absoluteLocation] = $absoluteLocation;
             }
