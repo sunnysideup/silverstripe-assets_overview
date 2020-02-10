@@ -239,21 +239,23 @@ class AllFilesInfo implements Flushable, FileInfo
     {
         $finalArray = [];
         foreach(['', '_Live'] as $stage) {
-            $sql = 'SELECT * FROM "File" "'.$stage.'" WHERE ClassName <> \''.Folder::class.'\';';
+            $sql = 'SELECT * FROM "File'.$stage.'" WHERE "ClassName" <> \''.Folder::class.'\';';
             $rows = DB::query($sql);
             foreach($rows as $row) {
                 if(empty($row['FileFilename'])) {
-                    $file = $row['Filename'];
+                    $file = $row['Filename'] ?? '' ;
                 } else {
                     $file = $row['FileFilename'];
                 }
-                $absoluteLocation = $this->path . DIRECTORY_SEPARATOR . $file;
-                if ($stage === '') {
-                    self::$dataStaging[$row['ID']] = $row;
-                } else {
-                    self::$dataLive[$row['ID']] = $row;
+                if(trim($file)) {
+                    $absoluteLocation = $this->path . DIRECTORY_SEPARATOR . $file;
+                    if ($stage === '') {
+                        self::$dataStaging[$row['ID']] = $row;
+                    } else {
+                        self::$dataLive[$row['ID']] = $row;
+                    }
+                    $finalArray[$absoluteLocation] = $absoluteLocation;
                 }
-                $finalArray[$absoluteLocation] = $absoluteLocation;
             }
         }
         return $finalArray;
