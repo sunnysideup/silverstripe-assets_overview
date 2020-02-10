@@ -235,7 +235,7 @@ class View extends ContentController
         }
 
         if ($extensions = $this->request->getVar('extensions')) {
-            if(!is_array($extensions)) {
+            if (! is_array($extensions)) {
                 $extensions = [$extensions];
             }
             $this->allowedExtensions = $extensions;
