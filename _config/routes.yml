@@ -4,4 +4,4 @@ name: AssetsOverviewRules
 
 SilverStripe\Control\Director:
   rules:
-    'dev/assets//$Action/$ID/$OtherID': 'Sunnysideup\AssetsOverview\Control\View'
+    'assets-overview//$Action/$ID/$OtherID': 'Sunnysideup\AssetsOverview\Control\View'

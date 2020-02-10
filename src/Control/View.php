@@ -1,19 +1,5 @@
 <?php
 
-// if ($action) {
-//     $link .= $action . DIRECTORY_SEPARATOR;
-// }
-// $getVars = [];
-// if ($ext = $this->request->getVar('ext')) {
-//     $getVars['ext'] = $ext;
-// }
-// if ($limit = $this->request->getVar('limit')) {
-//     $getVars['limit'] = $limit;
-// }
-// if (count($getVars)) {
-//     $link .= '?' . http_build_query($getVars);
-// }
-
 namespace Sunnysideup\AssetsOverview\Control;
 
 use \Exception;
@@ -42,9 +28,19 @@ use SilverStripe\Security\Security;
 use SilverStripe\View\ArrayData;
 use SilverStripe\View\Requirements;
 use Sunnysideup\AssetsOverview\Api\CompareImages;
+use Sunnysideup\AssetsOverview\Files\AllFilesInfo;
+use Sunnysideup\AssetsOverview\Files\OneFileInfo;
+use Sunnysideup\AssetsOverview\Traits\FilesystemRelatedTraits;
+use SilverStripe\Forms\CheckboxField;
 
-class View extends ContentController implements Flushable
+class View extends ContentController
 {
+    use FilesystemRelatedTraits;
+
+    private const ALL_FILES_INFO_CLASS = AllFilesInfo::class;
+
+    private const ONE_FILE_INFO_CLASS = OneFileInfo::class;
+
     private const FILTERS = [
         'byfolder' => [
             'Title' => 'Folder',
@@ -143,11 +139,6 @@ class View extends ContentController implements Flushable
     protected $imagesRaw = null;
 
     /**
-     * @var string
-     */
-    protected $title = '';
-
-    /**
      * @var ArrayList|null
      */
     protected $imagesSorted = null;
@@ -155,12 +146,7 @@ class View extends ContentController implements Flushable
     /**
      * @var string
      */
-    protected $baseFolder = '';
-
-    /**
-     * @var string
-     */
-    protected $assetsBaseFolder = '';
+    protected $title = '';
 
     /**
      * @var int
@@ -203,37 +189,14 @@ class View extends ContentController implements Flushable
     protected $allowedExtensions = [];
 
     /**
-     * @var array
-     */
-    protected $availableExtensions = [];
-
-    /**
      * @var bool
      */
     protected $isThumbList = true;
 
-    /**
-     * @var array
-     */
-    private static $allowed_extensions = [];
-
-    private static $not_real_file_substrings = [
-        '__FitMax',
-        '_resampled',
-        '__Fill',
-        '__Focus',
-        '__Scale',
-    ];
-
-    public static function flush()
-    {
-        $cache = self::getCache();
-        $cache->clear();
-    }
 
     public function Link($action = null)
     {
-        return Director::absoluteURL(DIRECTORY_SEPARATOR . 'dev/assets' . DIRECTORY_SEPARATOR) . $action;
+        return Director::absoluteURL(DIRECTORY_SEPARATOR . 'assets-overview' . DIRECTORY_SEPARATOR) . $action;
     }
 
     public function getTitle(): string
@@ -275,9 +238,10 @@ class View extends ContentController implements Flushable
             return Security::permissionFailure($this);
         }
         Requirements::clear();
-        $this->baseFolder = $this->getBaseFolder();
-        $this->assetsBaseFolder = rtrim($this->getAssetBaseDir(), DIRECTORY_SEPARATOR);
-        $this->allowedExtensions = $this->Config()->get('allowed_extensions');
+        if ($filter = $this->request->getVar('filter')) {
+            $this->filter = $filter;
+        }
+
         if ($extensions = $this->request->getVar('extensions')) {
             $this->allowedExtensions = $extensions;
         }
@@ -286,9 +250,6 @@ class View extends ContentController implements Flushable
         }
         if ($pageNumber = $this->request->getVar('page')) {
             $this->pageNumber = $pageNumber;
-        }
-        if ($filter = $this->request->getVar('filter')) {
-            $this->filter = $filter;
         }
         $this->startLimit = $this->limit * ($this->pageNumber - 1);
         $this->endLimit = $this->limit * $this->pageNumber;
@@ -364,6 +325,10 @@ class View extends ContentController implements Flushable
                 $this->createFormField('extensions', 'Extensions', $this->allowedExtensions, $this->getExtensionList()),
                 $this->createFormField('limit', 'Items Per Page', $this->limit, $this->getLimitList()),
                 $this->createFormField('page', 'Page Number', $this->pageNumber, $this->getPageNumberList()),
+                CheckboxField::create(
+                    'flush',
+                    'flush all data'
+                )
             ]
         );
         $actionList = FieldList::create(
@@ -438,10 +403,10 @@ class View extends ContentController implements Flushable
     protected function workOutImagesSorted($sortField, $headerField)
     {
         if ($this->imagesSorted === null) {
+            $this->imagesSorted = ArrayList::create();
             //done only if not already done ...
             $this->buildFileCache();
             $this->imagesRaw = $this->imagesRaw->Sort($sortField);
-            $this->imagesSorted = ArrayList::create();
 
             $innerArray = ArrayList::create();
             $prevHeader = 'nothing here....';
@@ -467,7 +432,8 @@ class View extends ContentController implements Flushable
             );
         }
 
-        return $this->renderWith('AssetsOverview');
+        return $this->imagesSorted;
+
     }
 
     protected function addToImagesSorted(string $header, ArrayList $arrayList)
@@ -486,325 +452,46 @@ class View extends ContentController implements Flushable
         }
     }
 
-    protected function isRegularImage(string $extension): bool
-    {
-        return in_array(
-            strtolower($extension),
-            ['jpg', 'gif', 'png'],
-            true
-        );
-    }
-
-    protected function isImage(string $filename): bool
-    {
-        try {
-            $outcome = exif_imagetype($filename) ? true : false;
-        } catch (Exception $e) {
-            $outcome = false;
-        }
-
-        return $outcome;
-    }
-
-    protected function humanFileSize(int $bytes, int $decimals = 0): string
-    {
-        $size = ['B', 'kB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
-        $factor = floor((strlen($bytes) - 1) / 3);
-        return sprintf("%.{$decimals}f", $bytes / pow(1024, $factor)) . @$size[$factor];
-    }
-
-    protected function getExtension(string $path): string
-    {
-        $basename = basename($path);
-
-        return substr($basename, strlen(explode('.', $basename)[0]) + 1);
-    }
-
-    /**
-     * @return string
-     */
-    protected function getBaseFolder(): string
-    {
-        return rtrim(Director::baseFolder(), DIRECTORY_SEPARATOR);
-    }
-
-    /**
-     * @return string
-     */
-    protected function getAssetBaseDir(): string
-    {
-        return ASSETS_PATH;
-    }
-
     protected function buildFileCache()
     {
         if ($this->imagesRaw === null) {
+            //get data
+            $class = self::ALL_FILES_INFO_CLASS;
+            $obj = new $class($path);
+            $rawArray = $obj->toArray();
+            //prepare loop
+            $this->totalFileCount = count($rawArray);
             $this->imagesRaw = ArrayList::create();
-            $cache = self::getCache();
-            $cachekey = $this->getCacheKey();
-            if (! $cache->has($cachekey)) {
-                $fullArray = [];
-                $rawArray = $this->getArrayOfFilesOnDisk();
-                $filesOnDiskArray = $this->getArrayOfFilesOnDisk();
-                foreach ($filesOnDiskArray as $relativeSrc) {
-                    $absoluteLocation = $this->baseFolder . '/' . $relativeSrc;
-                    if (! isset($rawArray[$absoluteLocation])) {
-                        if ($this->isPathWithAllowedExtension($absoluteLocation)) {
-                            $rawArray[$absoluteLocation] = false;
-                        }
-                    }
+            foreach ($rawArray as $absoluteLocation => $fileExists) {
+                if ($count >= $this->startLimit && $count < $this->endLimit) {
+                    $intel = $this->getDataAboutOneFile($absoluteLocation, $fileExists);
+                    $this->availableExtensions[$intel['ExtensionAsLower']] = $intel['ExtensionAsLower'];
+                    $this->totalFileSize += $intel['FileSize'];
+                    $this->imagesRaw->push(
+                        ArrayData::create($intel)
+                    );
                 }
-                $count = 0;
-                $this->totalFileCount = count($rawArray);
-                foreach ($rawArray as $absoluteLocation => $fileExists) {
-                    if ($count >= $this->startLimit && $count < $this->endLimit) {
-                        $intel = $this->getDataAboutOneFile($absoluteLocation, $fileExists);
-                        $this->availableExtensions[$intel['ExtensionAsLower']] = $intel['ExtensionAsLower'];
-                        $fullArray[$intel['Path']] = $intel;
-                    }
-                    $count++;
-                }
-                $fullArrayString = serialize($fullArray);
-                $cache->set($cachekey, $fullArrayString);
-            } else {
-                $fullArrayString = $cache->get($cachekey);
-                $fullArray = unserialize($fullArrayString);
+                $count++;
             }
-            foreach ($fullArray as $intel) {
-                $this->totalFileSize += $intel['FileSize'];
-                $this->imagesRaw->push(
-                    ArrayData::create($intel)
-                );
-            }
+
+
         }
         return $this->imagesRaw;
     }
 
-    protected function getDataAboutOneFile($absoluteLocation, $fileExists): array
+
+    protected function getDataAboutOneFile(string $absoluteLocation, ?bool $fileExists): array
     {
-        $intel = [];
-        $pathParts = [];
-        if ($fileExists) {
-            $pathParts = pathinfo($absoluteLocation);
-        }
-        $pathParts['extension'] = $pathParts['extension'] ?? '--no-extension';
-        $pathParts['filename'] = $pathParts['filename'] ?? '--no-file-name';
-        $pathParts['dirname'] = $pathParts['dirname'] ?? '--no-parent-dir';
-        $relativeDirFromBaseFolder = str_replace($this->baseFolder, '', $pathParts['dirname']);
-        $relativeDirFromAssetsFolder = str_replace($this->assetsBaseFolder, '', $pathParts['dirname']);
+        $class = self::ONE_FILE_INFO_CLASS;
+        $ob = new $class($absoluteLocation, $fileExists);
 
-        $intel['Extension'] = $pathParts['extension'];
-        $intel['ExtensionAsLower'] = (string) strtolower($intel['Extension']);
-        $intel['HasIrregularExtension'] = $intel['Extension'] !== $intel['ExtensionAsLower'];
-        $intel['HumanHasIrregularExtension'] = $intel['HasIrregularExtension'] ?
-            'irregular extension' : 'normal extension';
-        $intel['FileName'] = $pathParts['filename'];
-
-        $intel['FileSize'] = 0;
-
-        $intel['Path'] = $absoluteLocation;
-        $intel['PathFromAssets'] = str_replace($this->assetsBaseFolder, '', $absoluteLocation);
-        $intel['PathFromRoot'] = str_replace($this->baseFolder, '', $absoluteLocation);
-        $intel['FirstLetter'] = strtoupper(substr($intel['FileName'], 0, 1));
-        $intel['FileNameInDB'] = ltrim($intel['PathFromAssets'], DIRECTORY_SEPARATOR);
-
-        $intel['FolderName'] = trim($relativeDirFromBaseFolder, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
-        $intel['FolderNameShort'] = trim($relativeDirFromAssetsFolder, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
-        $intel['GrandParentFolder'] = dirname($intel['FolderNameShort']);
-
-        $intel['HumanImageDimensions'] = 'n/a';
-        $intel['Ratio'] = '0';
-        $intel['Pixels'] = 'n/a';
-        $intel['IsImage'] = false;
-        $intel['HumanIsImage'] = 'Is not an image';
-        $intel['IsRegularImage'] = false;
-        $intel['IsInFileSystem'] = false;
-        $intel['HumanIsInFileSystem'] = 'file does not exist';
-        $intel['ErrorParentID'] = true;
-        $intel['Type'] = $intel['Extension'];
-        $intel['Attribute'] = 'n/a';
-
-        if ($fileExists) {
-            $intel['IsInFileSystem'] = true;
-            $intel['HumanIsInFileSystem'] = 'file exists';
-            $intel['FileSize'] = filesize($absoluteLocation);
-            $intel['IsRegularImage'] = $this->isRegularImage($intel['Extension']);
-            if ($intel['IsRegularImage']) {
-                $intel['IsImage'] = true;
-            } else {
-                $intel['IsImage'] = $this->isImage($absoluteLocation);
-            }
-            if ($intel['IsImage']) {
-                list($width, $height, $type, $attr) = getimagesize($absoluteLocation);
-                $intel['Attribute'] = print_r($attr, 1);
-                $intel['HumanImageDimensions'] = $width . 'px wide by ' . $height . 'px high';
-                $intel['Ratio'] = round($width / $height, 3);
-                $intel['Pixels'] = $width * $height;
-                $intel['HumanIsImage'] = 'Is Image';
-                $intel['Type'] = $type;
-            }
-        }
-
-        $intel['HumanFileSize'] = $this->humanFileSize($intel['FileSize']);
-        $intel['HumanFileSizeRounded'] = '~ ' . $this->humanFileSize(round($intel['FileSize'] / 1024) * 1024);
-        $file = DataObject::get_one(File::class, ['FileFilename' => $intel['FileNameInDB']]);
-        $folder = null;
-        if ($file) {
-            $folder = DataObject::get_one(Folder::class, ['ID' => $file->ParentID]);
-        }
-
-        //backup for folder
-        if (! $folder) {
-            $folder = DataObject::get_one(Folder::class, ['FileFilename' => $intel['FolderName']]);
-        }
-
-        //backup for file ...
-        if (! $file) {
-            if ($folder) {
-                $nameInDB = $intel['FileName'] . '.' . $intel['Extension'];
-                $file = DataObject::get_one(File::class, ['Name' => $nameInDB, 'ParentID' => $folder->ID]);
-            }
-        }
-        $time = 0;
-        if ($file) {
-            $intel['ID'] = $file->ID;
-            $intel['ParentID'] = $file->ParentID;
-            $intel['IsInDatabase'] = true;
-            $intel['CMSEditLink'] = '/admin/assets/EditForm/field/File/item/' . $file->ID . '/edit';
-            $intel['DBTitle'] = $file->Title;
-            $intel['ErrorInFilenameCase'] = $intel['FileNameInDB'] !== $file->Filename;
-            $time = strtotime($file->LastEdited);
-            if ($folder) {
-                $intel['ErrorParentID'] = (int) $folder->ID !== (int) $file->ParentID;
-            } elseif ((int) $file->ParentID === 0) {
-                $intel['ErrorParentID'] = false;
-            }
-        } else {
-            $intel['ID'] = 0;
-            $intel['ParentID'] = 0;
-            $intel['IsInDatabase'] = false;
-            $intel['CMSEditLink'] = '/admin/assets/';
-            $intel['DBTitle'] = '-- no title set in database';
-            $intel['ErrorInFilenameCase'] = true;
-            if ($fileExists) {
-                $time = filemtime($absoluteLocation);
-            }
-        }
-        if ($folder) {
-            if (! $file) {
-                $intel['ParentID'] = $folder->ID;
-            }
-            $intel['HasFolder'] = true;
-            $intel['HumanHasFolder'] = 'in sub-folder';
-            $intel['CMSEditLinkFolder'] = '/admin/assets/show/' . $folder->ID;
-        } else {
-            $intel['HasFolder'] = false;
-            $intel['HumanHasFolder'] = 'in root folder';
-            $intel['CMSEditLinkFolder'] = '/assets/admin/';
-        }
-
-        $intel['LastEditedTS'] = $time;
-        $intel['LastEdited'] = DBDate::create_field('Date', $time)->Ago();
-        $intel['HumanIsInDatabase'] = $intel['IsInDatabase'] ? 'In Database' : 'Not in Database';
-        $intel['HumanErrorInFilenameCase'] = $intel['ErrorInFilenameCase'] ? 'Error in Case' : 'Perfect Case';
-        $intel['HumanErrorParentID'] = $intel['ErrorParentID'] ? 'Error in folder ID' : 'Perfect Folder ID';
-        $intel['FirstLetterDBTitle'] = strtoupper(substr($intel['DBTitle'], 0, 1));
-
-        return $intel;
+        return $obj->toArray();
     }
 
-    protected function isRealFile(string $path): bool
-    {
-        $fileName = basename($path);
-        $listOfItemsToSearchFor = $this->Config()->get('not_real_file_substrings');
-        if (substr($fileName, 0, 1) === '.') {
-            return false;
-        }
-        foreach ($listOfItemsToSearchFor as $test) {
-            if (strpos($fileName, $test)) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    /**
-     * @param  string $path - does not have to be full path.
-     *
-     * @return bool
-     */
-    protected function isPathWithAllowedExtension(string $path): bool
-    {
-        $count = count($this->allowedExtensions);
-        if ($count === 0) {
-            return true;
-        }
-        $extension = strtolower($this->getExtension($path));
-        if (in_array($extension, $this->allowedExtensions, true)) {
-            return true;
-        }
-        return false;
-    }
-
-    /**
-     * @return array
-     */
-    protected function getArrayOfFilesOnDisk(): array
-    {
-        $arrayRaw = new RecursiveIteratorIterator(
-            new RecursiveDirectoryIterator($this->assetsBaseFolder),
-            RecursiveIteratorIterator::SELF_FIRST
-        );
-        $array = [];
-        foreach ($arrayRaw as $src) {
-            if (is_dir($src)) {
-                continue;
-            }
-            if (strpos($src, '.protected')) {
-                continue;
-            }
-            if ($this->isRealFile($src) === false) {
-                continue;
-            }
-            $path = $src->getPathName();
-            if ($this->isPathWithAllowedExtension($path)) {
-                $array[$path] = true;
-            }
-        }
-
-        return $array;
-    }
-
-    /**
-     * @return array
-     */
-    protected function getArrayOfFilesInDatabase(): array
-    {
-        return File::get()
-            ->exclude(['ClassName' => Folder::class])
-            ->column('Filename');
-    }
 
     ##############################################
     # CACHE
     ##############################################
-
-    /**
-     * @return CacheInterface
-     */
-    protected static function getCache()
-    {
-        return Injector::inst()->get(CacheInterface::class . '.assetsoverviewCache');
-    }
-
-    protected function getCacheKey(): string
-    {
-        return 'fullarray_' .
-            implode('_', $this->allowedExtensions) . '_' .
-            $this->limit . '_' .
-            $this->pageNumber . '_';
-    }
 
     protected function createFormField(string $name, string $title, $value, ?array $list = [])
     {
@@ -814,9 +501,9 @@ class View extends ContentController implements Flushable
         } elseif ($name === 'extensions') {
             $type = CheckboxSetField::class;
         } elseif ($listCount < 13) {
-            $type = DropdownField::class;
-        } else {
             $type = OptionsetField::class;
+        } else {
+            $type = DropdownField::class;
         }
 
         $field = $type::create($name, $title)
