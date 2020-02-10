@@ -235,7 +235,12 @@ class View extends ContentController
         }
 
         if ($extensions = $this->request->getVar('extensions')) {
+            if(!is_array($extensions)) {
+                $extensions = [$extensions];
+            }
             $this->allowedExtensions = $extensions;
+            //make sure all are valid!
+            $this->allowedExtensions = array_filter($this->allowedExtensions);
         }
         if ($limit = $this->request->getVar('limit')) {
             $this->limit = $limit;
@@ -538,7 +543,8 @@ class View extends ContentController
 
     protected function getPageNumberList(): array
     {
-        return range(1, $this->getNumberOfPages());
+        $list = range(1, $this->getNumberOfPages());
+        return array_combine($list, $list);
     }
 
     protected function getNumberOfPages(): Int
