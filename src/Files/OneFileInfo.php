@@ -67,28 +67,6 @@ class OneFileInfo implements Flushable, FileInfo
     }
 
 
-
-    protected function isRegularImage(string $extension): bool
-    {
-        return in_array(
-            strtolower($extension),
-            ['jpg', 'gif', 'png'],
-            true
-        );
-    }
-
-    protected function isImage(string $filename): bool
-    {
-        try {
-            $outcome = exif_imagetype($filename) ? true : false;
-        } catch (Exception $e) {
-            $outcome = false;
-        }
-
-        return $outcome;
-    }
-
-
     protected function toArray(): array
     {
         $cache = self::getCache();
@@ -231,6 +209,28 @@ class OneFileInfo implements Flushable, FileInfo
 
         return $intel;
     }
+
+
+    protected function isRegularImage(string $extension): bool
+    {
+        return in_array(
+            strtolower($extension),
+            ['jpg', 'gif', 'png'],
+            true
+        );
+    }
+
+    protected function isImage(string $filename): bool
+    {
+        try {
+            $outcome = exif_imagetype($filename) ? true : false;
+        } catch (Exception $e) {
+            $outcome = false;
+        }
+
+        return $outcome;
+    }
+
 
 
     ##############################################

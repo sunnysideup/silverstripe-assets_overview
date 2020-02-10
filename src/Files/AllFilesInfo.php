@@ -78,7 +78,7 @@ class AllFilesInfo implements Flushable, FileInfo
     }
 
 
-    public function toArray()
+    public function toArray() : array
     {
         $cache = self::getCache();
         $cachekey = $this->getCacheKey();
