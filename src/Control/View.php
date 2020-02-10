@@ -2,17 +2,9 @@
 
 namespace Sunnysideup\AssetsOverview\Control;
 
-use \Exception;
-
-use \RecursiveDirectoryIterator;
-use \RecursiveIteratorIterator;
-use Psr\SimpleCache\CacheInterface;
-use SilverStripe\Assets\File;
-use SilverStripe\Assets\Folder;
 use SilverStripe\CMS\Controllers\ContentController;
 use SilverStripe\Control\Director;
-use SilverStripe\Core\Flushable;
-use SilverStripe\Core\Injector\Injector;
+use SilverStripe\Forms\CheckboxField;
 use SilverStripe\Forms\CheckboxSetField;
 use SilverStripe\Forms\DropdownField;
 use SilverStripe\Forms\FieldList;
@@ -21,8 +13,6 @@ use SilverStripe\Forms\FormAction;
 use SilverStripe\Forms\HiddenField;
 use SilverStripe\Forms\OptionsetField;
 use SilverStripe\ORM\ArrayList;
-use SilverStripe\ORM\DataObject;
-use SilverStripe\ORM\FieldType\DBDate;
 use SilverStripe\Security\Permission;
 use SilverStripe\Security\Security;
 use SilverStripe\View\ArrayData;
@@ -31,7 +21,6 @@ use Sunnysideup\AssetsOverview\Api\CompareImages;
 use Sunnysideup\AssetsOverview\Files\AllFilesInfo;
 use Sunnysideup\AssetsOverview\Files\OneFileInfo;
 use Sunnysideup\AssetsOverview\Traits\FilesystemRelatedTraits;
-use SilverStripe\Forms\CheckboxField;
 
 class View extends ContentController
 {
@@ -132,7 +121,6 @@ class View extends ContentController
         ],
     ];
 
-
     /**
      * @var ArrayList|null
      */
@@ -186,13 +174,17 @@ class View extends ContentController
     /**
      * @var array
      */
+    protected $availableExtensions = [];
+
+    /**
+     * @var array
+     */
     protected $allowedExtensions = [];
 
     /**
      * @var bool
      */
     protected $isThumbList = true;
-
 
     public function Link($action = null)
     {
@@ -328,7 +320,7 @@ class View extends ContentController
                 CheckboxField::create(
                     'flush',
                     'flush all data'
-                )
+                ),
             ]
         );
         $actionList = FieldList::create(
@@ -433,7 +425,6 @@ class View extends ContentController
         }
 
         return $this->imagesSorted;
-
     }
 
     protected function addToImagesSorted(string $header, ArrayList $arrayList)
@@ -457,41 +448,54 @@ class View extends ContentController
         if ($this->imagesRaw === null) {
             //get data
             $class = self::ALL_FILES_INFO_CLASS;
-            $obj = new $class($path);
+            $obj = new $class($this->getAssetsBaseFolder());
             $rawArray = $obj->toArray();
             //prepare loop
             $this->totalFileCount = count($rawArray);
             $this->imagesRaw = ArrayList::create();
+            $count = 0;
             foreach ($rawArray as $absoluteLocation => $fileExists) {
-                if ($count >= $this->startLimit && $count < $this->endLimit) {
-                    $intel = $this->getDataAboutOneFile($absoluteLocation, $fileExists);
-                    $this->availableExtensions[$intel['ExtensionAsLower']] = $intel['ExtensionAsLower'];
-                    $this->totalFileSize += $intel['FileSize'];
-                    $this->imagesRaw->push(
-                        ArrayData::create($intel)
-                    );
+                if ($this->isPathWithAllowedExtension($absoluteLocation)) {
+                    if ($count >= $this->startLimit && $count < $this->endLimit) {
+                        $intel = $this->getDataAboutOneFile($absoluteLocation, $fileExists);
+                        $this->availableExtensions[$intel['ExtensionAsLower']] = $intel['ExtensionAsLower'];
+                        $this->totalFileSize += $intel['FileSize'];
+                        $this->imagesRaw->push(
+                            ArrayData::create($intel)
+                        );
+                    }
+                    $count++;
                 }
-                $count++;
             }
-
-
         }
         return $this->imagesRaw;
     }
 
-
     protected function getDataAboutOneFile(string $absoluteLocation, ?bool $fileExists): array
     {
         $class = self::ONE_FILE_INFO_CLASS;
-        $ob = new $class($absoluteLocation, $fileExists);
+        $obj = new $class($absoluteLocation, $fileExists);
 
         return $obj->toArray();
     }
 
-
-    ##############################################
-    # CACHE
-    ##############################################
+    /**
+     * @param  string $path - does not have to be full path.
+     *
+     * @return bool
+     */
+    protected function isPathWithAllowedExtension(string $path): bool
+    {
+        $count = count($this->allowedExtensions);
+        if ($count === 0) {
+            return true;
+        }
+        $extension = strtolower($this->getExtension($path));
+        if (in_array($extension, $this->allowedExtensions, true)) {
+            return true;
+        }
+        return false;
+    }
 
     protected function createFormField(string $name, string $title, $value, ?array $list = [])
     {

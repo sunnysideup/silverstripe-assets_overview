@@ -1,67 +1,36 @@
 <?php
 
-
 namespace Sunnysideup\AssetsOverview\Files;
-
-use \Exception;
 
 use \RecursiveDirectoryIterator;
 use \RecursiveIteratorIterator;
 use Psr\SimpleCache\CacheInterface;
 use SilverStripe\Assets\File;
 use SilverStripe\Assets\Folder;
-use SilverStripe\CMS\Controllers\ContentController;
-use SilverStripe\Control\Director;
+use SilverStripe\Core\Config\Config;
+use SilverStripe\Core\Config\Configurable;
 use SilverStripe\Core\Flushable;
+use SilverStripe\Core\Injector\Injectable;
+
 use SilverStripe\Core\Injector\Injector;
-use SilverStripe\Forms\CheckboxSetField;
-use SilverStripe\Forms\DropdownField;
-use SilverStripe\Forms\FieldList;
-use SilverStripe\Forms\Form;
-use SilverStripe\Forms\FormAction;
-use SilverStripe\Forms\HiddenField;
-use SilverStripe\Forms\OptionsetField;
-use SilverStripe\ORM\ArrayList;
-use SilverStripe\ORM\DataObject;
-use SilverStripe\ORM\FieldType\DBDate;
-use SilverStripe\Security\Permission;
-use SilverStripe\Security\Security;
-use SilverStripe\View\ArrayData;
-use SilverStripe\View\Requirements;
-use Sunnysideup\AssetsOverview\Api\CompareImages;
 use Sunnysideup\AssetsOverview\Interfaces\FileInfo;
 use Sunnysideup\AssetsOverview\Traits\FilesystemRelatedTraits;
 
 class AllFilesInfo implements Flushable, FileInfo
 {
     use FilesystemRelatedTraits;
-
-
-    public static function flush()
-    {
-        $cache = self::getCache();
-        $cache->clear();
-    }
+    use Injectable;
+    use Configurable;
 
     /**
      * @var string
      */
-    protected $path = [];
-
-    /**
-     * @var array
-     */
-    protected $availableExtensions = [];
+    protected $path = '';
 
     /**
      * @var array
      */
     protected $listOfFiles = [];
-
-    /**
-     * @var array
-     */
-    private static $allowed_extensions = [];
 
     private static $not_real_file_substrings = [
         '__FitMax',
@@ -71,31 +40,32 @@ class AllFilesInfo implements Flushable, FileInfo
         '__Scale',
     ];
 
-    public function __construct($path, ?array $allowedExtensions = [])
+    public function __construct($path)
     {
-        $this->path = '';
-        $this->allowedExtensions = $allowedExtensions ?? $this->Config()->get('allowed_extensions');
+        $this->path = $path;
     }
 
+    public static function flush()
+    {
+        $cache = self::getCache();
+        $cache->clear();
+    }
 
-    public function toArray() : array
+    public function toArray(): array
     {
         $cache = self::getCache();
         $cachekey = $this->getCacheKey();
         if (! $cache->has($cachekey)) {
             //disk
             $diskArray = $this->getArrayOfFilesOnDisk();
-            foreach($diskArray as $path) {
-                if ($this->isPathWithAllowedExtension($path)) {
-                    $this->listOfFiles[$absoluteLocation] = true;
-                }
+            foreach ($diskArray as $path) {
+                $this->listOfFiles[$path] = true;
             }
             //database
             $databaseArray = $this->getArrayOfFilesInDatabase();
-            foreach($databaseArray as $path)
-            if (! isset($this->listOfFiles[$path])) {
-                if ($this->isPathWithAllowedExtension($path)) {
-                    $this->listOfFiles[$absoluteLocation] = false;
+            foreach ($databaseArray as $path) {
+                if (! isset($this->listOfFiles[$path])) {
+                    $this->listOfFiles[$path] = false;
                 }
             }
             $fullArrayString = serialize($this->listOfFiles);
@@ -111,7 +81,7 @@ class AllFilesInfo implements Flushable, FileInfo
     protected function isRealFile(string $path): bool
     {
         $fileName = basename($path);
-        $listOfItemsToSearchFor = $this->Config()->get('not_real_file_substrings');
+        $listOfItemsToSearchFor = Config::inst()->get(self::class, 'not_real_file_substrings');
         if (substr($fileName, 0, 1) === '.') {
             return false;
         }
@@ -122,26 +92,6 @@ class AllFilesInfo implements Flushable, FileInfo
         }
 
         return true;
-    }
-
-
-
-    /**
-     * @param  string $path - does not have to be full path.
-     *
-     * @return bool
-     */
-    protected function isPathWithAllowedExtension(string $path): bool
-    {
-        $count = count($this->allowedExtensions);
-        if ($count === 0) {
-            return true;
-        }
-        $extension = strtolower($this->getExtension($path));
-        if (in_array($extension, $this->allowedExtensions, true)) {
-            return true;
-        }
-        return false;
     }
 
     /**
@@ -165,11 +115,8 @@ class AllFilesInfo implements Flushable, FileInfo
                 continue;
             }
             $path = $src->getPathName();
-            if ($this->isPathWithAllowedExtension($path)) {
-                $finalArray[$path] = $path;
-            }
+            $finalArray[$path] = $path;
         }
-
 
         return $finalArray;
     }
@@ -186,7 +133,7 @@ class AllFilesInfo implements Flushable, FileInfo
         foreach ($rawArray as $relativeSrc) {
             $absoluteLocation = $this->path . DIRECTORY_SEPARATOR . $relativeSrc;
             $finalArray[$absoluteLocation] = $absoluteLocation;
-        };
+        }
 
         return $finalArray;
     }
@@ -204,7 +151,6 @@ class AllFilesInfo implements Flushable, FileInfo
     }
 
     /**
-     *
      * @return string
      */
     protected function getCacheKey(): string

@@ -1,46 +1,32 @@
 <?php
 
-
 namespace Sunnysideup\AssetsOverview\Files;
 
 use \Exception;
 
-use \RecursiveDirectoryIterator;
-use \RecursiveIteratorIterator;
 use Psr\SimpleCache\CacheInterface;
 use SilverStripe\Assets\File;
 use SilverStripe\Assets\Folder;
-use SilverStripe\CMS\Controllers\ContentController;
-use SilverStripe\Control\Director;
+use SilverStripe\Core\Config\Configurable;
 use SilverStripe\Core\Flushable;
+use SilverStripe\Core\Injector\Injectable;
 use SilverStripe\Core\Injector\Injector;
-use SilverStripe\Forms\CheckboxSetField;
-use SilverStripe\Forms\DropdownField;
-use SilverStripe\Forms\FieldList;
-use SilverStripe\Forms\Form;
-use SilverStripe\Forms\FormAction;
-use SilverStripe\Forms\HiddenField;
-use SilverStripe\Forms\OptionsetField;
-use SilverStripe\ORM\ArrayList;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\FieldType\DBDate;
-use SilverStripe\Security\Permission;
-use SilverStripe\Security\Security;
-use SilverStripe\View\ArrayData;
-use SilverStripe\View\Requirements;
-use Sunnysideup\AssetsOverview\Api\CompareImages;
+
 use Sunnysideup\AssetsOverview\Interfaces\FileInfo;
 use Sunnysideup\AssetsOverview\Traits\FilesystemRelatedTraits;
 
 class OneFileInfo implements Flushable, FileInfo
 {
     use FilesystemRelatedTraits;
+    use Injectable;
+    use Configurable;
 
     /**
      * @var string
      */
     protected $hash = '';
-
 
     /**
      * @var string
@@ -50,15 +36,19 @@ class OneFileInfo implements Flushable, FileInfo
     /**
      * @var bool
      */
-    protected $fileExists = '';
+    protected $fileExists = false;
 
+    /**
+     * @param string $absoluteLocation [description]
+     * @param ?bool  $fileExists       [description]
+     */
     public function __construct(string $absoluteLocation, ?bool $fileExists)
     {
         $this->path = $absoluteLocation;
-        $this->hash = md5_file($this->path)
-        $this->fileExists = $fileExists === null ? file_exists($this->path) : $fileExists;
+        $this->hash = md5_file($this->path);
+        $fileExists = $fileExists === null ? file_exists($this->path) : $fileExists;
+        $this->fileExists = $fileExists;
     }
-
 
     public static function flush()
     {
@@ -66,13 +56,11 @@ class OneFileInfo implements Flushable, FileInfo
         $cache->clear();
     }
 
-
-    protected function toArray(): array
+    public function toArray(): array
     {
         $cache = self::getCache();
         $cachekey = $this->getCacheKey();
         if (! $cache->has($cachekey)) {
-
             $intel = [];
             $pathParts = [];
             if ($this->fileExists) {
@@ -210,7 +198,6 @@ class OneFileInfo implements Flushable, FileInfo
         return $intel;
     }
 
-
     protected function isRegularImage(string $extension): bool
     {
         return in_array(
@@ -231,8 +218,6 @@ class OneFileInfo implements Flushable, FileInfo
         return $outcome;
     }
 
-
-
     ##############################################
     # CACHE
     ##############################################
@@ -246,12 +231,10 @@ class OneFileInfo implements Flushable, FileInfo
     }
 
     /**
-     *
      * @return string
      */
     protected function getCacheKey(): string
     {
         return $this->hash;
     }
-
 }

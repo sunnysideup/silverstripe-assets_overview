@@ -2,35 +2,10 @@
 
 namespace Sunnysideup\AssetsOverview\Traits;
 
-use \Exception;
-use \RecursiveDirectoryIterator;
-use \RecursiveIteratorIterator;
-use Psr\SimpleCache\CacheInterface;
-use SilverStripe\Assets\File;
-use SilverStripe\Assets\Folder;
-use SilverStripe\CMS\Controllers\ContentController;
 use SilverStripe\Control\Director;
-use SilverStripe\Core\Flushable;
-use SilverStripe\Core\Injector\Injector;
-use SilverStripe\Forms\CheckboxSetField;
-use SilverStripe\Forms\DropdownField;
-use SilverStripe\Forms\FieldList;
-use SilverStripe\Forms\Form;
-use SilverStripe\Forms\FormAction;
-use SilverStripe\Forms\HiddenField;
-use SilverStripe\Forms\OptionsetField;
-use SilverStripe\ORM\ArrayList;
-use SilverStripe\ORM\DataObject;
-use SilverStripe\ORM\FieldType\DBDate;
-use SilverStripe\Security\Permission;
-use SilverStripe\Security\Security;
-use SilverStripe\View\ArrayData;
-use SilverStripe\View\Requirements;
-use Sunnysideup\AssetsOverview\Api\CompareImages;
 
 trait FilesystemRelatedTraits
 {
-
     /**
      * @var string
      */
@@ -42,7 +17,6 @@ trait FilesystemRelatedTraits
     protected $assetsBaseFolder = '';
 
     /**
-     *
      * @param  int     $bytes    [description]
      * @param  integer $decimals [description]
      * @return string            [description]
@@ -54,7 +28,6 @@ trait FilesystemRelatedTraits
 
         return sprintf("%.{$decimals}f", $bytes / pow(1024, $factor)) . @$size[$factor];
     }
-
 
     protected function getExtension(string $path): string
     {
@@ -68,7 +41,7 @@ trait FilesystemRelatedTraits
      */
     protected function getBaseFolder(): string
     {
-        if(! $this->baseFolder) {
+        if (! $this->baseFolder) {
             $this->baseFolder = rtrim(Director::baseFolder(), DIRECTORY_SEPARATOR);
         }
         return $this->baseFolder;
@@ -77,12 +50,11 @@ trait FilesystemRelatedTraits
     /**
      * @return string
      */
-    protected function getAssetBaseFolder(): string
+    protected function getAssetsBaseFolder(): string
     {
-        if(! $this->assetsBaseFolder) {
+        if (! $this->assetsBaseFolder) {
             $this->assetsBaseFolder = rtrim(ASSETS_PATH, DIRECTORY_SEPARATOR);
         }
         return $this->assetsBaseFolder;
     }
-
 }
