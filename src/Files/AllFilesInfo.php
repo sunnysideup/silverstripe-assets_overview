@@ -164,13 +164,17 @@ class AllFilesInfo implements Flushable, FileInfo
             //disk
             $diskArray = $this->getArrayOfFilesOnDisk();
             foreach ($diskArray as $path) {
-                self::$listOfFiles[$path] = true;
+                if($path) {
+                    self::$listOfFiles[$path] = true;
+                }
             }
             //database
             $databaseArray = $this->getArrayOfFilesInDatabase();
             foreach ($databaseArray as $path) {
-                if (! isset(self::$listOfFiles[$path])) {
-                    self::$listOfFiles[$path] = false;
+                if($path) {
+                    if (! isset(self::$listOfFiles[$path])) {
+                        self::$listOfFiles[$path] = false;
+                    }
                 }
             }
             $cache->set($cachekey, serialize(self::$listOfFiles));
