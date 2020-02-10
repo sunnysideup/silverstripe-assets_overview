@@ -11,6 +11,7 @@ use SilverStripe\Core\Config\Config;
 use SilverStripe\Core\Config\Configurable;
 use SilverStripe\Core\Flushable;
 use SilverStripe\Core\Injector\Injectable;
+use SilverStripe\ORM\DB;
 
 use SilverStripe\Core\Injector\Injector;
 use Sunnysideup\AssetsOverview\Interfaces\FileInfo;
@@ -30,6 +31,17 @@ class AllFilesInfo implements Flushable, FileInfo
     /**
      * @var array
      */
+    protected static $idListStaging = [];
+
+    /**
+     *
+     * @var array
+     */
+    protected static $idListLive = [];
+
+    /**
+     * @var array
+     */
     protected $listOfFiles = [];
 
     private static $not_real_file_substrings = [
@@ -41,6 +53,26 @@ class AllFilesInfo implements Flushable, FileInfo
         '__Scale',
         '__ResizedImage',
     ];
+
+    /**
+     *
+     * @param  int $id [description]
+     * @return bool
+     */
+    public static function exists_on_staging($id) : bool
+    {
+        return isset(self::$idListStaging[$id]);
+    }
+
+    /**
+     *
+     * @param  int $id [description]
+     * @return bool
+     */
+    public static function exists_on_live($id) : bool
+    {
+        return isset(self::$idListLive[$id]);
+    }
 
     public function __construct($path)
     {
@@ -129,14 +161,19 @@ class AllFilesInfo implements Flushable, FileInfo
     protected function getArrayOfFilesInDatabase(): array
     {
         $finalArray = [];
-        $rawArray = File::get()
-            ->exclude(['ClassName' => Folder::class])
-            ->column('FileFilename');
-        foreach ($rawArray as $relativeSrc) {
-            $absoluteLocation = $this->path . DIRECTORY_SEPARATOR . $relativeSrc;
-            $finalArray[$absoluteLocation] = $absoluteLocation;
+        foreach(['', '_Live'] as $stage) {
+            $sql = 'SELECT "ID", "FileFilename" FROM "File" "'.$stage.'" WHERE ClassName <> \''.Folder::class.'\';';
+            $rows = DB::query($sql);
+            foreach($rows as $row) {
+                $absoluteLocation = $this->path . DIRECTORY_SEPARATOR . $row['FileFilename'];
+                if ($stage === '') {
+                    self::$idListStaging[$row['ID']] = true;
+                } else {
+                    self::$idListLive[$row['ID']] = true;
+                }
+                $finalArray[$absoluteLocation] = $absoluteLocation;
+            }
         }
-
         return $finalArray;
     }
 

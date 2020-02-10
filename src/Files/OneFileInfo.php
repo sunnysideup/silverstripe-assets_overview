@@ -45,7 +45,11 @@ class OneFileInfo implements Flushable, FileInfo
     public function __construct(string $absoluteLocation, ?bool $fileExists)
     {
         $this->path = $absoluteLocation;
-        $this->hash = md5_file($this->path);
+        if($fileExists) {
+            $this->hash = md5_file($this->path);
+        } else {
+            $this->hash = 'no-file'.md5($absoluteLocation);
+        }
         $fileExists = $fileExists === null ? file_exists($this->path) : $fileExists;
         $this->fileExists = $fileExists;
     }
@@ -71,6 +75,9 @@ class OneFileInfo implements Flushable, FileInfo
             $pathParts['dirname'] = $pathParts['dirname'] ?? '--no-parent-dir';
             $relativeDirFromBaseFolder = str_replace($this->getBaseFolder(), '', $pathParts['dirname']);
             $relativeDirFromAssetsFolder = str_replace($this->getAssetsBaseFolder(), '', $pathParts['dirname']);
+            $intel['FolderName'] = trim($relativeDirFromBaseFolder, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
+            $intel['FolderNameShort'] = trim($relativeDirFromAssetsFolder, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
+            $intel['GrandParentFolder'] = dirname($intel['FolderNameShort']);
 
             $intel['Extension'] = $pathParts['extension'];
             $intel['ExtensionAsLower'] = (string) strtolower($intel['Extension']);
@@ -88,9 +95,6 @@ class OneFileInfo implements Flushable, FileInfo
             $intel['FirstLetter'] = strtoupper(substr($intel['FileName'], 0, 1));
             $intel['FileNameInDB'] = ltrim($intel['PathFromAssets'], DIRECTORY_SEPARATOR);
 
-            $intel['FolderName'] = trim($relativeDirFromBaseFolder, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
-            $intel['FolderNameShort'] = trim($relativeDirFromAssetsFolder, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
-            $intel['GrandParentFolder'] = dirname($intel['FolderNameShort']);
 
             $intel['HumanImageDimensions'] = 'n/a';
             $intel['Ratio'] = '0';
@@ -150,6 +154,8 @@ class OneFileInfo implements Flushable, FileInfo
                 $intel['ID'] = $file->ID;
                 $intel['ParentID'] = $file->ParentID;
                 $intel['IsInDatabase'] = true;
+                $intel['IsInDatabaseStaging'] = AllFilesInfo::exists_on_staging($intel['ID']);
+                $intel['IsInDatabaseLive'] = AllFilesInfo::exists_on_live($intel['ID']);
                 $intel['CMSEditLink'] = '/admin/assets/EditForm/field/File/item/' . $file->ID . '/edit';
                 $intel['DBTitle'] = $file->Title;
                 $intel['ErrorInFilenameCase'] = $intel['FileNameInDB'] !== $file->Filename;
@@ -163,6 +169,8 @@ class OneFileInfo implements Flushable, FileInfo
                 $intel['ID'] = 0;
                 $intel['ParentID'] = 0;
                 $intel['IsInDatabase'] = false;
+                $intel['IsInDatabaseStaging'] = false;
+                $intel['IsInDatabaseLive'] = false;
                 $intel['CMSEditLink'] = '/admin/assets/';
                 $intel['DBTitle'] = '-- no title set in database';
                 $intel['ErrorInFilenameCase'] = true;
