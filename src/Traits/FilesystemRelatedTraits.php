@@ -12,6 +12,11 @@ trait FilesystemRelatedTraits
     protected $baseFolder = '';
 
     /**
+    * @var string
+    */
+    protected $publicBaseFolder = '';
+
+    /**
      * @var string
      */
     protected $assetsBaseFolder = '';
@@ -47,6 +52,16 @@ trait FilesystemRelatedTraits
         return $this->baseFolder;
     }
 
+    /**
+     * @return string
+     */
+    protected function getPublicBaseFolder(): string
+    {
+        if (! $this->publicBaseFolder) {
+            $this->publicBaseFolder = rtrim(Director::publicFolder(), DIRECTORY_SEPARATOR);
+        }
+        return $this->publicBaseFolder;
+    }
     /**
      * @return string
      */

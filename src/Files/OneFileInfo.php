@@ -82,8 +82,9 @@ class OneFileInfo implements Flushable, FileInfo
             $intel['FileSize'] = 0;
 
             $intel['Path'] = $this->path;
-            $intel['PathFromAssets'] = str_replace($this->getAssetsBaseFolder(), '', $this->path);
             $intel['PathFromRoot'] = str_replace($this->getBaseFolder(), '', $this->path);
+            $intel['PathFromPublicRoot'] = str_replace($this->getPublicBaseFolder(), '', $this->path);
+            $intel['PathFromAssets'] = str_replace($this->getAssetsBaseFolder(), '', $this->path);
             $intel['FirstLetter'] = strtoupper(substr($intel['FileName'], 0, 1));
             $intel['FileNameInDB'] = ltrim($intel['PathFromAssets'], DIRECTORY_SEPARATOR);
 

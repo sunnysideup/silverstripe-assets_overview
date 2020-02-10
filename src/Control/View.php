@@ -556,8 +556,14 @@ class View extends ContentController
     {
         $step = 250;
         $array = [];
-        for ($i = $step; ($i - $step) < $this->limit; $i += $step) {
+        for ($i = $step; ($i - $step) < $this->totalFileCount; $i += $step) {
+            if($i > $this->limit && ! isset($array[$this->limit])) {
+                $array[$this->limit] = $this->limit;
+            }
             $array[$i] = $i;
+        }
+        if($i > $this->limit && ! isset($array[$this->limit])) {
+            $array[$this->limit] = $this->limit;
         }
         return $array;
     }

@@ -208,20 +208,13 @@
                 <% else %>
                     <hr />
                     <hr />
-                    <hr />
-                    <hr />
-                    <hr />
-                    <hr />
-                    <hr />
-                    <hr />
-                    <hr />
-                    <hr />
-                    <hr />
                     <% loop ImagesSorted %>
                         <% loop Items %>
-                            $HTML
+                            $HTML.RAW
                         <% end_loop %>
                     <% end_loop %>
+                    <hr />
+                    <hr />
                 <% end_if %>
             <% else %>
                 <p class="message warning">
