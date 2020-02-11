@@ -580,6 +580,7 @@ class View extends ContentController
         if ($listCount) {
             $field->setSource($list);
         }
+        $field->setAttribute('onchange', 'this.form.submit()');
 
         return $field;
     }
