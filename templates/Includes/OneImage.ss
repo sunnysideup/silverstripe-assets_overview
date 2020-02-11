@@ -1,19 +1,25 @@
 <div class="one-image">
-    <% if $IsImage %>
     <a href="$PathFromPublicRoot" target="_blank">
+        <% if $IsImage %>
         <img src="$PathFromPublicRoot" height="250" alt="$DBTitle" />
-    </a>
+    <% else %>
+        <span>[$DBTitle]</span>
+        <br />
+        <span>[$Extension]</span>
     <% end_if %>
+
+    </a>
     <a href="$CMSEditLink" class="edit-icon <% if $IsInDatabase %><% else %>error<% end_if %>" target="_blank">✎</a>
     <div class="one-image-info">
-    <u><% if $IsInDatabase %>$DBTitle<% else %>not in database!<% end_if %></u>
         <% if $IsInFileSystem %>
-        <a href="$CMSEditLinkFolder" target="_blank">✎ $FolderNameShort</a> <strong>$FileName</strong> . $Extension<br />
+        <p><strong>Folder:</strong> <a href="$CMSEditLinkFolder" target="_blank">✎ $FolderNameFromAssetsFolder</a></p>
+        <p><strong>File: </strong>$FileName . $Extension</p>
         <% else %>
-            <a>Not in file-system</a>
+            <p><a>Not in file-system</a></p>
         <% end_if %>
-        $LastEdited<br />
-        $HumanImageDimensions<br />
-        $HumanFileSize
+        <p><strong>Changed:</strong> $LastEdited</p>
+        <p><strong>Dimensions:</strong> $HumanImageDimensions</p>
+        <p><strong>Size:</strong> $HumanFileSize</p>
+        <p><strong>DB:</strong> $HumanIsInDatabaseSummary</p>
     </div>
 </div>

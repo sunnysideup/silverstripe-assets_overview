@@ -44,6 +44,17 @@ class AllFilesInfo implements Flushable, FileInfo
      */
     protected static $listOfFiles = [];
 
+    /**
+     * @var array
+     */
+    protected static $databaseLookupListStaging = [];
+
+
+    /**
+     * @var array
+     */
+    protected static $databaseLookupListLive = [];
+
     private static $not_real_file_substrings = [
         '_resampled',
         '__Fit',
@@ -74,35 +85,53 @@ class AllFilesInfo implements Flushable, FileInfo
         return isset(self::$dataLive[$id]);
     }
 
+
     /**
      * get data from staging database row
-     * @param  string $fileName from the root of assets
+     * @param  string $path from the root of assets
+     * @param  int id
      * @return array
      */
-    public static function get_staging_data(string $fileName) : array
+    public static function get_any_data(string $pathFromAssets, ?int $id = 0) : array
     {
-        $id = self::find_id_from_file_name(self::$dataLive, $filename);
-        if($id) {
-            return self::$dataStaging($id);
+        $data = self::get_staging_data($pathFromAssets, $id);
+        if(empty($data)) {
+            $data = self::get_live_data($pathFromAssets, $id);
         }
+
+        return $data;
+    }
+
+    /**
+     * get data from staging database row
+     * @param  string $pathFromAssets from the root of assets
+     * @param  int id
+     * @return array
+     */
+    public static function get_staging_data(string $pathFromAssets, ?int $id = 0) : array
+    {
+        if(! $id) {
+            $id = self::$databaseLookupListStaging[$pathFromAssets] ?? 0;
+        }
+        return self::$dataStaging[$id] ?? [];
     }
 
     /**
      * get data from live database row
-     * @param  string $fileName from the root of assets
+     * @param  string $pathFromAssets - full lookup list
      * @return array
      */
-    public static function get_live_data(string $fileName) : array
+    public static function get_live_data(string $pathFromAssets, ?int $id = 0) : array
     {
-        $id = self::find_id_from_file_name(self::$dataLive, $filename);
-        if($id) {
-            return self::$dataStaging($id);
+        if(! $id) {
+            $id = self::$databaseLookupListLive[$pathFromAssets] ?? 0;
         }
+        return self::$dataLive[$id] ?? [];
     }
 
     /**
-    * find a value in a field in staging
-    * returns ID of row
+     * find a value in a field in staging
+     * returns ID of row
      * @param  string    $fieldName
      * @param  mixed     $value
      * @return int
@@ -112,6 +141,13 @@ class AllFilesInfo implements Flushable, FileInfo
         return self::find_in_data(self::$dataStaging, $fieldName, $value);
     }
 
+    /**
+     * find a value in a field in live
+     * returns ID of row
+     * @param  string    $fieldName
+     * @param  mixed     $value
+     * @return int
+     */
     public static function find_in_data_live(string $fieldName, $value) : int
     {
         return self::find_in_data(self::$dataLive, $fieldName, $value);
@@ -137,9 +173,11 @@ class AllFilesInfo implements Flushable, FileInfo
      */
     protected static function find_in_data(array $data, string $fieldName, $value) : int
     {
-        foreach($data as $row) {
-            if($row[$fieldName] === $value) {
-                return (int) $id;
+        foreach($data as $id => $row) {
+            if(isset($row[$fieldName])) {
+                if($row[$fieldName] === $value) {
+                    return (int) $id;
+                }
             }
         }
         return 0;
@@ -180,10 +218,14 @@ class AllFilesInfo implements Flushable, FileInfo
             $cache->set($cachekey, serialize(self::$listOfFiles));
             $cache->set($cachekey . 'dataStaging', serialize(self::$dataStaging));
             $cache->set($cachekey . 'dataLive', serialize(self::$dataLive));
+            $cache->set($cachekey . 'databaseLookupStaging', serialize(self::$databaseLookupListStaging));
+            $cache->set($cachekey . 'databaseLookupLive', serialize(self::$databaseLookupListLive));
         } else {
             self::$listOfFiles = unserialize($cache->get($cachekey));
             self::$dataStaging = unserialize($cache->get($cachekey . 'dataStaging'));
             self::$dataLive = unserialize($cache->get($cachekey . 'dataLive'));
+            self::$databaseLookupListStaging = unserialize($cache->get($cachekey . 'databaseLookupStaging'));
+            self::$databaseLookupListLive = unserialize($cache->get($cachekey . 'databaseLookupLive'));
         }
 
         return self::$listOfFiles;
@@ -239,20 +281,20 @@ class AllFilesInfo implements Flushable, FileInfo
     {
         $finalArray = [];
         foreach(['', '_Live'] as $stage) {
-            $sql = 'SELECT * FROM "File'.$stage.'" WHERE "ClassName" <> \''.Folder::class.'\';';
+            $sql = 'SELECT * FROM "File'.$stage.'" WHERE "ClassName" <> \''.addslashes(Folder::class).'\';';
             $rows = DB::query($sql);
             foreach($rows as $row) {
-                if(empty($row['FileFilename'])) {
-                    $file = $row['Filename'] ?? '' ;
-                } else {
-                    $file = $row['FileFilename'];
-                }
+                $file = $row['FileFilename'] ?? $row['Filename'] ;
                 if(trim($file)) {
                     $absoluteLocation = $this->path . DIRECTORY_SEPARATOR . $file;
                     if ($stage === '') {
                         self::$dataStaging[$row['ID']] = $row;
-                    } else {
+                        self::$databaseLookupListStaging[$file] = $row['ID'];
+                    } elseif($stage === '_Live') {
                         self::$dataLive[$row['ID']] = $row;
+                        self::$databaseLookupListLive[$file] = $row['ID'];
+                    } else {
+                        user_error('Can not find stage');
                     }
                     $finalArray[$absoluteLocation] = $absoluteLocation;
                 }

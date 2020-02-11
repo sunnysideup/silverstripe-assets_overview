@@ -36,8 +36,8 @@ class View extends ContentController
     private const FILTERS = [
         'byfolder' => [
             'Title' => 'Folder',
-            'Sort' => 'FolderNameShort',
-            'Group' => 'FolderNameShort',
+            'Sort' => 'PathFromAssetsFolder',
+            'Group' => 'PathFromAssetsFolderFolderOnly',
         ],
         'byfilename' => [
             'Title' => 'Filename',
@@ -71,8 +71,8 @@ class View extends ContentController
         ],
         'bydatabasestatus' => [
             'Title' => 'Database Status',
-            'Sort' => 'IsInDatabase',
-            'Group' => 'HumanIsInDatabase',
+            'Sort' => 'IsInDatabaseSummary',
+            'Group' => 'HumanIsInDatabaseSummary',
         ],
         'bydatabaseerror' => [
             'Title' => 'Database Error',
@@ -308,7 +308,7 @@ class View extends ContentController
         $this->isThumbList = false;
         foreach ($this->filesAsSortedArrayList as $group) {
             foreach ($group->Items as $item) {
-                $item->HTML = '<li>' . $item->FileNameInDB . '</li>';
+                $item->HTML = '<li>' . $item->PathFromAssetsFolder . '</li>';
             }
         }
         return [];
@@ -323,7 +323,7 @@ class View extends ContentController
                 ksort($map);
                 $item->HTML = '
                     <li>
-                        <strong>' . $item->FileNameInDB . '</strong>
+                        <strong>' . $item->PathFromAssetsFolder . '</strong>
                         <ul>
                             <li>
                             ' .
@@ -396,23 +396,23 @@ class View extends ContentController
         $b = clone $this->filesAsArrayList;
         $c = clone $this->filesAsArrayList;
         $alreadyDone = [];
-        foreach ($a as $image) {
-            $nameOne = $image->Path;
-            $nameOneFromAssets = $image->PathFromAssets;
+        foreach ($a as $file) {
+            $nameOne = $file->Path;
+            $nameOneFromAssets = $file->PathFromAssetsFolder;
             if (! in_array($nameOne, $alreadyDone, true)) {
                 $easyFind = false;
                 $sortArray = [];
                 foreach ($b as $compareImage) {
                     $nameTwo = $compareImage->Path;
                     if ($nameOne !== $nameTwo) {
-                        $fileNameTest = $image->FileName && $image->FileName === $compareImage->FileName;
-                        $fileSizeTest = $image->FileSize > 0 && $image->FileSize === $compareImage->FileSize;
+                        $fileNameTest = $file->FileName && $file->FileName === $compareImage->FileName;
+                        $fileSizeTest = $file->FileSize > 0 && $file->FileSize === $compareImage->FileSize;
                         if ($fileNameTest || $fileSizeTest) {
                             $easyFind = true;
                             $alreadyDone[$nameOne] = $nameOneFromAssets;
                             $alreadyDone[$compareImage->Path] = $nameOneFromAssets;
-                        } elseif ($easyFind === false && $image->IsImage) {
-                            if ($image->Ratio === $compareImage->Ratio && $image->Ratio > 0) {
+                        } elseif ($easyFind === false && $file->IsImage) {
+                            if ($file->Ratio === $compareImage->Ratio && $file->Ratio > 0) {
                                 $score = $engine->compare($nameOne, $nameTwo);
                                 $sortArray[$nameTwo] = $score;
                                 break;
@@ -433,13 +433,13 @@ class View extends ContentController
                             }
                         }
                     } else {
-                        $alreadyDone[$image->Path] = '[N/A]';
+                        $alreadyDone[$file->Path] = '[N/A]';
                     }
                 }
             }
         }
-        foreach ($this->filesAsArrayList as $image) {
-            $image->MostSimilarTo = $alreadyDone[$image->Path] ?? '[N/A]';
+        foreach ($this->filesAsArrayList as $file) {
+            $file->MostSimilarTo = $alreadyDone[$file->Path] ?? '[N/A]';
         }
         $this->setFilesAsSortedArrayList('MostSimilarTo', 'MostSimilarTo');
     }
@@ -455,8 +455,8 @@ class View extends ContentController
             $innerArray = ArrayList::create();
             $prevHeader = 'nothing here....';
             $newHeader = '';
-            foreach ($this->filesAsArrayList as $image) {
-                $newHeader = $image->{$headerField};
+            foreach ($this->filesAsArrayList as $file) {
+                $newHeader = $file->{$headerField};
                 if ($newHeader !== $prevHeader) {
                     $this->addTofilesAsSortedArrayList(
                         $prevHeader, //correct! important ...
@@ -466,7 +466,7 @@ class View extends ContentController
                     unset($innerArray);
                     $innerArray = ArrayList::create();
                 }
-                $innerArray->push($image);
+                $innerArray->push($file);
             }
 
             //last one!

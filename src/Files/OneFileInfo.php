@@ -16,6 +16,7 @@ use SilverStripe\ORM\FieldType\DBDate;
 
 use Sunnysideup\AssetsOverview\Interfaces\FileInfo;
 use Sunnysideup\AssetsOverview\Traits\FilesystemRelatedTraits;
+use Sunnysideup\AssetsOverview\Files\AllFilesInfo;
 
 class OneFileInfo implements Flushable, FileInfo
 {
@@ -36,7 +37,12 @@ class OneFileInfo implements Flushable, FileInfo
     /**
      * @var array
      */
-    protected $intel = '';
+    protected $intel = [];
+
+    /**
+     * @var array
+     */
+    protected $parthParts = '';
 
     /**
      * @var bool
@@ -70,146 +76,21 @@ class OneFileInfo implements Flushable, FileInfo
         $cache = self::getCache();
         $cachekey = $this->getCacheKey();
         if (! $cache->has($cachekey)) {
-            $intel = [];
-            $pathParts = [];
-            if ($this->fileExists) {
-                $pathParts = pathinfo($this->path);
-            }
-            $pathParts['extension'] = $pathParts['extension'] ?? '--no-extension';
-            $pathParts['filename'] = $pathParts['filename'] ?? '--no-file-name';
-            $pathParts['dirname'] = $pathParts['dirname'] ?? '--no-parent-dir';
-            $relativeDirFromBaseFolder = str_replace($this->getBaseFolder(), '', $pathParts['dirname']);
-            $relativeDirFromAssetsFolder = str_replace($this->getAssetsBaseFolder(), '', $pathParts['dirname']);
-            $intel['FolderName'] = trim($relativeDirFromBaseFolder, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
-            $intel['FolderNameShort'] = trim($relativeDirFromAssetsFolder, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
-            $intel['GrandParentFolder'] = dirname($intel['FolderNameShort']);
+            $this->addFileSystemDetails();
+            $this->addImageDetails();
+            $fileData = AllFilesInfo::get_any_data($this->intel['PathFromAssetsFolder']);
+            $this->addFolderDetails($fileData);
+            $this->addFileDetails($fileData);
+            $this->addHumanValues();
 
-            $intel['Extension'] = $pathParts['extension'];
-            $intel['ExtensionAsLower'] = (string) strtolower($intel['Extension']);
-            $intel['HasIrregularExtension'] = $intel['Extension'] !== $intel['ExtensionAsLower'];
-            $intel['HumanHasIrregularExtension'] = $intel['HasIrregularExtension'] ?
-                'irregular extension' : 'normal extension';
-            $intel['FileName'] = $pathParts['filename'];
-
-            $intel['FileSize'] = 0;
-
-            $intel['Path'] = $this->path;
-            $intel['PathFromRoot'] = str_replace($this->getBaseFolder(), '', $this->path);
-            $intel['PathFromPublicRoot'] = str_replace($this->getPublicBaseFolder(), '', $this->path);
-            $intel['PathFromAssets'] = str_replace($this->getAssetsBaseFolder(), '', $this->path);
-            $intel['FirstLetter'] = strtoupper(substr($intel['FileName'], 0, 1));
-            $intel['FileNameInDB'] = ltrim($intel['PathFromAssets'], DIRECTORY_SEPARATOR);
-
-
-            $intel['HumanImageDimensions'] = 'n/a';
-            $intel['Ratio'] = '0';
-            $intel['Pixels'] = 'n/a';
-            $intel['IsImage'] = false;
-            $intel['HumanIsImage'] = 'Is not an image';
-            $intel['IsRegularImage'] = false;
-            $intel['IsInFileSystem'] = false;
-            $intel['HumanIsInFileSystem'] = 'file does not exist';
-            $intel['ErrorParentID'] = true;
-            $intel['Type'] = $intel['Extension'];
-            $intel['Attribute'] = 'n/a';
-
-            if ($this->fileExists) {
-                $intel['IsInFileSystem'] = true;
-                $intel['HumanIsInFileSystem'] = 'file exists';
-                $intel['FileSize'] = filesize($this->path);
-                $intel['IsRegularImage'] = $this->isRegularImage($intel['Extension']);
-                if ($intel['IsRegularImage']) {
-                    $intel['IsImage'] = true;
-                } else {
-                    $intel['IsImage'] = $this->isImage($this->path);
-                }
-                if ($intel['IsImage']) {
-                    list($width, $height, $type, $attr) = getimagesize($this->path);
-                    $intel['Attribute'] = print_r($attr, 1);
-                    $intel['HumanImageDimensions'] = $width . 'px wide by ' . $height . 'px high';
-                    $intel['Ratio'] = round($width / $height, 3);
-                    $intel['Pixels'] = $width * $height;
-                    $intel['HumanIsImage'] = 'Is Image';
-                    $intel['Type'] = $type;
-                }
-            }
-
-            $intel['HumanFileSize'] = $this->humanFileSize($intel['FileSize']);
-            $intel['HumanFileSizeRounded'] = '~ ' . $this->humanFileSize(round($intel['FileSize'] / 204800) * 204800);
-            $file = DataObject::get_one(File::class, ['FileFilename' => $intel['FileNameInDB']]);
-            $folder = null;
-            if ($file) {
-                $folder = DataObject::get_one(Folder::class, ['ID' => $file->ParentID]);
-            }
-
-            //backup for folder
-            if (! $folder) {
-                $folder = DataObject::get_one(Folder::class, ['FileFilename' => $intel['FolderName']]);
-            }
-
-            //backup for file ...
-            if (! $file) {
-                if ($folder) {
-                    $nameInDB = $intel['FileName'] . '.' . $intel['Extension'];
-                    $file = DataObject::get_one(File::class, ['Name' => $nameInDB, 'ParentID' => $folder->ID]);
-                }
-            }
-            $time = 0;
-            if ($file) {
-                $intel['ID'] = $file->ID;
-                $intel['ParentID'] = $file->ParentID;
-                $intel['IsInDatabase'] = true;
-                $intel['IsInDatabaseStaging'] = AllFilesInfo::exists_on_staging($intel['ID']);
-                $intel['IsInDatabaseLive'] = AllFilesInfo::exists_on_live($intel['ID']);
-                $intel['CMSEditLink'] = '/admin/assets/EditForm/field/File/item/' . $file->ID . '/edit';
-                $intel['DBTitle'] = $file->Title;
-                $intel['ErrorInFilenameCase'] = $intel['FileNameInDB'] !== $file->Filename;
-                $time = strtotime($file->LastEdited);
-                if ($folder) {
-                    $intel['ErrorParentID'] = (int) $folder->ID !== (int) $file->ParentID;
-                } elseif ((int) $file->ParentID === 0) {
-                    $intel['ErrorParentID'] = false;
-                }
-            } else {
-                $intel['ID'] = 0;
-                $intel['ParentID'] = 0;
-                $intel['IsInDatabase'] = false;
-                $intel['IsInDatabaseStaging'] = false;
-                $intel['IsInDatabaseLive'] = false;
-                $intel['CMSEditLink'] = '/admin/assets/';
-                $intel['DBTitle'] = '-- no title set in database';
-                $intel['ErrorInFilenameCase'] = true;
-                if ($this->fileExists) {
-                    $time = filemtime($this->path);
-                }
-            }
-            if ($folder) {
-                if (! $file) {
-                    $intel['ParentID'] = $folder->ID;
-                }
-                $intel['HasFolder'] = true;
-                $intel['HumanHasFolder'] = 'in sub-folder';
-                $intel['CMSEditLinkFolder'] = '/admin/assets/show/' . $folder->ID;
-            } else {
-                $intel['HasFolder'] = false;
-                $intel['HumanHasFolder'] = 'in root folder';
-                $intel['CMSEditLinkFolder'] = '/assets/admin/';
-            }
-
-            $intel['LastEditedTS'] = $time;
-            $intel['LastEdited'] = DBDate::create_field('Date', $time)->Ago();
-            $intel['HumanIsInDatabase'] = $intel['IsInDatabase'] ? 'In Database' : 'Not in Database';
-            $intel['HumanErrorInFilenameCase'] = $intel['ErrorInFilenameCase'] ? 'Error in Case' : 'Perfect Case';
-            $intel['HumanErrorParentID'] = $intel['ErrorParentID'] ? 'Error in folder ID' : 'Perfect Folder ID';
-            $intel['FirstLetterDBTitle'] = strtoupper(substr($intel['DBTitle'], 0, 1));
-            $fullArrayString = serialize($intel);
+            $fullArrayString = serialize($this->intel);
             $cache->set($cachekey, $fullArrayString);
         } else {
             $fullArrayString = $cache->get($cachekey);
-            $intel = unserialize($fullArrayString);
+            $this->intel = unserialize($fullArrayString);
         }
 
-        return $intel;
+        return $this->intel;
     }
 
     protected function isRegularImage(string $extension): bool
@@ -232,6 +113,192 @@ class OneFileInfo implements Flushable, FileInfo
         return $outcome;
     }
 
+    protected function addFileSystemDetails()
+    {
+
+        //get path parts
+        $this->parthParts = [];
+        if ($this->fileExists) {
+            $this->parthParts = pathinfo($this->path);
+        }
+        $this->parthParts['extension'] = $this->parthParts['extension'] ?? '--no-extension';
+        $this->parthParts['filename'] = $this->parthParts['filename'] ?? '--no-file-name';
+        $this->parthParts['dirname'] = $this->parthParts['dirname'] ?? '--no-parent-dir';
+
+        //basics!
+        $this->intel['Path'] = $this->path;
+
+        //file name
+        $this->intel['FileName'] = $this->parthParts['filename'];
+        $this->intel['FirstLetter'] = strtoupper(substr($this->intel['FileName'], 0, 1));
+
+        //defaults
+        $this->intel['IsInFileSystem'] = false;
+        $this->intel['FileSize'] = 0;
+
+        //in file details
+        if ($this->fileExists) {
+            $this->intel['IsInFileSystem'] = true;
+            $this->intel['FileSize'] = filesize($this->path);
+        }
+        //path
+        $this->intel['PathFromPublicRoot'] = trim(str_replace($this->getPublicBaseFolder(), '', $this->path), DIRECTORY_SEPARATOR);
+        $this->intel['PathFromAssetsFolder'] = trim(str_replace($this->getAssetsBaseFolder(), '', $this->path), DIRECTORY_SEPARATOR);
+        $this->intel['PathFromAssetsFolderFolderOnly'] = dirname($this->intel['PathFromAssetsFolder']);
+
+        //folder
+        $relativeDirFromAssetsFolder = str_replace($this->getAssetsBaseFolder(), '', $this->parthParts['dirname']);
+        $this->intel['FolderNameFromAssetsFolder'] = trim($relativeDirFromAssetsFolder, DIRECTORY_SEPARATOR) ;
+
+        //extension
+        $this->intel['Extension'] = $this->parthParts['extension'];
+        $this->intel['ExtensionAsLower'] = (string) strtolower($this->intel['Extension']);
+        $this->intel['HasIrregularExtension'] = $this->intel['Extension'] !== $this->intel['ExtensionAsLower'];
+    }
+
+    protected function addImageDetails()
+    {
+        $this->intel['Ratio'] = '0';
+        $this->intel['Pixels'] = 'n/a';
+        $this->intel['IsImage'] = false;
+        $this->intel['IsRegularImage'] = false;
+        $this->intel['Width'] = 0;
+        $this->intel['Height'] = 0;
+        $this->intel['Type'] = $this->intel['Extension'];
+        $this->intel['Attribute'] = 'n/a';
+
+        if ($this->fileExists) {
+            $this->intel['IsRegularImage'] = $this->isRegularImage($this->intel['Extension']);
+            if ($this->intel['IsRegularImage']) {
+                $this->intel['IsImage'] = true;
+            } else {
+                $this->intel['IsImage'] = $this->isImage($this->path);
+            }
+            if ($this->intel['IsImage']) {
+                list($width, $height, $type, $attr) = getimagesize($this->path);
+                $this->intel['Attribute'] = print_r($attr, 1);
+                $this->intel['Width'] = $width;
+                $this->intel['Height'] = $height;
+                $this->intel['Ratio'] = round($width / $height, 3);
+                $this->intel['Pixels'] = $width * $height;
+                $this->intel['Type'] = $type;
+            }
+        }
+
+    }
+
+    protected function addFolderDetails($fileData)
+    {
+        $folder = null;
+        if (! empty($fileData['ParentID'])) {
+            $folder = DataObject::get_one(Folder::class, ['ID' => $fileData['ParentID']]);
+        }
+
+        if ($folder) {
+            $this->intel['HasFolderError'] = false;
+        } else {
+            $this->intel['HasFolderError'] = true;
+        }
+        if ($folder) {
+            $this->intel['FolderID'] = $folder->ID;
+            $this->intel['HasFolder'] = true;
+            $this->intel['CMSEditLinkFolder'] = '/admin/assets/show/' . $folder->ID . '/';
+        } else {
+            $this->intel['FolderID'] = 0;
+            $this->intel['HasFolder'] = false;
+            $this->intel['CMSEditLinkFolder'] = '/admin/assets/show/0';
+        }
+    }
+
+    protected function addFileDetails($fileData)
+    {
+
+        $time = 0;
+        if (empty($fileData)) {
+            $this->intel['ErrorParentID'] = false;
+            $this->intel['ID'] = 0;
+            $this->intel['ClassName'] = 'Error';
+            $this->intel['ParentID'] = 0;
+            $this->intel['IsInDatabaseStaging'] = false;
+            $this->intel['IsInDatabaseLive'] = false;
+            $this->intel['CMSEditLink'] = '/admin/assets/';
+            $this->intel['DBTitle'] = '-- no title set in database';
+            $this->intel['ErrorInFilenameCase'] = false;
+            if ($this->fileExists) {
+                $time = filemtime($this->path);
+            }
+        } else {
+            $this->intel['ID'] = $fileData['ID'];
+            $this->intel['ClassName'] = $fileData['ClassName'];
+            $this->intel['ParentID'] = $fileData['ParentID'];
+            $this->intel['IsInDatabaseStaging'] = AllFilesInfo::exists_on_staging($this->intel['ID']);
+            $this->intel['IsInDatabaseLive'] = AllFilesInfo::exists_on_live($this->intel['ID']);
+            $this->intel['CMSEditLink'] = '/admin/assets/EditForm/field/File/item/' . $this->intel['ID']. '/edit';
+            $this->intel['DBTitle'] = $fileData['Title'];
+            $this->intel['ErrorInFilenameCase'] = $this->intel['PathFromAssetsFolder'] !== $fileData['FileFilename'];
+            $fileData['Filename'] = $fileData['Filename'] ?? '';
+            $this->intel['ErrorInSs3Ss4Comparison'] = $fileData['FileFilename'] !== $fileData['Filename'];
+            $time = strtotime($fileData['LastEdited']);
+            $this->intel['ErrorParentID'] = true;
+            if ((int) $this->intel['FolderID'] === 0) {
+                if(intval($fileData['ParentID'])) {
+                    $this->intel['ErrorParentID'] = true;
+                } else {
+                    $this->intel['ErrorParentID'] = false;
+                }
+            } elseif ($this->intel['FolderID']) {
+                $this->intel['ErrorParentID'] = ((int) $this->intel['FolderID'] !== (int) $fileData['ParentID']) ? true : false;
+            }
+        }
+        $this->intel['IsInDatabase'] = $this->intel['IsInDatabaseLive'] || $this->intel['IsInDatabaseStaging'];
+        $stageDBStatus = $this->intel['IsInDatabaseStaging'] ? 'Is in Draft' : ' Is not in Draft';
+        $liveDBStatus = $this->intel['IsInDatabaseLive'] ? 'Is in Live' : ' Is not in Live';
+        $this->intel['IsInDatabaseSummary'] = $stageDBStatus . ', '. $liveDBStatus;
+
+        $this->intel['LastEditedTS'] = $time;
+        $this->intel['LastEdited'] = DBDate::create_field('Date', $time)->Ago();
+
+        $this->intel['FirstLetterDBTitle'] = strtoupper(substr($this->intel['DBTitle'], 0, 1));
+    }
+
+    protected function addHumanValues()
+    {
+        $this->intel['HumanImageDimensions'] = $this->intel['Width'] . 'px wide by ' . $this->intel['Height'] . 'px high';
+        $this->intel['HumanIsImage'] = $this->intel['IsImage'] ? 'Is image' : 'Is not an image';
+        $this->intel['HumanHasIrregularExtension'] = $this->intel['HasIrregularExtension'] ?
+            'irregular extension' : 'normal extension';
+
+        //file size
+        $this->intel['HumanFileSize'] = $this->humanFileSize($this->intel['FileSize']);
+        $this->intel['HumanFileSizeRounded'] = '~ ' . $this->humanFileSize(round($this->intel['FileSize'] / 204800) * 204800);
+        $this->intel['HumanIsInFileSystem'] = $this->fileExists ? 'File exists' : 'File does not exist';
+
+        $this->intel['HumanHasFolder'] = $this->intel['FolderID'] ? 'In sub-folder' : 'In root folder';
+
+        $this->intel['HumanErrorInFilenameCase'] = $this->intel['ErrorInFilenameCase'] ? 'Error in filename case' : 'No error in filename case';
+        $this->intel['HumanErrorParentID'] = $this->intel['ErrorParentID'] ? 'Error in folder ID' : 'Perfect folder ID';
+        $this->intel['HumanIsInDatabaseSummary'] = $this->intel['IsInDatabaseSummary'];
+
+    }
+
+    protected function getBackupDataObject()
+    {
+        $file = DataObject::get_one(File::class, ['FileFilename' => $this->intel['PathFromAssetsFolder']]);
+        //backup for file ...
+        if (! $file) {
+            if ($folder) {
+                $nameInDB = $this->intel['FileName'] . '.' . $this->intel['Extension'];
+                $file = DataObject::get_one(File::class, ['Name' => $nameInDB, 'ParentID' => $folder->ID]);
+            }
+        }
+        $filter = ['FileFilename' => $this->intel['FolderNameFromAssetsFolder']];
+        if(Folder::get()->filter($filter)->count() === 1) {
+            $folder = DataObject::get_one(Folder::class, $filter);
+        }
+    }
+
+
+
     ##############################################
     # CACHE
     ##############################################
@@ -251,4 +318,8 @@ class OneFileInfo implements Flushable, FileInfo
     {
         return $this->hash;
     }
+
+
+
+
 }

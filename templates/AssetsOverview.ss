@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-
+ <% base_tag %>
   <title>Assets Overview</title>
   <style>
   * {
