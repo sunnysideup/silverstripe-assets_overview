@@ -11,6 +11,7 @@
       font-family: arial, sans-serif;
       color: rgb(79, 88, 97);
       font-size: 13px;
+      font-family: Helvetica Neue,Helvetica,Arial,sans-serif;
   }
   p {margin: 0; padding: 0;}
   .break {
@@ -167,6 +168,83 @@
       background-color: pink;
   }
 
+
+    .form {
+        margin-top: 10px;
+        background-color: #F1F3F6;
+    }
+    .form * {
+        color: #43536D;
+        margin: 0;
+        padding: 0;
+    }
+
+    .form h3 {
+        /* background-color: #43536D; */
+        background-color: #B0BEC7;
+        text-align: center;
+        padding: 5px;
+        text-transform: lowercase;
+    }
+    .form form {
+        padding: 10px;
+        border: 1px solid #B0BEC7;
+    }
+
+    .form form fieldset {
+        border: none;
+    }
+
+
+
+    .form fieldset .field {
+        /* background-color: #dbe0e94d */
+        background-color: #FFFFFF;
+        margin: 10px;
+        padding: 10px;
+        width: calc(33.33333% - 20px);
+        float: left;
+        box-sizing: border-box;
+        border: 1px solid #B0BEC7;
+    }
+
+    .form form fieldset .field > label {
+        font-weight: bold;
+        display: block;
+        padding-bottom: 0.7em;
+    }
+
+    .form form fieldset .field .middleColumn li {
+        list-style: none;
+        padding-bottom: 0.3em;
+    }
+
+    .form form .btn-toolbar {
+        width: 25%;
+        margin: auto;
+    }
+
+    .form form .btn-toolbar input {
+        background-color: #B0BEC7;
+        border-color: #B0BEC7;
+    }
+
+    .form select, .form input {
+        width: 100%;
+        font-weight: bold;
+    }
+
+    .form form fieldset .field .middleColumn ul li input {
+        width: auto;
+    }
+
+    .form form fieldset .field .middleColumn ul li input:checked + label{
+        font-weight: bolder;
+    }
+
+/* */
+
+
   </style>
 </head>
 
@@ -198,7 +276,10 @@
             <p>$TotalFileCount files, current selection uses total of $TotalFileSize in storage</p>
 
             <div class="form">
-                $Form
+                <h3>Group, sort and filter</h3>
+                <div class="form-inner">
+                    $Form
+                </div>
             </div>
             <hr />
             <p>
