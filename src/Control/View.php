@@ -79,6 +79,11 @@ class View extends ContentController
             'Sort' => 'ErrorInFilenameCase',
             'Group' => 'HumanErrorInFilenameCase',
         ],
+        'by3to4error' => [
+            'Title' => 'Migration to SS4 errors',
+            'Sort' => 'ErrorInSs3Ss4Comparison',
+            'Group' => 'HumanErrorInSs3Ss4Comparison',
+        ],
         'byfoldererror' => [
             'Title' => 'Folder Error',
             'Sort' => 'ErrorParentID',
@@ -93,6 +98,11 @@ class View extends ContentController
             'Title' => 'Image vs Other Files',
             'Sort' => 'IsImage',
             'Group' => 'HumanIsImage',
+        ],
+        'byclassname' => [
+            'Title' => 'Class Name',
+            'Sort' => 'ClassName',
+            'Group' => 'ClassName',
         ],
         'bydimensions' => [
             'Title' => 'Dimensions (small to big)',
@@ -358,10 +368,6 @@ class View extends ContentController
                 $this->createFormField('limit', 'Items Per Page', $this->limit, $this->getLimitList()),
                 $this->createFormField('page', 'Page Number', $this->pageNumber, $this->getPageNumberList()),
                 TextField::create('compare', 'Compare With')->setDescription('add a link to a comparison file - e.g. http://oldsite.com/assets-overview/test.json'),
-                CheckboxField::create(
-                    'flush',
-                    'flush all data'
-                ),
             ]
         );
         $actionList = FieldList::create(

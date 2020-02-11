@@ -12,6 +12,7 @@ use SilverStripe\Core\Flushable;
 use SilverStripe\Core\Injector\Injectable;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\ORM\DataObject;
+use SilverStripe\ORM\DB;
 use SilverStripe\ORM\FieldType\DBDate;
 
 use Sunnysideup\AssetsOverview\Interfaces\FileInfo;
@@ -48,6 +49,8 @@ class OneFileInfo implements Flushable, FileInfo
      * @var bool
      */
     protected $fileExists = false;
+
+    protected $folderCache = [];
 
     /**
      * @param string $absoluteLocation [description]
@@ -127,6 +130,7 @@ class OneFileInfo implements Flushable, FileInfo
 
         //basics!
         $this->intel['Path'] = $this->path;
+        $this->intel['Dirname'] = $this->parthParts['dirname'] ;
 
         //file name
         $this->intel['FileName'] = $this->parthParts['filename'];
@@ -147,7 +151,7 @@ class OneFileInfo implements Flushable, FileInfo
         $this->intel['PathFromAssetsFolderFolderOnly'] = dirname($this->intel['PathFromAssetsFolder']);
 
         //folder
-        $relativeDirFromAssetsFolder = str_replace($this->getAssetsBaseFolder(), '', $this->parthParts['dirname']);
+        $relativeDirFromAssetsFolder = str_replace($this->getAssetsBaseFolder(), '', $this->intel['Dirname']);
         $this->intel['FolderNameFromAssetsFolder'] = trim($relativeDirFromAssetsFolder, DIRECTORY_SEPARATOR) ;
 
         //extension
@@ -189,24 +193,30 @@ class OneFileInfo implements Flushable, FileInfo
 
     protected function addFolderDetails($fileData)
     {
-        $folder = null;
+
+        $folder = [];
         if (! empty($fileData['ParentID'])) {
-            $folder = DataObject::get_one(Folder::class, ['ID' => $fileData['ParentID']]);
+            if(isset($this->folderCache['ParentID'])) {
+                $folder = $this->folderCache['ParentID'];
+            } else {
+                $sql = 'SELECT * FROM "File" WHERE "ID" = '.$fileData['ParentID'];
+                $rows = DB::query($sql);
+                foreach($rows as $folder) {
+                    $this->folderCache['ParentID'] = $folder;
+                }
+            }
         }
 
-        if ($folder) {
-            $this->intel['HasFolderError'] = false;
-        } else {
+        if (empty($folder)) {
             $this->intel['HasFolderError'] = true;
-        }
-        if ($folder) {
-            $this->intel['FolderID'] = $folder->ID;
-            $this->intel['HasFolder'] = true;
-            $this->intel['CMSEditLinkFolder'] = '/admin/assets/show/' . $folder->ID . '/';
-        } else {
             $this->intel['FolderID'] = 0;
             $this->intel['HasFolder'] = false;
-            $this->intel['CMSEditLinkFolder'] = '/admin/assets/show/0';
+            $this->intel['CMSEditLinkFolder'] = '/admin/assets/show/0ssws';
+        } else {
+            $this->intel['HasFolderError'] = false;
+            $this->intel['FolderID'] = $folder['ID'];
+            $this->intel['HasFolder'] = true;
+            $this->intel['CMSEditLinkFolder'] = '/admin/assets/show/' .$folder['ID'] . '/';
         }
     }
 
@@ -224,6 +234,7 @@ class OneFileInfo implements Flushable, FileInfo
             $this->intel['CMSEditLink'] = '/admin/assets/';
             $this->intel['DBTitle'] = '-- no title set in database';
             $this->intel['ErrorInFilenameCase'] = false;
+            $this->intel['ErrorInSs3Ss4Comparison'] = false;
             if ($this->fileExists) {
                 $time = filemtime($this->path);
             }
@@ -278,6 +289,8 @@ class OneFileInfo implements Flushable, FileInfo
         $this->intel['HumanErrorInFilenameCase'] = $this->intel['ErrorInFilenameCase'] ? 'Error in filename case' : 'No error in filename case';
         $this->intel['HumanErrorParentID'] = $this->intel['ErrorParentID'] ? 'Error in folder ID' : 'Perfect folder ID';
         $this->intel['HumanIsInDatabaseSummary'] = $this->intel['IsInDatabaseSummary'];
+        $this->intel['HumanErrorInSs3Ss4Comparison'] = $this->intel['ErrorInSs3Ss4Comparison'] ?
+            'Filename and FileFilename do not match' :  'Filename and FileFilename match' ;
 
     }
 

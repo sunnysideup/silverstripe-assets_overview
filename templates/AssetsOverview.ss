@@ -13,10 +13,10 @@
       font-size: 13px;
       font-family: Helvetica Neue,Helvetica,Arial,sans-serif;
   }
-  p {margin: 0; padding: 0;}
+  p {margin: 0; padding: 0; padding: 0.5em 0;}
   .break {
       clear: both;
-      border-top: 1px dotted #ddd;
+      border-top: 1px solid #ccc;
   }
   h1, h2, h3, h4 {
       display: block;
@@ -33,6 +33,8 @@
   }
   h3 {
       font-size: 16px;
+      text-align: center;
+      border-bottom: 1px dotted #ccc;
 
   }
   h4 {
@@ -65,6 +67,7 @@
       overflow-y: auto;
       font-family: sans-serif;
       border-left: 1px solid #304e80;
+      z-index: 99
   }
   .toc ul {
       padding: 0px;
@@ -99,6 +102,31 @@
       min-width: 250px;
       overflow: hidden;
       border-radius: 5px;
+      position: relative;
+  }
+  .one-image > a.main-link {
+      position: absolute;
+      top: 0;
+      left:0;
+      right: 0;
+      bottom: 0;
+  }
+  .one-image > span {
+      position: absolute;
+      top: 50%;
+      right: 10px;
+      left: 10px;
+      font-size: 10px;
+      font-weight: bold;
+      color:#000;
+  }
+  .one-image > span.main-title {
+      position: absolute;
+      top: calc(50% + 16px);
+  }
+  .one-image > span.main-subtitle {
+      position: absolute;
+      top: calc(50% + 16px);
   }
   .one-image img {
       display: block;
@@ -117,23 +145,28 @@
       right: 0;
       font-family: sans-serif;
   }
-
-  .one-image:hover .one-image-info {
-      background-color: rgba(0,0,0, 0.7);
-      height: 200px;
-      padding: 7px;
+  .one-image-info p {
       color: #fff;
   }
 
+  .one-image:hover .one-image-info {
+      background-color: rgba(0,0,0, 0.7);
+      height: 190px;
+      padding: 7px;
+      color: #ddd;
+  }
+  .one-image-info p {
+      padding: 2px 0;
+  }
   .one-image-info u {
       color: #fff;
       font-weight: bold;
       display: block;
-      padding-bottom: 7px;
       text-decoration: none;
   }
   .one-image-info strong {
-      color: #ddd;
+      color: #fff;
+      font-weight: bold;
   }
   .one-image-info a {
        color: #eee!important;
@@ -158,6 +191,8 @@
       text-decoration: none;
       line-height: 30px;
       font-size: 20px;
+      -webkit-transform: scaleX(-1);
+      transform: scaleX(-1);
   }
   .edit-icon:hover {
       background-color: green;
@@ -165,7 +200,7 @@
       text-decoration: none!important;
   }
   .edit-icon.error {
-      background-color: pink;
+      background-color: red;
   }
 
 
@@ -180,11 +215,9 @@
     }
 
     .form h3 {
-        /* background-color: #43536D; */
         background-color: #B0BEC7;
         text-align: center;
         padding: 5px;
-        text-transform: lowercase;
     }
     .form form {
         padding: 10px;
@@ -220,13 +253,29 @@
     }
 
     .form form .btn-toolbar {
-        width: 25%;
-        margin: auto;
+
     }
 
     .form form .btn-toolbar input {
-        background-color: #B0BEC7;
-        border-color: #B0BEC7;
+    	background-color:#B0BEC7;
+    	border-radius:5px;
+    	border:1px solid #18ab29;
+    	display:block;
+    	cursor:pointer;
+    	color:#ffffff;
+    	font-size:17px;
+    	padding:16px 21px;
+    	text-decoration:none;
+        width: 10em;
+        margin: auto;
+    }
+    .form form .btn-toolbar input:hover {
+    	background:linear-gradient(to bottom, #5cbf2a 5%, #44c767 100%);
+    	background-color:#5cbf2a;
+    }
+    .form form .btn-toolbar input:active {
+    	position:relative;
+    	top:1px;
     }
 
     .form select, .form input {
@@ -249,6 +298,7 @@
 </head>
 
 <body>
+    <% if $isThumbList %>
     <div class="toc">
         <div class="padding">
             <% if FilesAsSortedArrayList.count %>
@@ -258,7 +308,7 @@
                     </p>
                 <% else %>
                     <ul>
-                        <li><a href="#top">View By Options ...</a><br /></li>
+                        <li><a href="#top">Sort and Filter ...</a><br /></li>
                     <% loop $FilesAsSortedArrayList %>
                         <li><a href="#section-$Number">$SubTitle ($Items.Count)</a></li>
                     <% end_loop %>
@@ -267,6 +317,7 @@
             <% end_if %>
         </div>
     </div>
+    <% end_if %>
 
     <div id="top" class="results">
         <div class="padding">
@@ -276,22 +327,22 @@
             <p>$TotalFileCount files, current selection uses total of $TotalFileSize in storage</p>
 
             <div class="form">
-                <h3>Group, sort and filter</h3>
+                <h3>Sort and Filter</h3>
                 <div class="form-inner">
                     $Form
                 </div>
             </div>
-            <hr />
             <p>
-                <strong>View:</strong>
+                <a href="$Link?flush=al"><strong>Reset Cache</strong></a>
+                /
+                <strong>View JSON:</strong>
                 <a href="$Link(json)">file list</a>,
                 <a href="$Link(jsonfull)">full details</a>
-                |
-                <strong>Download:</strong>
+                /
+                <strong>Download JSON:</strong>
                 <a href="$Link(json)?download=1">file list</a>,
                 <a href="$Link(jsonfull)?download=1">full details</a>
             </p>
-            <hr />
             <% if FilesAsSortedArrayList.count %>
                 <h1>$Title</h1>
                 <% if $isThumbList %>
