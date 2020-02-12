@@ -19,7 +19,7 @@
             </p>
         <% end_if %>
         <% if $IsInFileSystem %>
-            <p><strong>Folder:</strong> <a href="$CMSEditLinkFolder" target="_blank">✎ $FolderNameFromAssetsFolder</a></p>
+            <p><strong>Folder:</strong> <a href="$CMSEditLinkFolder" target="_blank">✎ $PathFromAssetsFolderFolderOnly</a></p>
             <p><strong>File: </strong>$FileName . $Extension</p>
         <% else %>
             <p><a>Not in file-system</a></p>
@@ -27,6 +27,6 @@
         <p><strong>Last Changed:</strong> $LastEdited</p>
         <p><strong>Dimensions:</strong> $HumanImageDimensions</p>
         <p><strong>Size:</strong> $HumanFileSize</p>
-        <p><strong>DB:</strong> $HumanIsInDatabaseSummary</p>
+        <p><strong>DB:</strong> $HumanIsInDatabase</p>
     </div>
 </div>

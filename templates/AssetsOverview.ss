@@ -259,10 +259,10 @@
     .form form .btn-toolbar input {
         background-color:#B0BEC7;
         border-radius:5px;
-        border:1px solid #18ab29;
+        border:1px dotted #18ab29;
         display:block;
         cursor:pointer;
-        color:#ffffff;
+        color:#43536D;
         font-size:17px;
         padding:16px 21px;
         text-decoration:none;
@@ -272,6 +272,7 @@
     .form form .btn-toolbar input:hover {
         background:linear-gradient(to bottom, #5cbf2a 5%, #44c767 100%);
         background-color:#5cbf2a;
+        color: #fff;
     }
     .form form .btn-toolbar input:active {
         position:relative;
@@ -298,7 +299,6 @@
 </head>
 
 <body>
-    <% if $isThumbList %>
     <div class="toc">
         <div class="padding">
             <% if FilesAsSortedArrayList.count %>
@@ -315,25 +315,8 @@
                 <% end_if %>
                 </ul>
             <% end_if %>
-        </div>
-    </div>
-    <% end_if %>
-
-    <div id="top" class="results">
-        <div class="padding">
-            <p>&laquo; <a href="/admin/assets/">back to CMS</a></p>
-
-            <h1>Totals</h1>
-            <p>$TotalFileCountRaw files, current selection uses total of $TotalFileSize in storage</p>
-
-            <div class="form">
-                <h3>Sort and Filter</h3>
-                <div class="form-inner">
-                    $Form
-                </div>
-            </div>
+            <h1>Additional Options:</h1>
             <p>
-                <strong>Additional Options:</strong>
                 <a href="$Link?flush=al"><strong>Reset Cache</strong></a>
                 /
                 <strong>View JSON:</strong>
@@ -344,6 +327,23 @@
                 <a href="$Link(json)?download=1">file list</a>,
                 <a href="$Link(jsonfull)?download=1">full details</a>
             </p>
+        </div>
+    </div>
+
+    <div id="top" class="results">
+        <div class="padding">
+            <p>&laquo; <a href="/admin/assets/">back to CMS</a></p>
+
+            <div class="form">
+                <h3>Sort and Filter</h3>
+                <div class="form-inner">
+                    $Form
+                </div>
+            </div>
+
+            <h1>Totals</h1>
+            <p>$TotalFileCountRaw files, current selection uses total of $TotalFileSize in storage</p>
+
             <% if FilesAsSortedArrayList.count %>
                 <h1>$Title</h1>
 
@@ -359,32 +359,32 @@
                 <% end_if %>
 
                 <% if $Displayer = 'rawlist' %>
-                    <ul>
                     <% loop $FilesAsSortedArrayList %>
+                        <ul id="section-$Number" class="break">
                         <% loop $Items %>
                             <li>
                                 <a href="$PathFromAssetsFolder">$PathFromAssetsFolder</a>
                             </li>
                         <% end_loop %>
+                        </ul>
                     <% end_loop %>
-                    </ul>
                 <% end_if %>
 
                 <% if $Displayer = 'rawlistfull' %>
-                    <ul>
                     <% loop $FilesAsSortedArrayList %>
+                        <ul id="section-$Number" class="break">
                         <% loop $Items %>
                             <li>
                                 <strong>$PathFromAssetsFolder</strong>
                                 <ul>
-                                <% loop $Items.FullFields %>
+                                <% loop $FullFields %>
                                     <li><strong>$Key</strong> $Value</li>
                                 <% end_loop %>
                                 </ul>
                             </li>
                         <% end_loop %>
+                        </ul>
                     <% end_loop %>
-                    </ul>
                 <% end_if %>
 
             <% else %>

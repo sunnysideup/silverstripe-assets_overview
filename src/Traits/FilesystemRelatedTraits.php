@@ -36,9 +36,7 @@ trait FilesystemRelatedTraits
 
     protected function getExtension(string $path): string
     {
-        $basename = basename($path);
-
-        return substr($basename, strlen(explode('.', $basename)[0]) + 1);
+        return pathinfo($path, PATHINFO_EXTENSION);
     }
 
     /**

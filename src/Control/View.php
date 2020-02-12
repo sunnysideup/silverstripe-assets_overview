@@ -20,6 +20,7 @@ use SilverStripe\Security\Security;
 use SilverStripe\View\SSViewer;
 use SilverStripe\View\ArrayData;
 use SilverStripe\View\Requirements;
+use SilverStripe\Core\Environment;
 use Sunnysideup\AssetsOverview\Api\CompareImages;
 use Sunnysideup\AssetsOverview\Files\AllFilesInfo;
 use Sunnysideup\AssetsOverview\Files\OneFileInfo;
@@ -36,7 +37,7 @@ class View extends ContentController
     private const SORTERS = [
         'byfolder' => [
             'Title' => 'Folder',
-            'Sort' => 'PathFromAssetsFolder',
+            'Sort' => 'PathFromAssetsFolderFolderOnly',
             'Group' => 'PathFromAssetsFolderFolderOnly',
         ],
         'byfilename' => [
@@ -88,24 +89,40 @@ class View extends ContentController
 
 
     private const FILTERS = [
-        'byextensionerror' => [
-            'Title' => 'Case error in file type',
-            'Field' => 'HasIrregularExtension',
+        'byfilesystemstatus' => [
+            'Title' => 'Not in filesystem',
+            'Field' => 'IsInFileSystem',
+            'Values' => [0, false],
+        ],
+        'bymissingfromdatabase' => [
+            'Title' => 'Not in database',
+            'Field' => 'IsInDatabase',
             'Values' => [0, false],
         ],
         'bymissingfromlive' => [
-            'Title' => 'Unpublished',
+            'Title' => 'Not on live site',
             'Field' => 'IsInDatabaseLive',
             'Values' => [0, false],
         ],
         'bymissingfromstaging' => [
-            'Title' => 'Missing from drafts',
+            'Title' => 'Not on draft site',
             'Field' => 'IsInDatabaseStaging',
             'Values' => [0, false],
         ],
+        'byfoldererror' => [
+            'Title' => 'Folder error',
+            'Field' => 'ErrorParentID',
+            'Values' => [1, true],
+        ],
+
         'bydatabaseerror' => [
-            'Title' => 'Case error in file name',
+            'Title' => 'UPPER/lower case error in file name',
             'Field' => 'ErrorInFilenameCase',
+            'Values' => [1, true],
+        ],
+        'byextensionerror' => [
+            'Title' => 'UPPER/lower case error in file type',
+            'Field' => 'HasIrregularExtension',
             'Values' => [1, true],
         ],
         'by3to4error' => [
@@ -113,16 +130,7 @@ class View extends ContentController
             'Field' => 'ErrorInSs3Ss4Comparison',
             'Values' => [1, true],
         ],
-        'byfoldererror' => [
-            'Title' => 'Folder Error',
-            'Field' => 'ErrorParentID',
-            'Values' => [1, true],
-        ],
-        'byfilesystemstatus' => [
-            'Title' => 'Missing from file system',
-            'Field' => 'IsInFileSystem',
-            'Values' => [0, false],
-        ],
+
     ];
 
     private const DISPLAYERS = [
@@ -222,9 +230,26 @@ class View extends ContentController
 
     public function getTitle(): string
     {
-        $array = array_filter([$this->getSortStatement(), $this->getFilterStatement(), $this->getPageStatement()]);
-        return 'Showing all files'.
-            implode(', ', $array);
+        $array = array_filter(
+            [
+                $this->getSortStatement(),
+                $this->getFilterStatement(),
+                $this->getPageStatement()
+            ]
+        );
+        if($this->filter) {
+            $filterStatement = 'a subset of files ('.
+                $this->getTotalFileCountFiltered().' of '.$this->getTotalFileCountRaw().' / '.
+                $this->getTotalFileSizeFiltered() . ' of '. $this->getTotalFileSizeRaw() .
+                ')';
+        } else {
+            $filterStatement = 'all files ('.
+                $this->getTotalFileCountRaw().' / '.
+                $this->getTotalFileSizeRaw() .
+                ')';
+        }
+
+        return 'Showing '.$filterStatement. ' - ' .implode(', ', $array);
     }
 
     public function getSortStatement() : string
@@ -234,14 +259,20 @@ class View extends ContentController
 
     public function getFilterStatement() : string
     {
-        return $this->filter ? 'filtered for: ' . self::FILTERS[$this->filter]['Title'] :  '';
+        $filterArray = array_filter(
+            [
+                self::FILTERS[$this->filter]['Title'] ?? '',
+                implode(', ', $this->allowedExtensions),
+            ]
+        );
+
+        return count($filterArray) ? 'filtered for: ' . implode(', ', $filterArray)  :  '';
     }
 
     public function getPageStatement() : string
     {
         return $this->getNumberOfPages() > 1 ?
-            ', from '.($this->startLimit * $this->limit) .
-            ' to ' . ($this->endLimit * $this->limit).' out of '.$this->getTotalFileCountFiltered()
+            'from '.($this->startLimit) . ' to ' . ($this->endLimit)
             :
             '';
     }
@@ -271,9 +302,14 @@ class View extends ContentController
         return (string) number_format($this->totalFileCountFiltered);
     }
 
-    public function getTotalFileSize(): string
+    public function getTotalFileSizeFiltered(): string
     {
         return (string) $this->humanFileSize($this->totalFileSizeFiltered);
+    }
+
+    public function getTotalFileSizeRaw(): string
+    {
+        return (string) $this->humanFileSize(AllFilesInfo::getTotalFileSizesRaw());
     }
 
     public function init()
@@ -283,6 +319,9 @@ class View extends ContentController
             return Security::permissionFailure($this);
         }
         Requirements::clear();
+        ini_set('memory_limit', '1024M');
+        Environment::increaseMemoryLimitTo();
+        Environment::increaseTimeLimitTo(7200);
         SSViewer::config()->update('theme_enabled', false);
         if ($filter = $this->request->getVar('filter')) {
             $this->filter = $filter;
@@ -291,7 +330,7 @@ class View extends ContentController
             $this->sorter = $sorter;
         }
         if ($displayer = $this->request->getVar('displayer')) {
-            $this->displayer = displayer;
+            $this->displayer = $displayer;
         }
 
         if ($extensions = $this->request->getVar('extensions')) {
@@ -345,7 +384,13 @@ class View extends ContentController
                 $map = $item->toMap();
                 $item->FullFields = ArrayList::create();
                 foreach ($map as $key => $value) {
-                    $item->FullFields->push(ArrayData(['Key' => $key, 'Value' => $value]));
+                    if($value === false) {
+                        $value = 'no';
+                    }
+                    if($value === true) {
+                        $value = 'yes';
+                    }
+                    $item->FullFields->push(ArrayData::create(['Key' => $key, 'Value' => $value]));
                 }
             }
         }
@@ -372,9 +417,8 @@ class View extends ContentController
     protected function setfilesAsSortedArrayList()
     {
         if ($this->filesAsSortedArrayList === null) {
-            $sorterData = self::SORTERS[$this->sorter];
-            $sortField = $sorterData['Sort'];
-            $headerField = $sorterData['Group'];
+            $sortField = self::SORTERS[$this->sorter]['Sort'];
+            $headerField = self::SORTERS[$this->sorter]['Group'];
             //done only if not already done ...
             $this->setFilesAsArrayList();
             $this->filesAsSortedArrayList = ArrayList::create();
@@ -434,23 +478,23 @@ class View extends ContentController
             $filterFree = true;
             if (isset(self::FILTERS[$this->filter])) {
                 $filterFree = false;
-                $filterField = self::FILTERS['Field'];
-                $filterValues = self::FILTERS['Values'];
+                $filterField = self::FILTERS[$this->filter]['Field'];
+                $filterValues = self::FILTERS[$this->filter]['Values'];
             }
             foreach ($rawArray as $absoluteLocation => $fileExists) {
                 if ($this->isPathWithAllowedExtension($absoluteLocation)) {
-                    if ($count >= $this->startLimit && $count < $this->endLimit) {
-                        $intel = $this->getDataAboutOneFile($absoluteLocation, $fileExists);
-                        if ($filterFree || in_array($intel[$filterField], $filterValues, 1)) {
-                            $count++;
+                    $intel = $this->getDataAboutOneFile($absoluteLocation, $fileExists);
+                    if ($filterFree || in_array($intel[$filterField], $filterValues, 1)) {
+                        $count++;
+                        if ($count >= $this->startLimit && $count < $this->endLimit) {
                             $this->totalFileCountFiltered++;
                             $this->totalFileSizeFiltered += $intel['FileSize'];
                             $this->filesAsArrayList->push(
                                 ArrayData::create($intel)
                             );
+                        } elseif ($count >= $this->endLimit) {
+                            break;
                         }
-                    } elseif ($count >= $this->endLimit) {
-                        break;
                     }
                 }
             }
@@ -494,35 +538,14 @@ class View extends ContentController
         return false;
     }
 
-    protected function createFormField(string $name, string $title, $value, ?array $list = [])
-    {
-        $listCount = count($list);
-        if ($listCount === 0) {
-            $type = HiddenField::class;
-        } elseif ($name === 'extensions') {
-            $type = CheckboxSetField::class;
-        } elseif ($listCount < 20) {
-            $type = OptionsetField::class;
-        } else {
-            $type = DropdownField::class;
-        }
 
-        $field = $type::create($name, $title)
-            ->setValue($value);
-        if ($listCount) {
-            $field->setSource($list);
-        }
-        $field->setAttribute('onchange', 'this.form.submit()');
-
-        return $field;
-    }
     protected function getForm(): Form
     {
         $fieldList = FieldList::create(
             [
                 $this->createFormField('sorter', 'Sort By', $this->sorter, $this->getSorterList()),
                 $this->createFormField('filter', 'Filter for', $this->filter, $this->getFilterList()),
-                $this->createFormField('displayer', 'Displayed by', $this->filter, $this->getDisplayerList()),
+                $this->createFormField('displayer', 'Displayed by', $this->displayer, $this->getDisplayerList()),
                 $this->createFormField('extensions', 'Extensions', $this->allowedExtensions, $this->getExtensionList()),
                 $this->createFormField('limit', 'Items Per Page', $this->limit, $this->getLimitList()),
                 $this->createFormField('page', 'Page Number', $this->pageNumber, $this->getPageNumberList()),
@@ -542,6 +565,31 @@ class View extends ContentController
         return $form;
     }
 
+    protected function createFormField(string $name, string $title, $value, ?array $list = [])
+    {
+        $listCount = count($list);
+        if ($listCount === 0) {
+            $type = HiddenField::class;
+        } elseif ($name === 'limit' || $name === 'page') {
+            $type = DropdownField::class;
+        } elseif ($name === 'extensions') {
+            $type = CheckboxSetField::class;
+        } elseif ($listCount < 20) {
+            $type = OptionsetField::class;
+        } else {
+            $type = DropdownField::class;
+        }
+
+        $field = $type::create($name, $title)
+            ->setValue($value);
+        if ($listCount) {
+            $field->setSource($list);
+        }
+        $field->setAttribute('onchange', 'this.form.submit()');
+
+        return $field;
+    }
+
     protected function getSorterList(): array
     {
         $array = [];
@@ -554,7 +602,7 @@ class View extends ContentController
 
     protected function getFilterList(): array
     {
-        $array = [];
+        $array = ['' => '-- no filter --'];
         foreach (self::FILTERS as $key => $data) {
             $array[$key] = $data['Title'];
         }
@@ -585,14 +633,14 @@ class View extends ContentController
 
     protected function getNumberOfPages(): Int
     {
-        return ceil($this->totalFileCountFiltered / $this->limit);
+        return ceil($this->totalFileCountRaw / $this->limit);
     }
 
     protected function getLimitList(): array
     {
         $step = 250;
         $array = [];
-        for ($i = $step; ($i - $step) < $this->totalFileCountFiltered; $i += $step) {
+        for ($i = $step; ($i - $step) < $this->totalFileCountRaw; $i += $step) {
             if ($i > $this->limit && ! isset($array[$this->limit])) {
                 $array[$this->limit] = $this->limit;
             }

@@ -4,6 +4,7 @@ namespace Sunnysideup\AssetsOverview\Files;
 
 use \RecursiveDirectoryIterator;
 use \RecursiveIteratorIterator;
+use \FilesystemIterator;
 use Psr\SimpleCache\CacheInterface;
 use SilverStripe\Assets\File;
 use SilverStripe\Assets\Folder;
@@ -77,7 +78,7 @@ class AllFilesInfo implements Flushable, FileInfo
 
     public static function getAvailableExtensions() : array
     {
-        return self::$availableExtensions;
+        return self::$availableExtensions ?? [];
     }
 
     /**
@@ -209,6 +210,18 @@ class AllFilesInfo implements Flushable, FileInfo
         $cache->clear();
     }
 
+    public static function getTotalFileSizesRaw()
+    {
+        $bytestotal = 0;
+        $path = realpath(ASSETS_PATH);
+        if($path!==false && $path!='' && file_exists($path)){
+            foreach(new RecursiveIteratorIterator(new RecursiveDirectoryIterator($path, FilesystemIterator::SKIP_DOTS)) as $object){
+                $bytestotal += $object->getSize();
+            }
+        }
+        return $bytestotal;
+    }
+
     public function toArray(): array
     {
         $cache = self::getCache();
@@ -220,7 +233,7 @@ class AllFilesInfo implements Flushable, FileInfo
                 foreach ($diskArray as $path) {
                     if($path) {
                         self::$listOfFiles[$path] = true;
-                        $extension = $this->getExtension($path);
+                        $extension = strtolower($this->getExtension($path));
                         self::$availableExtensions[$extension] = $extension;
                     }
                 }
@@ -230,24 +243,26 @@ class AllFilesInfo implements Flushable, FileInfo
                     if($path) {
                         if (! isset(self::$listOfFiles[$path])) {
                             self::$listOfFiles[$path] = false;
-                            $extension = $this->getExtension($path);
+                            $extension = strtolower($this->getExtension($path));
                             self::$availableExtensions[$extension] = $extension;
                         }
                     }
                 }
+                asort(self::$listOfFiles);
+                asort(self::$availableExtensions);
                 $cache->set($cachekey, serialize(self::$listOfFiles));
+                $cache->set($cachekey . 'availableExtensions', serialize(self::$availableExtensions));
                 $cache->set($cachekey . 'dataStaging', serialize(self::$dataStaging));
                 $cache->set($cachekey . 'dataLive', serialize(self::$dataLive));
                 $cache->set($cachekey . 'databaseLookupStaging', serialize(self::$databaseLookupListStaging));
                 $cache->set($cachekey . 'databaseLookupLive', serialize(self::$databaseLookupListLive));
-                $cache->set($cachekey . 'availableExtensions', serialize(self::$availableExtensions));
             } else {
                 self::$listOfFiles = unserialize($cache->get($cachekey));
+                self::$availableExtensions = unserialize($cache->get($cachekey . 'availableExtensions'));
                 self::$dataStaging = unserialize($cache->get($cachekey . 'dataStaging'));
                 self::$dataLive = unserialize($cache->get($cachekey . 'dataLive'));
                 self::$databaseLookupListStaging = unserialize($cache->get($cachekey . 'databaseLookupStaging'));
                 self::$databaseLookupListLive = unserialize($cache->get($cachekey . 'databaseLookupLive'));
-                self::$availableExtensions = unserialize($cache->get($cachekey . 'availableExtensions'));
             }
         }
 
