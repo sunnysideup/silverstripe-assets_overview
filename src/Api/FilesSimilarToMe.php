@@ -2,7 +2,6 @@
 
 class FilesSimilarToMe
 {
-
     protected function workOutSimilarity()
     {
         set_time_limit(240);

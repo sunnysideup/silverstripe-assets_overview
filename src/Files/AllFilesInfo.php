@@ -2,9 +2,9 @@
 
 namespace Sunnysideup\AssetsOverview\Files;
 
+use \FilesystemIterator;
 use \RecursiveDirectoryIterator;
 use \RecursiveIteratorIterator;
-use \FilesystemIterator;
 use Psr\SimpleCache\CacheInterface;
 use SilverStripe\Assets\File;
 use SilverStripe\Assets\Folder;
@@ -12,9 +12,9 @@ use SilverStripe\Core\Config\Config;
 use SilverStripe\Core\Config\Configurable;
 use SilverStripe\Core\Flushable;
 use SilverStripe\Core\Injector\Injectable;
-use SilverStripe\ORM\DB;
-
 use SilverStripe\Core\Injector\Injector;
+
+use SilverStripe\ORM\DB;
 use Sunnysideup\AssetsOverview\Interfaces\FileInfo;
 use Sunnysideup\AssetsOverview\Traits\FilesystemRelatedTraits;
 
@@ -35,7 +35,6 @@ class AllFilesInfo implements Flushable, FileInfo
     protected static $dataStaging = [];
 
     /**
-     *
      * @var array
      */
     protected static $dataLive = [];
@@ -55,7 +54,6 @@ class AllFilesInfo implements Flushable, FileInfo
      */
     protected static $availableExtensions = [];
 
-
     /**
      * @var array
      */
@@ -71,12 +69,17 @@ class AllFilesInfo implements Flushable, FileInfo
         '__ResizedImage',
     ];
 
-    public static function getTotalFilesCount() : int
+    public function __construct($path)
+    {
+        $this->path = $path;
+    }
+
+    public static function getTotalFilesCount(): int
     {
         return (int) count(self::$listOfFiles);
     }
 
-    public static function getAvailableExtensions() : array
+    public static function getAvailableExtensions(): array
     {
         return self::$availableExtensions ?? [];
     }
@@ -86,7 +89,7 @@ class AllFilesInfo implements Flushable, FileInfo
      * @param  int $id
      * @return bool
      */
-    public static function exists_on_staging(int $id) : bool
+    public static function exists_on_staging(int $id): bool
     {
         return isset(self::$dataStaging[$id]);
     }
@@ -96,22 +99,21 @@ class AllFilesInfo implements Flushable, FileInfo
      * @param  int $id
      * @return bool
      */
-    public static function exists_on_live(int $id) : bool
+    public static function exists_on_live(int $id): bool
     {
         return isset(self::$dataLive[$id]);
     }
 
-
     /**
      * get data from staging database row
      * @param  string $path from the root of assets
-     * @param  int id
+     * @param  int $pathFromAssets id
      * @return array
      */
-    public static function get_any_data(string $pathFromAssets, ?int $id = 0) : array
+    public static function get_any_data(string $pathFromAssets, ?int $id = 0): array
     {
         $data = self::get_staging_data($pathFromAssets, $id);
-        if(empty($data)) {
+        if (empty($data)) {
             $data = self::get_live_data($pathFromAssets, $id);
         }
 
@@ -121,12 +123,12 @@ class AllFilesInfo implements Flushable, FileInfo
     /**
      * get data from staging database row
      * @param  string $pathFromAssets from the root of assets
-     * @param  int id
+     * @param  int $id
      * @return array
      */
-    public static function get_staging_data(string $pathFromAssets, ?int $id = 0) : array
+    public static function get_staging_data(string $pathFromAssets, ?int $id = 0): array
     {
-        if(! $id) {
+        if (! $id) {
             $id = self::$databaseLookupListStaging[$pathFromAssets] ?? 0;
         }
         return self::$dataStaging[$id] ?? [];
@@ -137,9 +139,9 @@ class AllFilesInfo implements Flushable, FileInfo
      * @param  string $pathFromAssets - full lookup list
      * @return array
      */
-    public static function get_live_data(string $pathFromAssets, ?int $id = 0) : array
+    public static function get_live_data(string $pathFromAssets, ?int $id = 0): array
     {
-        if(! $id) {
+        if (! $id) {
             $id = self::$databaseLookupListLive[$pathFromAssets] ?? 0;
         }
         return self::$dataLive[$id] ?? [];
@@ -152,7 +154,7 @@ class AllFilesInfo implements Flushable, FileInfo
      * @param  mixed     $value
      * @return int
      */
-    public static function find_in_data_staging(string $fieldName, $value) : int
+    public static function find_in_data_staging(string $fieldName, $value): int
     {
         return self::find_in_data(self::$dataStaging, $fieldName, $value);
     }
@@ -164,44 +166,9 @@ class AllFilesInfo implements Flushable, FileInfo
      * @param  mixed     $value
      * @return int
      */
-    public static function find_in_data_live(string $fieldName, $value) : int
+    public static function find_in_data_live(string $fieldName, $value): int
     {
         return self::find_in_data(self::$dataLive, $fieldName, $value);
-    }
-
-    protected static function find_id_from_file_name(array $data, string $filename) : int
-    {
-
-        $id = self::find_in_data($data, 'FileFilename', $filename);
-        if(! $id) {
-            $id = self::find_in_data($data, 'Filename', $filename);
-        }
-
-        return $id;
-    }
-
-    /**
-     *
-     * @param  array  $data
-     * @param  string $fieldName
-     * @param  mixed  $value
-     * @return int
-     */
-    protected static function find_in_data(array $data, string $fieldName, $value) : int
-    {
-        foreach($data as $id => $row) {
-            if(isset($row[$fieldName])) {
-                if($row[$fieldName] === $value) {
-                    return (int) $id;
-                }
-            }
-        }
-        return 0;
-    }
-
-    public function __construct($path)
-    {
-        $this->path = $path;
     }
 
     public static function flush()
@@ -214,8 +181,8 @@ class AllFilesInfo implements Flushable, FileInfo
     {
         $bytestotal = 0;
         $path = realpath(ASSETS_PATH);
-        if($path!==false && $path!='' && file_exists($path)){
-            foreach(new RecursiveIteratorIterator(new RecursiveDirectoryIterator($path, FilesystemIterator::SKIP_DOTS)) as $object){
+        if ($path !== false && $path !== '' && file_exists($path)) {
+            foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($path, FilesystemIterator::SKIP_DOTS)) as $object) {
                 $bytestotal += $object->getSize();
             }
         }
@@ -231,7 +198,7 @@ class AllFilesInfo implements Flushable, FileInfo
                 //disk
                 $diskArray = $this->getArrayOfFilesOnDisk();
                 foreach ($diskArray as $path) {
-                    if($path) {
+                    if ($path) {
                         self::$listOfFiles[$path] = true;
                         $extension = strtolower($this->getExtension($path));
                         self::$availableExtensions[$extension] = $extension;
@@ -240,7 +207,7 @@ class AllFilesInfo implements Flushable, FileInfo
                 //database
                 $databaseArray = $this->getArrayOfFilesInDatabase();
                 foreach ($databaseArray as $path) {
-                    if($path) {
+                    if ($path) {
                         if (! isset(self::$listOfFiles[$path])) {
                             self::$listOfFiles[$path] = false;
                             $extension = strtolower($this->getExtension($path));
@@ -267,6 +234,34 @@ class AllFilesInfo implements Flushable, FileInfo
         }
 
         return self::$listOfFiles;
+    }
+
+    protected static function find_id_from_file_name(array $data, string $filename): int
+    {
+        $id = self::find_in_data($data, 'FileFilename', $filename);
+        if (! $id) {
+            $id = self::find_in_data($data, 'Filename', $filename);
+        }
+
+        return $id;
+    }
+
+    /**
+     * @param  array  $data
+     * @param  string $fieldName
+     * @param  mixed  $value
+     * @return int
+     */
+    protected static function find_in_data(array $data, string $fieldName, $value): int
+    {
+        foreach ($data as $id => $row) {
+            if (isset($row[$fieldName])) {
+                if ($row[$fieldName] === $value) {
+                    return (int) $id;
+                }
+            }
+        }
+        return 0;
     }
 
     protected function isRealFile(string $path): bool
@@ -318,17 +313,17 @@ class AllFilesInfo implements Flushable, FileInfo
     protected function getArrayOfFilesInDatabase(): array
     {
         $finalArray = [];
-        foreach(['', '_Live'] as $stage) {
-            $sql = 'SELECT * FROM "File'.$stage.'" WHERE "ClassName" <> \''.addslashes(Folder::class).'\';';
+        foreach (['', '_Live'] as $stage) {
+            $sql = 'SELECT * FROM "File' . $stage . '" WHERE "ClassName" <> \'' . addslashes(Folder::class) . '\';';
             $rows = DB::query($sql);
-            foreach($rows as $row) {
-                $file = $row['FileFilename'] ?? $row['Filename'] ;
-                if(trim($file)) {
+            foreach ($rows as $row) {
+                $file = $row['FileFilename'] ?? $row['Filename'];
+                if (trim($file)) {
                     $absoluteLocation = $this->path . DIRECTORY_SEPARATOR . $file;
                     if ($stage === '') {
                         self::$dataStaging[$row['ID']] = $row;
                         self::$databaseLookupListStaging[$file] = $row['ID'];
-                    } elseif($stage === '_Live') {
+                    } elseif ($stage === '_Live') {
                         self::$dataLive[$row['ID']] = $row;
                         self::$databaseLookupListLive[$file] = $row['ID'];
                     } else {

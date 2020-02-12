@@ -1,6 +1,6 @@
 <?php
 require 'image.compare.class.php';
- 
+
 /*
     these two images are almost the same so the hammered distance will be less than 10
     try it with images like this:

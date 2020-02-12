@@ -5,7 +5,7 @@ namespace Sunnysideup\AssetsOverview\Control;
 use SilverStripe\CMS\Controllers\ContentController;
 use SilverStripe\Control\Director;
 use SilverStripe\Control\HTTPRequest;
-use SilverStripe\Forms\CheckboxField;
+use SilverStripe\Core\Environment;
 use SilverStripe\Forms\CheckboxSetField;
 use SilverStripe\Forms\DropdownField;
 use SilverStripe\Forms\FieldList;
@@ -17,11 +17,9 @@ use SilverStripe\Forms\TextField;
 use SilverStripe\ORM\ArrayList;
 use SilverStripe\Security\Permission;
 use SilverStripe\Security\Security;
-use SilverStripe\View\SSViewer;
 use SilverStripe\View\ArrayData;
 use SilverStripe\View\Requirements;
-use SilverStripe\Core\Environment;
-use Sunnysideup\AssetsOverview\Api\CompareImages;
+use SilverStripe\View\SSViewer;
 use Sunnysideup\AssetsOverview\Files\AllFilesInfo;
 use Sunnysideup\AssetsOverview\Files\OneFileInfo;
 use Sunnysideup\AssetsOverview\Traits\FilesystemRelatedTraits;
@@ -86,7 +84,6 @@ class View extends ContentController
             'Group' => 'Ratio',
         ],
     ];
-
 
     private const FILTERS = [
         'byfilesystemstatus' => [
@@ -234,30 +231,30 @@ class View extends ContentController
             [
                 $this->getSortStatement(),
                 $this->getFilterStatement(),
-                $this->getPageStatement()
+                $this->getPageStatement(),
             ]
         );
-        if($this->filter) {
-            $filterStatement = 'a subset of files ('.
-                $this->getTotalFileCountFiltered().' of '.$this->getTotalFileCountRaw().' / '.
-                $this->getTotalFileSizeFiltered() . ' of '. $this->getTotalFileSizeRaw() .
+        if ($this->filter) {
+            $filterStatement = 'a subset of files (' .
+                $this->getTotalFileCountFiltered() . ' of ' . $this->getTotalFileCountRaw() . ' / ' .
+                $this->getTotalFileSizeFiltered() . ' of ' . $this->getTotalFileSizeRaw() .
                 ')';
         } else {
-            $filterStatement = 'all files ('.
-                $this->getTotalFileCountRaw().' / '.
+            $filterStatement = 'all files (' .
+                $this->getTotalFileCountRaw() . ' / ' .
                 $this->getTotalFileSizeRaw() .
                 ')';
         }
 
-        return 'Showing '.$filterStatement. ' - ' .implode(', ', $array);
+        return 'Showing ' . $filterStatement . ' - ' . implode(', ', $array);
     }
 
-    public function getSortStatement() : string
+    public function getSortStatement(): string
     {
         return 'sorted by ' . self::SORTERS[$this->sorter]['Title'] ?? 'ERROR IN SORTER';
     }
 
-    public function getFilterStatement() : string
+    public function getFilterStatement(): string
     {
         $filterArray = array_filter(
             [
@@ -266,13 +263,13 @@ class View extends ContentController
             ]
         );
 
-        return count($filterArray) ? 'filtered for: ' . implode(', ', $filterArray)  :  '';
+        return count($filterArray) ? 'filtered for: ' . implode(', ', $filterArray) : '';
     }
 
-    public function getPageStatement() : string
+    public function getPageStatement(): string
     {
         return $this->getNumberOfPages() > 1 ?
-            'from '.($this->startLimit) . ' to ' . ($this->endLimit)
+            'from ' . $this->startLimit . ' to ' . $this->endLimit
             :
             '';
     }
@@ -384,10 +381,10 @@ class View extends ContentController
                 $map = $item->toMap();
                 $item->FullFields = ArrayList::create();
                 foreach ($map as $key => $value) {
-                    if($value === false) {
+                    if ($value === false) {
                         $value = 'no';
                     }
-                    if($value === true) {
+                    if ($value === true) {
                         $value = 'yes';
                     }
                     $item->FullFields->push(ArrayData::create(['Key' => $key, 'Value' => $value]));
@@ -537,7 +534,6 @@ class View extends ContentController
         }
         return false;
     }
-
 
     protected function getForm(): Form
     {
