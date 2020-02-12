@@ -33,7 +33,7 @@ class View extends ContentController
 
     private const ONE_FILE_INFO_CLASS = OneFileInfo::class;
 
-    private const FILTERS = [
+    private const SORTERS = [
         'byfolder' => [
             'Title' => 'Folder',
             'Sort' => 'PathFromAssetsFolder',
@@ -64,36 +64,6 @@ class View extends ContentController
             'Sort' => 'ExtensionAsLower',
             'Group' => 'ExtensionAsLower',
         ],
-        'byextensionerror' => [
-            'Title' => 'Extension Error',
-            'Sort' => 'HasIrregularExtension',
-            'Group' => 'HumanHasIrregularExtension',
-        ],
-        'bydatabasestatus' => [
-            'Title' => 'Database Status',
-            'Sort' => 'IsInDatabaseSummary',
-            'Group' => 'HumanIsInDatabaseSummary',
-        ],
-        'bydatabaseerror' => [
-            'Title' => 'Database Error',
-            'Sort' => 'ErrorInFilenameCase',
-            'Group' => 'HumanErrorInFilenameCase',
-        ],
-        'by3to4error' => [
-            'Title' => 'Migration to SS4 errors',
-            'Sort' => 'ErrorInSs3Ss4Comparison',
-            'Group' => 'HumanErrorInSs3Ss4Comparison',
-        ],
-        'byfoldererror' => [
-            'Title' => 'Folder Error',
-            'Sort' => 'ErrorParentID',
-            'Group' => 'HumanErrorParentID',
-        ],
-        'byfilesystemstatus' => [
-            'Title' => 'Filesystem Status',
-            'Sort' => 'IsInFileSystem',
-            'Group' => 'HumanIsInFileSystem',
-        ],
         'byisimage' => [
             'Title' => 'Image vs Other Files',
             'Sort' => 'IsImage',
@@ -114,24 +84,51 @@ class View extends ContentController
             'Sort' => 'Ratio',
             'Group' => 'Ratio',
         ],
-        'bysimilarity' => [
-            'Title' => 'Similarity (takes a long time!)',
-            'Sort' => '',
-            'Group' => '',
-            'Method' => 'workOutSimilarity',
+    ];
+
+
+    private const FILTERS = [
+        'byextensionerror' => [
+            'Title' => 'Case error in file type',
+            'Field' => 'HasIrregularExtension',
+            'Values' => [0, false],
         ],
-        'rawlist' => [
-            'Title' => 'Raw List',
-            'Sort' => 'Path',
-            'Group' => 'Path',
-            'Method' => 'workoutRawList',
+        'bymissingfromlive' => [
+            'Title' => 'Unpublished',
+            'Field' => 'IsInDatabaseLive',
+            'Values' => [0, false],
         ],
-        'rawlistfull' => [
-            'Title' => 'Full Raw List',
-            'Sort' => 'Path',
-            'Group' => 'Path',
-            'Method' => 'workoutRawListFull',
+        'bymissingfromstaging' => [
+            'Title' => 'Missing from drafts',
+            'Field' => 'IsInDatabaseStaging',
+            'Values' => [0, false],
         ],
+        'bydatabaseerror' => [
+            'Title' => 'Case error in file name',
+            'Field' => 'ErrorInFilenameCase',
+            'Values' => [1, true],
+        ],
+        'by3to4error' => [
+            'Title' => 'Migration to SS4 errors',
+            'Field' => 'ErrorInSs3Ss4Comparison',
+            'Values' => [1, true],
+        ],
+        'byfoldererror' => [
+            'Title' => 'Folder Error',
+            'Field' => 'ErrorParentID',
+            'Values' => [1, true],
+        ],
+        'byfilesystemstatus' => [
+            'Title' => 'Missing from file system',
+            'Field' => 'IsInFileSystem',
+            'Values' => [0, false],
+        ],
+    ];
+
+    private const DISPLAYERS = [
+        'thumbs' => 'Thumbnails',
+        'rawlist' => 'File List',
+        'rawlistfull' => 'Raw Data',
     ];
 
     /**
@@ -152,12 +149,17 @@ class View extends ContentController
     /**
      * @var int
      */
-    protected $totalFileCount = 0;
+    protected $totalFileCountRaw = 0;
 
     /**
      * @var int
      */
-    protected $totalFileSize = 0;
+    protected $totalFileCountFiltered = 0;
+
+    /**
+     * @var int
+     */
+    protected $totalFileSizeFiltered = 0;
 
     /**
      * @var int
@@ -182,22 +184,22 @@ class View extends ContentController
     /**
      * @var string
      */
-    protected $filter = 'byfolder';
+    protected $sorter = 'byfolder';
 
     /**
-     * @var array
+     * @var string
      */
-    protected $availableExtensions = [];
+    protected $filter = '';
+
+    /**
+     * @var string
+     */
+    protected $displayer = 'thumbs';
 
     /**
      * @var array
      */
     protected $allowedExtensions = [];
-
-    /**
-     * @var bool
-     */
-    protected $isThumbList = true;
 
     /**
      * Defines methods that can be called directly
@@ -220,14 +222,33 @@ class View extends ContentController
 
     public function getTitle(): string
     {
-        $list = self::FILTERS;
-
-        return $list[$this->filter]['Title'] ?? 'NO FILTER AVAILABLE';
+        $array = array_filter([$this->getSortStatement(), $this->getFilterStatement(), $this->getPageStatement()]);
+        return 'Showing all files'.
+            implode(', ', $array);
     }
 
-    public function getIsThumbList(): bool
+    public function getSortStatement() : string
     {
-        return $this->isThumbList;
+        return 'sorted by ' . self::SORTERS[$this->sorter]['Title'] ?? 'ERROR IN SORTER';
+    }
+
+    public function getFilterStatement() : string
+    {
+        return $this->filter ? 'filtered for: ' . self::FILTERS[$this->filter]['Title'] :  '';
+    }
+
+    public function getPageStatement() : string
+    {
+        return $this->getNumberOfPages() > 1 ?
+            ', from '.($this->startLimit * $this->limit) .
+            ' to ' . ($this->endLimit * $this->limit).' out of '.$this->getTotalFileCountFiltered()
+            :
+            '';
+    }
+
+    public function getDisplayer(): string
+    {
+        return $this->displayer;
     }
 
     public function getfilesAsArrayList(): ArrayList
@@ -240,14 +261,19 @@ class View extends ContentController
         return $this->filesAsSortedArrayList;
     }
 
-    public function getTotalFileCount(): string
+    public function getTotalFileCountRaw(): string
     {
-        return (string) number_format($this->totalFileCount);
+        return (string) number_format($this->totalFileCountRaw);
+    }
+
+    public function getTotalFileCountFiltered(): string
+    {
+        return (string) number_format($this->totalFileCountFiltered);
     }
 
     public function getTotalFileSize(): string
     {
-        return (string) $this->humanFileSize($this->totalFileSize);
+        return (string) $this->humanFileSize($this->totalFileSizeFiltered);
     }
 
     public function init()
@@ -260,6 +286,12 @@ class View extends ContentController
         SSViewer::config()->update('theme_enabled', false);
         if ($filter = $this->request->getVar('filter')) {
             $this->filter = $filter;
+        }
+        if ($sorter = $this->request->getVar('sorter')) {
+            $this->sorter = $sorter;
+        }
+        if ($displayer = $this->request->getVar('displayer')) {
+            $this->displayer = displayer;
         }
 
         if ($extensions = $this->request->getVar('extensions')) {
@@ -282,17 +314,9 @@ class View extends ContentController
 
     public function index($request)
     {
-        $list = self::FILTERS;
-        $actionData = $list[$this->filter];
-        if (isset($list[$this->filter])) {
-            if ($actionData['Sort'] && $actionData['Group']) {
-                $this->setFilesAsSortedArrayList($actionData['Sort'], $actionData['Group']);
-            }
-            if (! empty($actionData['Method'])) {
-                $this->{$actionData['Method']}();
-            }
-        } else {
-            user_error('Could not find filter');
+        $this->setFilesAsSortedArrayList();
+        if ($this->displayer === 'rawlistfull') {
+            $this->addMapToItems();
         }
 
         return $this->renderWith('AssetsOverview');
@@ -313,74 +337,26 @@ class View extends ContentController
         return $this->sendJSON($array);
     }
 
-    public function workoutRawList()
-    {
-        $this->isThumbList = false;
-        foreach ($this->filesAsSortedArrayList as $group) {
-            foreach ($group->Items as $item) {
-                $item->HTML = '<li>' . $item->PathFromAssetsFolder . '</li>';
-            }
-        }
-        return [];
-    }
-
-    public function workoutRawListFull()
+    public function addMapToItems()
     {
         $this->isThumbList = false;
         foreach ($this->filesAsSortedArrayList as $group) {
             foreach ($group->Items as $item) {
                 $map = $item->toMap();
-                ksort($map);
-                $item->HTML = '
-                    <li>
-                        <strong>' . $item->PathFromAssetsFolder . '</strong>
-                        <ul>
-                            <li>
-                            ' .
-                            implode(
-                                '</li><li>',
-                                array_map(
-                                    function ($v, $k) {
-                                        return sprintf("<strong>%s</strong>: '%s'", $k, $v);
-                                    },
-                                    $map,
-                                    array_keys($map)
-                                )
-                            ) . '
-                            </li>
-                        </ul>
-                    </li>';
+                $item->FullFields = ArrayList::create();
+                foreach ($map as $key => $value) {
+                    $item->FullFields->push(ArrayData(['Key' => $key, 'Value' => $value]));
+                }
             }
         }
-        return [];
     }
 
     ##############################################
     # FORM
     ##############################################
-
-    public function getForm(): Form
+    public function Form()
     {
-        $fieldList = FieldList::create(
-            [
-                $this->createFormField('filter', 'Group By', $this->filter, $this->getFilterList()),
-                $this->createFormField('extensions', 'Extensions', $this->allowedExtensions, $this->getExtensionList()),
-                $this->createFormField('limit', 'Items Per Page', $this->limit, $this->getLimitList()),
-                $this->createFormField('page', 'Page Number', $this->pageNumber, $this->getPageNumberList()),
-                TextField::create('compare', 'Compare With')->setDescription('add a link to a comparison file - e.g. http://oldsite.com/assets-overview/test.json'),
-            ]
-        );
-        $actionList = FieldList::create(
-            [
-                FormAction::create('index', 'show'),
-            ]
-        );
-
-        $form = Form::create($this, 'index', $fieldList, $actionList);
-        $form->setFormMethod('GET', true);
-        $form->disableSecurityToken();
-
-        return $form;
+        return $this->getForm();
     }
 
     protected function sendJSON($data)
@@ -393,66 +369,12 @@ class View extends ContentController
         return $fileData;
     }
 
-    protected function workOutSimilarity()
-    {
-        set_time_limit(240);
-        $engine = new CompareImages();
-        $this->setFilesAsArrayList();
-        $a = clone $this->filesAsArrayList;
-        $b = clone $this->filesAsArrayList;
-        $c = clone $this->filesAsArrayList;
-        $alreadyDone = [];
-        foreach ($a as $file) {
-            $nameOne = $file->Path;
-            $nameOneFromAssets = $file->PathFromAssetsFolder;
-            if (! in_array($nameOne, $alreadyDone, true)) {
-                $easyFind = false;
-                $sortArray = [];
-                foreach ($b as $compareImage) {
-                    $nameTwo = $compareImage->Path;
-                    if ($nameOne !== $nameTwo) {
-                        $fileNameTest = $file->FileName && $file->FileName === $compareImage->FileName;
-                        $fileSizeTest = $file->FileSize > 0 && $file->FileSize === $compareImage->FileSize;
-                        if ($fileNameTest || $fileSizeTest) {
-                            $easyFind = true;
-                            $alreadyDone[$nameOne] = $nameOneFromAssets;
-                            $alreadyDone[$compareImage->Path] = $nameOneFromAssets;
-                        } elseif ($easyFind === false && $file->IsImage) {
-                            if ($file->Ratio === $compareImage->Ratio && $file->Ratio > 0) {
-                                $score = $engine->compare($nameOne, $nameTwo);
-                                $sortArray[$nameTwo] = $score;
-                                break;
-                            }
-                        }
-                    }
-                }
-                if ($easyFind === false) {
-                    if (count($sortArray)) {
-                        asort($sortArray);
-                        reset($sortArray);
-                        $mostSimilarKey = key($sortArray);
-                        foreach ($c as $findImage) {
-                            if ($findImage->Path === $mostSimilarKey) {
-                                $alreadyDone[$nameOne] = $nameOneFromAssets;
-                                $alreadyDone[$findImage->Path] = $nameOneFromAssets;
-                                break;
-                            }
-                        }
-                    } else {
-                        $alreadyDone[$file->Path] = '[N/A]';
-                    }
-                }
-            }
-        }
-        foreach ($this->filesAsArrayList as $file) {
-            $file->MostSimilarTo = $alreadyDone[$file->Path] ?? '[N/A]';
-        }
-        $this->setFilesAsSortedArrayList('MostSimilarTo', 'MostSimilarTo');
-    }
-
-    protected function setfilesAsSortedArrayList($sortField, $headerField)
+    protected function setfilesAsSortedArrayList()
     {
         if ($this->filesAsSortedArrayList === null) {
+            $sorterData = self::SORTERS[$this->sorter];
+            $sortField = $sorterData['Sort'];
+            $headerField = $sorterData['Group'];
             //done only if not already done ...
             $this->setFilesAsArrayList();
             $this->filesAsSortedArrayList = ArrayList::create();
@@ -506,20 +428,30 @@ class View extends ContentController
         if ($this->filesAsArrayList === null) {
             $rawArray = $this->getRawData();
             //prepare loop
-            $this->totalFileCount = count($rawArray);
+            $this->totalFileCountRaw = AllFilesInfo::getTotalFilesCount();
             $this->filesAsArrayList = ArrayList::create();
             $count = 0;
+            $filterFree = true;
+            if (isset(self::FILTERS[$this->filter])) {
+                $filterFree = false;
+                $filterField = self::FILTERS['Field'];
+                $filterValues = self::FILTERS['Values'];
+            }
             foreach ($rawArray as $absoluteLocation => $fileExists) {
                 if ($this->isPathWithAllowedExtension($absoluteLocation)) {
                     if ($count >= $this->startLimit && $count < $this->endLimit) {
                         $intel = $this->getDataAboutOneFile($absoluteLocation, $fileExists);
-                        $this->availableExtensions[$intel['ExtensionAsLower']] = $intel['ExtensionAsLower'];
-                        $this->totalFileSize += $intel['FileSize'];
-                        $this->filesAsArrayList->push(
-                            ArrayData::create($intel)
-                        );
+                        if ($filterFree || in_array($intel[$filterField], $filterValues, 1)) {
+                            $count++;
+                            $this->totalFileCountFiltered++;
+                            $this->totalFileSizeFiltered += $intel['FileSize'];
+                            $this->filesAsArrayList->push(
+                                ArrayData::create($intel)
+                            );
+                        }
+                    } elseif ($count >= $this->endLimit) {
+                        break;
                     }
-                    $count++;
                 }
             }
         }
@@ -584,6 +516,41 @@ class View extends ContentController
 
         return $field;
     }
+    protected function getForm(): Form
+    {
+        $fieldList = FieldList::create(
+            [
+                $this->createFormField('sorter', 'Sort By', $this->sorter, $this->getSorterList()),
+                $this->createFormField('filter', 'Filter for', $this->filter, $this->getFilterList()),
+                $this->createFormField('displayer', 'Displayed by', $this->filter, $this->getDisplayerList()),
+                $this->createFormField('extensions', 'Extensions', $this->allowedExtensions, $this->getExtensionList()),
+                $this->createFormField('limit', 'Items Per Page', $this->limit, $this->getLimitList()),
+                $this->createFormField('page', 'Page Number', $this->pageNumber, $this->getPageNumberList()),
+                // TextField::create('compare', 'Compare With')->setDescription('add a link to a comparison file - e.g. http://oldsite.com/assets-overview/test.json'),
+            ]
+        );
+        $actionList = FieldList::create(
+            [
+                FormAction::create('index', 'Update File List'),
+            ]
+        );
+
+        $form = Form::create($this, 'index', $fieldList, $actionList);
+        $form->setFormMethod('GET', true);
+        $form->disableSecurityToken();
+
+        return $form;
+    }
+
+    protected function getSorterList(): array
+    {
+        $array = [];
+        foreach (self::SORTERS as $key => $data) {
+            $array[$key] = $data['Title'];
+        }
+
+        return $array;
+    }
 
     protected function getFilterList(): array
     {
@@ -595,11 +562,14 @@ class View extends ContentController
         return $array;
     }
 
+    protected function getDisplayerList(): array
+    {
+        return self::DISPLAYERS;
+    }
+
     protected function getExtensionList(): array
     {
-        asort($this->availableExtensions);
-
-        return $this->availableExtensions;
+        return AllFilesInfo::getAvailableExtensions();
     }
 
     protected function getPageNumberList(): array
@@ -615,14 +585,14 @@ class View extends ContentController
 
     protected function getNumberOfPages(): Int
     {
-        return ceil($this->totalFileCount / $this->limit);
+        return ceil($this->totalFileCountFiltered / $this->limit);
     }
 
     protected function getLimitList(): array
     {
         $step = 250;
         $array = [];
-        for ($i = $step; ($i - $step) < $this->totalFileCount; $i += $step) {
+        for ($i = $step; ($i - $step) < $this->totalFileCountFiltered; $i += $step) {
             if ($i > $this->limit && ! isset($array[$this->limit])) {
                 $array[$this->limit] = $this->limit;
             }

@@ -87,6 +87,7 @@ class OneFileInfo implements Flushable, FileInfo
             $this->addHumanValues();
 
             $fullArrayString = serialize($this->intel);
+            ksort($this->intel);
             $cache->set($cachekey, $fullArrayString);
         } else {
             $fullArrayString = $cache->get($cachekey);
@@ -188,7 +189,6 @@ class OneFileInfo implements Flushable, FileInfo
                 $this->intel['Type'] = $type;
             }
         }
-
     }
 
     protected function addFolderDetails($fileData)
@@ -196,12 +196,12 @@ class OneFileInfo implements Flushable, FileInfo
 
         $folder = [];
         if (! empty($fileData['ParentID'])) {
-            if(isset($this->folderCache['ParentID'])) {
+            if (isset($this->folderCache['ParentID'])) {
                 $folder = $this->folderCache['ParentID'];
             } else {
                 $sql = 'SELECT * FROM "File" WHERE "ID" = '.$fileData['ParentID'];
                 $rows = DB::query($sql);
-                foreach($rows as $folder) {
+                foreach ($rows as $folder) {
                     $this->folderCache['ParentID'] = $folder;
                 }
             }

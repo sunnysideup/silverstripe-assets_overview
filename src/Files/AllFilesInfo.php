@@ -49,6 +49,11 @@ class AllFilesInfo implements Flushable, FileInfo
      */
     protected static $databaseLookupListStaging = [];
 
+    /**
+     * @var array
+     */
+    protected static $availableExtensions = [];
+
 
     /**
      * @var array
@@ -64,6 +69,16 @@ class AllFilesInfo implements Flushable, FileInfo
         '__Scale',
         '__ResizedImage',
     ];
+
+    public static function getTotalFilesCount() : int
+    {
+        return (int) count(self::$listOfFiles);
+    }
+
+    public static function getAvailableExtensions() : array
+    {
+        return self::$availableExtensions;
+    }
 
     /**
      * does the file exists in the database on staging?
@@ -198,34 +213,42 @@ class AllFilesInfo implements Flushable, FileInfo
     {
         $cache = self::getCache();
         $cachekey = $this->getCacheKey();
-        if (! $cache->has($cachekey)) {
-            //disk
-            $diskArray = $this->getArrayOfFilesOnDisk();
-            foreach ($diskArray as $path) {
-                if($path) {
-                    self::$listOfFiles[$path] = true;
-                }
-            }
-            //database
-            $databaseArray = $this->getArrayOfFilesInDatabase();
-            foreach ($databaseArray as $path) {
-                if($path) {
-                    if (! isset(self::$listOfFiles[$path])) {
-                        self::$listOfFiles[$path] = false;
+        if (count(self::$listOfFiles) === 0) {
+            if (! $cache->has($cachekey)) {
+                //disk
+                $diskArray = $this->getArrayOfFilesOnDisk();
+                foreach ($diskArray as $path) {
+                    if($path) {
+                        self::$listOfFiles[$path] = true;
+                        $extension = $this->getExtension($path);
+                        self::$availableExtensions[$extension] = $extension;
                     }
                 }
+                //database
+                $databaseArray = $this->getArrayOfFilesInDatabase();
+                foreach ($databaseArray as $path) {
+                    if($path) {
+                        if (! isset(self::$listOfFiles[$path])) {
+                            self::$listOfFiles[$path] = false;
+                            $extension = $this->getExtension($path);
+                            self::$availableExtensions[$extension] = $extension;
+                        }
+                    }
+                }
+                $cache->set($cachekey, serialize(self::$listOfFiles));
+                $cache->set($cachekey . 'dataStaging', serialize(self::$dataStaging));
+                $cache->set($cachekey . 'dataLive', serialize(self::$dataLive));
+                $cache->set($cachekey . 'databaseLookupStaging', serialize(self::$databaseLookupListStaging));
+                $cache->set($cachekey . 'databaseLookupLive', serialize(self::$databaseLookupListLive));
+                $cache->set($cachekey . 'availableExtensions', serialize(self::$availableExtensions));
+            } else {
+                self::$listOfFiles = unserialize($cache->get($cachekey));
+                self::$dataStaging = unserialize($cache->get($cachekey . 'dataStaging'));
+                self::$dataLive = unserialize($cache->get($cachekey . 'dataLive'));
+                self::$databaseLookupListStaging = unserialize($cache->get($cachekey . 'databaseLookupStaging'));
+                self::$databaseLookupListLive = unserialize($cache->get($cachekey . 'databaseLookupLive'));
+                self::$availableExtensions = unserialize($cache->get($cachekey . 'availableExtensions'));
             }
-            $cache->set($cachekey, serialize(self::$listOfFiles));
-            $cache->set($cachekey . 'dataStaging', serialize(self::$dataStaging));
-            $cache->set($cachekey . 'dataLive', serialize(self::$dataLive));
-            $cache->set($cachekey . 'databaseLookupStaging', serialize(self::$databaseLookupListStaging));
-            $cache->set($cachekey . 'databaseLookupLive', serialize(self::$databaseLookupListLive));
-        } else {
-            self::$listOfFiles = unserialize($cache->get($cachekey));
-            self::$dataStaging = unserialize($cache->get($cachekey . 'dataStaging'));
-            self::$dataLive = unserialize($cache->get($cachekey . 'dataLive'));
-            self::$databaseLookupListStaging = unserialize($cache->get($cachekey . 'databaseLookupStaging'));
-            self::$databaseLookupListLive = unserialize($cache->get($cachekey . 'databaseLookupLive'));
         }
 
         return self::$listOfFiles;

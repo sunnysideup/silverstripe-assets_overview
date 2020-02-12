@@ -257,25 +257,25 @@
     }
 
     .form form .btn-toolbar input {
-    	background-color:#B0BEC7;
-    	border-radius:5px;
-    	border:1px solid #18ab29;
-    	display:block;
-    	cursor:pointer;
-    	color:#ffffff;
-    	font-size:17px;
-    	padding:16px 21px;
-    	text-decoration:none;
+        background-color:#B0BEC7;
+        border-radius:5px;
+        border:1px solid #18ab29;
+        display:block;
+        cursor:pointer;
+        color:#ffffff;
+        font-size:17px;
+        padding:16px 21px;
+        text-decoration:none;
         width: 10em;
         margin: auto;
     }
     .form form .btn-toolbar input:hover {
-    	background:linear-gradient(to bottom, #5cbf2a 5%, #44c767 100%);
-    	background-color:#5cbf2a;
+        background:linear-gradient(to bottom, #5cbf2a 5%, #44c767 100%);
+        background-color:#5cbf2a;
     }
     .form form .btn-toolbar input:active {
-    	position:relative;
-    	top:1px;
+        position:relative;
+        top:1px;
     }
 
     .form select, .form input {
@@ -324,7 +324,7 @@
             <p>&laquo; <a href="/admin/assets/">back to CMS</a></p>
 
             <h1>Totals</h1>
-            <p>$TotalFileCount files, current selection uses total of $TotalFileSize in storage</p>
+            <p>$TotalFileCountRaw files, current selection uses total of $TotalFileSize in storage</p>
 
             <div class="form">
                 <h3>Sort and Filter</h3>
@@ -333,6 +333,7 @@
                 </div>
             </div>
             <p>
+                <strong>Additional Options:</strong>
                 <a href="$Link?flush=al"><strong>Reset Cache</strong></a>
                 /
                 <strong>View JSON:</strong>
@@ -345,26 +346,47 @@
             </p>
             <% if FilesAsSortedArrayList.count %>
                 <h1>$Title</h1>
-                <% if $isThumbList %>
-                    <% loop FilesAsSortedArrayList %>
+
+                <% if $Displayer = 'thumbs' %>
+                    <% loop $FilesAsSortedArrayList %>
                         <div id="section-$Number" class="break">
                             <h3>$SubTitle</h3>
-                            <% loop Items %>
-                            <% include OneImage %>
+                            <% loop $Items %>
+                                <% include OneImage %>
                             <% end_loop %>
                         </div>
                     <% end_loop %>
-                <% else %>
-                    <hr />
-                    <hr />
-                    <% loop FilesAsSortedArrayList %>
-                        <% loop Items %>
-                            $HTML.RAW
+                <% end_if %>
+
+                <% if $Displayer = 'rawlist' %>
+                    <ul>
+                    <% loop $FilesAsSortedArrayList %>
+                        <% loop $Items %>
+                            <li>
+                                <a href="$PathFromAssetsFolder">$PathFromAssetsFolder</a>
+                            </li>
                         <% end_loop %>
                     <% end_loop %>
-                    <hr />
-                    <hr />
+                    </ul>
                 <% end_if %>
+
+                <% if $Displayer = 'rawlistfull' %>
+                    <ul>
+                    <% loop $FilesAsSortedArrayList %>
+                        <% loop $Items %>
+                            <li>
+                                <strong>$PathFromAssetsFolder</strong>
+                                <ul>
+                                <% loop $Items.FullFields %>
+                                    <li><strong>$Key</strong> $Value</li>
+                                <% end_loop %>
+                                </ul>
+                            </li>
+                        <% end_loop %>
+                    <% end_loop %>
+                    </ul>
+                <% end_if %>
+
             <% else %>
                 <p class="message warning">
                     No files found.
