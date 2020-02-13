@@ -26,8 +26,8 @@ class FilesSimilarToMe
                             $easyFind = true;
                             $alreadyDone[$nameOne] = $nameOneFromAssets;
                             $alreadyDone[$compareImage->Path] = $nameOneFromAssets;
-                        } elseif ($easyFind === false && $file->IsImage) {
-                            if ($file->Ratio === $compareImage->Ratio && $file->Ratio > 0) {
+                        } elseif ($easyFind === false && $file->ImageIsImage) {
+                            if ($file->ImageRatio === $compareImage->ImageRatio && $file->ImageRatio > 0) {
                                 $score = $engine->compare($nameOne, $nameTwo);
                                 $sortArray[$nameTwo] = $score;
                                 break;

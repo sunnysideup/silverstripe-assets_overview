@@ -302,20 +302,17 @@
     <div class="toc">
         <div class="padding">
             <% if FilesAsSortedArrayList.count %>
-                <% if $FilesAsSortedArrayList.count > 100 %>
-                    <p>
-                        Too many options to show
-                    </p>
-                <% else %>
-                    <ul>
-                        <li><a href="#top">Sort and Filter ...</a><br /></li>
-                    <% loop $FilesAsSortedArrayList %>
-                        <li><a href="#section-$Number">$SubTitle ($Items.Count)</a></li>
-                    <% end_loop %>
-                <% end_if %>
+                <h4>Find on this page</h4>
+                <p>
+                    <a href="#top">update filter</a>
+                </p>
+                <ul>
+                <% loop $FilesAsSortedArrayList %>
+                    <li><a href="#section-$Number">$SubTitle ($Items.Count)</a></li>
+                <% end_loop %>
                 </ul>
             <% end_if %>
-            <h1>Additional Options:</h1>
+            <h4>Additional Options:</h4>
             <p>
                 <a href="$Link?flush=al"><strong>Reset Cache</strong></a>
                 /
@@ -363,7 +360,7 @@
                         <ul id="section-$Number" class="break">
                         <% loop $Items %>
                             <li>
-                                <a href="$PathFromAssetsFolder">$PathFromAssetsFolder</a>
+                                <h4><a href="$PathFromAssetsFolder">$PathFromAssetsFolder</a></h4>
                             </li>
                         <% end_loop %>
                         </ul>
@@ -395,5 +392,27 @@
             </div>
         </div>
     </div>
+    <script>
+        window.addEventListener(
+            "DOMContentLoaded",
+            function(){
+                const els = document.querySelectorAll('input, select');
+                for (let i=0; i < els.length; i++) {
+                    els[i].setAttribute("onchange", "this.form.submit(); this.form.innerHTML = 'loading ...'");
+                }
+                const btn = document.querySelector('#Form_index_action_index');
+                btn.style.display = 'none';
+                // const form = document.querySelector('form');
+                // form.addEventListener(
+                //     "submit",
+                //     (event) => {
+                //         console.log('We do get here when both a submit button is clicked and the image')
+                //     }
+                // );
+            }
+        );
+
+
+    </script>
 </body>
 </html>

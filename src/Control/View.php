@@ -35,76 +35,76 @@ class View extends ContentController
     private const SORTERS = [
         'byfolder' => [
             'Title' => 'Folder',
-            'Sort' => 'PathFromAssetsFolderFolderOnly',
-            'Group' => 'PathFromAssetsFolderFolderOnly',
+            'Sort' => 'PathFolderFromAssets',
+            'Group' => 'PathFolderFromAssets',
         ],
         'byfilename' => [
             'Title' => 'Filename',
-            'Sort' => 'FileName',
-            'Group' => 'FirstLetter',
+            'Sort' => 'PathFileName',
+            'Group' => 'PathFileNameFirstLetter',
         ],
         'bydbtitle' => [
             'Title' => 'Database Title',
             'Sort' => 'DBTitle',
-            'Group' => 'FirstLetterDBTitle',
+            'Group' => 'DBTitleFirstLetter',
         ],
         'byfilesize' => [
             'Title' => 'Filesize',
-            'Sort' => 'FileSize',
+            'Sort' => 'PathFileSize',
             'Group' => 'HumanFileSizeRounded',
         ],
         'bylastedited' => [
             'Title' => 'Last Edited',
-            'Sort' => 'LastEditedTS',
-            'Group' => 'LastEdited',
+            'Sort' => 'DBLastEditedTS',
+            'Group' => 'DBLastEdited',
         ],
         'byextension' => [
-            'Title' => 'Extension',
-            'Sort' => 'ExtensionAsLower',
-            'Group' => 'ExtensionAsLower',
+            'Title' => 'PathExtension',
+            'Sort' => 'PathExtensionAsLower',
+            'Group' => 'PathExtensionAsLower',
         ],
         'byisimage' => [
             'Title' => 'Image vs Other Files',
-            'Sort' => 'IsImage',
-            'Group' => 'HumanIsImage',
+            'Sort' => 'ImageIsImage',
+            'Group' => 'HumanImageIsImage',
         ],
         'byclassname' => [
             'Title' => 'Class Name',
-            'Sort' => 'ClassName',
-            'Group' => 'ClassName',
+            'Sort' => 'DBClassName',
+            'Group' => 'DBClassName',
         ],
         'bydimensions' => [
             'Title' => 'Dimensions (small to big)',
-            'Sort' => 'Pixels',
+            'Sort' => 'ImagePixels',
             'Group' => 'HumanImageDimensions',
         ],
         'byratio' => [
-            'Title' => 'Ratio',
-            'Sort' => 'Ratio',
-            'Group' => 'Ratio',
+            'Title' => 'ImageRatio',
+            'Sort' => 'ImageRatio',
+            'Group' => 'ImageRatio',
         ],
     ];
 
     private const FILTERS = [
         'byfilesystemstatus' => [
             'Title' => 'Not in filesystem',
-            'Field' => 'IsInFileSystem',
+            'Field' => 'PathIsInFileSystem',
             'Values' => [0, false],
         ],
         'bymissingfromdatabase' => [
             'Title' => 'Not in database',
-            'Field' => 'IsInDatabase',
+            'Field' => 'ErrorDBNotPresent',
             'Values' => [0, false],
         ],
         'bymissingfromlive' => [
             'Title' => 'Not on live site',
-            'Field' => 'IsInDatabaseLive',
-            'Values' => [0, false],
+            'Field' => 'ErrorDBNotPresentLive',
+            'Values' => [1, true],
         ],
         'bymissingfromstaging' => [
             'Title' => 'Not on draft site',
-            'Field' => 'IsInDatabaseStaging',
-            'Values' => [0, false],
+            'Field' => 'ErrorDBNotPresentStaging',
+            'Values' => [1, true],
         ],
         'byfoldererror' => [
             'Title' => 'Folder error',
@@ -119,11 +119,11 @@ class View extends ContentController
         ],
         'byextensionerror' => [
             'Title' => 'UPPER/lower case error in file type',
-            'Field' => 'HasIrregularExtension',
+            'Field' => 'ErrorExtensionMisMatch',
             'Values' => [1, true],
         ],
         'by3to4error' => [
-            'Title' => 'Migration to SS4 errors',
+            'Title' => 'Potential SS4 migration error',
             'Field' => 'ErrorInSs3Ss4Comparison',
             'Values' => [1, true],
         ],
@@ -485,7 +485,7 @@ class View extends ContentController
                         $count++;
                         if ($count >= $this->startLimit && $count < $this->endLimit) {
                             $this->totalFileCountFiltered++;
-                            $this->totalFileSizeFiltered += $intel['FileSize'];
+                            $this->totalFileSizeFiltered += $intel['PathFileSize'];
                             $this->filesAsArrayList->push(
                                 ArrayData::create($intel)
                             );
@@ -581,7 +581,7 @@ class View extends ContentController
         if ($listCount) {
             $field->setSource($list);
         }
-        $field->setAttribute('onchange', 'this.form.submit()');
+        // $field->setAttribute('onchange', 'this.form.submit()');
 
         return $field;
     }
