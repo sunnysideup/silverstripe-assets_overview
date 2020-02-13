@@ -20,7 +20,7 @@
         <% end_if %>
         <% if $PathIsInFileSystem %>
             <p><strong>Folder:</strong> <a href="$FolderCMSEditLink" target="_blank">✎ $PathFolderFromAssets</a></p>
-            <p><strong>File: </strong>$PathFileName . $Extension</p>
+            <p><strong>File: </strong>$PathFileName . $PathExtension</p>
         <% else %>
             <p><a>Not in file-system</a></p>
         <% end_if %>
