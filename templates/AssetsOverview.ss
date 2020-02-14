@@ -317,7 +317,7 @@
                 <% end_loop %>
                 </ul>
             <% end_if %>
-            <h4>Additional Options:</h4>
+            <h4>Additional Options</h4>
             <p>
                 <a href="$Link?flush=al"><strong>Reset Cache</strong></a>
                 /
