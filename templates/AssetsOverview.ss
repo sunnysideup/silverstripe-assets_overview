@@ -10,8 +10,8 @@
       transition: all 0.2s ease;
       font-family: arial, sans-serif;
       color: rgb(79, 88, 97);
-      font-size: 13px;
       font-family: Helvetica Neue,Helvetica,Arial,sans-serif;
+      font-size: 13px;
   }
   p {margin: 0; padding: 0; padding: 0.5em 0;}
   .break {
@@ -22,10 +22,15 @@
       display: block;
       padding-top: 15px;
       padding-bottom: 0;
-      margin-bottom: 0;
+      margin-bottom: 5px;
   }
   h1 {
       font-size: 20px;
+      text-transform: lowercase;
+  }
+  h1 strong {
+      font-size: 20px;
+      text-decoration: underline;
   }
   h2 {
       font-size: 18px;
@@ -304,7 +309,7 @@
             <% if FilesAsSortedArrayList.count %>
                 <h4>Find on this page</h4>
                 <p>
-                    <a href="#top">update filter</a>
+                    <a href="#top">« update filter</a>
                 </p>
                 <ul>
                 <% loop $FilesAsSortedArrayList %>
@@ -324,6 +329,12 @@
                 <a href="$Link(json)?download=1">file list</a>,
                 <a href="$Link(jsonfull)?download=1">full details</a>
             </p>
+            <h4>Limitations</h4>
+            <ul>
+                <li>Publicly accessible files only</li>
+                <li>Does not take into account "canView"</li>
+                <li></li>
+            </ul>
         </div>
     </div>
 
@@ -338,11 +349,8 @@
                 </div>
             </div>
 
-            <h1>Totals</h1>
-            <p>$TotalFileCountRaw files, current selection uses total of $TotalFileSize in storage</p>
-
             <% if FilesAsSortedArrayList.count %>
-                <h1>$Title</h1>
+                <h1>$Title.RAW</h1>
 
                 <% if $Displayer = 'thumbs' %>
                     <% loop $FilesAsSortedArrayList %>
@@ -372,10 +380,10 @@
                         <ul id="section-$Number" class="break">
                         <% loop $Items %>
                             <li>
-                                <strong>$PathFromAssetsFolder</strong>
+                                <h4>$PathFromAssetsFolder</h4>
                                 <ul>
                                 <% loop $FullFields %>
-                                    <li><strong>$Key</strong> $Value</li>
+                                    <li><strong>$Key:</strong> $Value</li>
                                 <% end_loop %>
                                 </ul>
                             </li>
@@ -398,7 +406,7 @@
             function(){
                 const els = document.querySelectorAll('input, select');
                 for (let i=0; i < els.length; i++) {
-                    els[i].setAttribute("onchange", "this.form.submit(); this.form.innerHTML = 'loading ...'");
+                    els[i].setAttribute("onchange", "this.form.submit(); this.form.innerHTML = 'loading ...'; document.querySelector('.results').style.opacity = '0.5'");
                 }
                 const btn = document.querySelector('#Form_index_action_index');
                 btn.style.display = 'none';

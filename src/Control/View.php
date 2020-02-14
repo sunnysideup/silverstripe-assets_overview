@@ -15,6 +15,7 @@ use SilverStripe\Forms\HiddenField;
 use SilverStripe\Forms\OptionsetField;
 use SilverStripe\Forms\TextField;
 use SilverStripe\ORM\ArrayList;
+use SilverStripe\ORM\FieldType\DBField;
 use SilverStripe\Security\Permission;
 use SilverStripe\Security\Security;
 use SilverStripe\View\ArrayData;
@@ -86,10 +87,15 @@ class View extends ContentController
     ];
 
     private const FILTERS = [
+        'byanyerror' => [
+            'Title' => 'Any Error',
+            'Field' => 'ErrorHasAnyError',
+            'Values' => [1, true],
+        ],
         'byfilesystemstatus' => [
             'Title' => 'Not in filesystem',
-            'Field' => 'PathIsInFileSystem',
-            'Values' => [0, false],
+            'Field' => 'ErrorIsInFileSystem',
+            'Values' => [1, true],
         ],
         'bymissingfromdatabase' => [
             'Title' => 'Not in database',
@@ -235,7 +241,7 @@ class View extends ContentController
             ]
         );
         if ($this->filter) {
-            $filterStatement = 'a subset of files (' .
+            $filterStatement = 'a filtered list (' .
                 $this->getTotalFileCountFiltered() . ' of ' . $this->getTotalFileCountRaw() . ' / ' .
                 $this->getTotalFileSizeFiltered() . ' of ' . $this->getTotalFileSizeRaw() .
                 ')';
@@ -246,12 +252,15 @@ class View extends ContentController
                 ')';
         }
 
-        return 'Showing ' . $filterStatement . ' - ' . implode(', ', $array);
+        return DBField::create_field(
+            'HTMLText',
+            'Showing ' . $filterStatement . '<br /> - ' . implode('<br /> - ', $array)
+        );
     }
 
     public function getSortStatement(): string
     {
-        return 'sorted by ' . self::SORTERS[$this->sorter]['Title'] ?? 'ERROR IN SORTER';
+        return '<strong>sorted by</strong>: ' . self::SORTERS[$this->sorter]['Title'] ?? 'ERROR IN SORTER';
     }
 
     public function getFilterStatement(): string
@@ -263,13 +272,13 @@ class View extends ContentController
             ]
         );
 
-        return count($filterArray) ? 'filtered for: ' . implode(', ', $filterArray) : '';
+        return count($filterArray) ? '<strong>filtered for</strong>: ' . implode(', ', $filterArray) : '';
     }
 
     public function getPageStatement(): string
     {
         return $this->getNumberOfPages() > 1 ?
-            'from ' . $this->startLimit . ' to ' . $this->endLimit
+            '<strong>page</strong>: '.$this->pageNumber.' of '.$this->getNumberOfPages().', showing file ' . ($this->startLimit+1) . ' to ' . $this->endLimit
             :
             '';
     }
@@ -540,9 +549,9 @@ class View extends ContentController
         $fieldList = FieldList::create(
             [
                 $this->createFormField('sorter', 'Sort By', $this->sorter, $this->getSorterList()),
-                $this->createFormField('filter', 'Filter for', $this->filter, $this->getFilterList()),
+                $this->createFormField('filter', 'Filter for errors', $this->filter, $this->getFilterList()),
+                $this->createFormField('extensions', 'Filter by extensions', $this->allowedExtensions, $this->getExtensionList()),
                 $this->createFormField('displayer', 'Displayed by', $this->displayer, $this->getDisplayerList()),
-                $this->createFormField('extensions', 'Extensions', $this->allowedExtensions, $this->getExtensionList()),
                 $this->createFormField('limit', 'Items Per Page', $this->limit, $this->getLimitList()),
                 $this->createFormField('page', 'Page Number', $this->pageNumber, $this->getPageNumberList()),
                 // TextField::create('compare', 'Compare With')->setDescription('add a link to a comparison file - e.g. http://oldsite.com/assets-overview/test.json'),

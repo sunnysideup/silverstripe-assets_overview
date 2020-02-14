@@ -83,6 +83,7 @@ class OneFileInfo implements Flushable, FileInfo
             $dbFileData = AllFilesInfo::get_any_data($this->intel['PathFromAssetsFolder']);
             $this->addFolderDetails($dbFileData);
             $this->addDBDetails($dbFileData);
+            $this->addCalculatedValues();
             $this->addHumanValues();
             ksort($this->intel);
 
@@ -137,12 +138,12 @@ class OneFileInfo implements Flushable, FileInfo
         $this->intel['PathFileNameFirstLetter'] = strtoupper(substr($this->intel['PathFileName'], 0, 1));
 
         //defaults
-        $this->intel['PathIsInFileSystem'] = false;
+        $this->intel['ErrorIsInFileSystem'] = true;
         $this->intel['PathFileSize'] = 0;
 
         //in file details
         if ($this->fileExists) {
-            $this->intel['PathIsInFileSystem'] = true;
+            $this->intel['ErrorIsInFileSystem'] = false;
             $this->intel['PathFileSize'] = filesize($this->path);
         }
         //path
@@ -287,7 +288,7 @@ class OneFileInfo implements Flushable, FileInfo
         //file size
         $this->intel['HumanFileSize'] = $this->humanFileSize($this->intel['PathFileSize']);
         $this->intel['HumanFileSizeRounded'] = '~ ' . $this->humanFileSize(round($this->intel['PathFileSize'] / 204800) * 204800);
-        $this->intel['HumanPathIsInFileSystem'] = $this->fileExists ? 'File exists' : 'File does not exist';
+        $this->intel['HumanErrorIsInFileSystem'] = $this->intel['ErrorIsInFileSystem'] ?  'File does not exist' : 'File exists' ;
 
         $this->intel['HumanFolderIsInOrder'] = $this->intel['FolderID'] ? 'In sub-folder' : 'In root folder';
 
@@ -298,6 +299,27 @@ class OneFileInfo implements Flushable, FileInfo
         $this->intel['HumanErrorDBNotPresent'] = $stageDBStatus . ', ' . $liveDBStatus;
         $this->intel['HumanErrorInSs3Ss4Comparison'] = $this->intel['ErrorInSs3Ss4Comparison'] ?
             'Filename and FileFilename do not match' : 'Filename and FileFilename match';
+    }
+
+    protected function addCalculatedValues()
+    {
+        $this->intel['ErrorHasAnyError'] = false;
+        $errorFields = [
+            'ErrorDBNotPresent',
+            'ErrorDBNotPresentLive',
+            'ErrorDBNotPresentStaging',
+            'ErrorExtensionMisMatch',
+            'ErrorFindingFolder',
+            'ErrorInFilenameCase',
+            'ErrorInSs3Ss4Comparison',
+            'ErrorParentID',
+        ];
+        foreach ($errorFields as $field) {
+            if ($this->intel[$field]) {
+                $this->intel['ErrorHasAnyError'] = true;
+                break;
+            }
+        }
     }
 
     protected function getBackupDataObject()
