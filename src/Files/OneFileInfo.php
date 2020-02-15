@@ -234,7 +234,7 @@ class OneFileInfo implements Flushable, FileInfo
             $this->intel['ErrorDBNotPresentLive'] = true;
             $this->intel['DBCMSEditLink'] = '/admin/assets/';
             $this->intel['DBTitle'] = '-- no title set in database';
-            $this->intel['ErrorInFilenameCase'] = false;
+            $this->intel['ErrorInFilename'] = false;
             $this->intel['ErrorInSs3Ss4Comparison'] = false;
             if ($this->fileExists) {
                 $time = filemtime($this->path);
@@ -252,7 +252,7 @@ class OneFileInfo implements Flushable, FileInfo
             $this->intel['DBTitle'] = $dbFileData['Title'];
             $this->intel['DBFilenameSS4'] = $dbFileData['FileFilename'];
             $this->intel['DBFilenameSS3'] = $dbFileData['Filename'];
-            $this->intel['ErrorInFilenameCase'] = $this->intel['PathFromAssetsFolder'] !== $dbFileData['Filename'];
+            $this->intel['ErrorInFilename'] = $this->intel['PathFromAssetsFolder'] !== $this->intel['DBPath'];
             $ss3FileName = $dbFileData['Filename'] ?? '';
             if (substr($ss3FileName, 0, strlen('assets/')) === 'assets/') {
                 $ss3FileName = substr($ss3FileName, strlen('assets/'));
@@ -292,7 +292,7 @@ class OneFileInfo implements Flushable, FileInfo
 
         $this->intel['HumanFolderIsInOrder'] = $this->intel['FolderID'] ? 'In sub-folder' : 'In root folder';
 
-        $this->intel['HumanErrorInFilenameCase'] = $this->intel['ErrorInFilenameCase'] ? 'Error in filename case' : 'No error in filename case';
+        $this->intel['HumanErrorInFilename'] = $this->intel['ErrorInFilename'] ? 'Error in filename case' : 'No error in filename case';
         $this->intel['HumanErrorParentID'] = $this->intel['ErrorParentID'] ? 'Error in folder ID' : 'Perfect folder ID';
         $stageDBStatus = $this->intel['ErrorDBNotPresentStaging'] ? 'Is not on draft site' : ' Is on draft site';
         $liveDBStatus = $this->intel['ErrorDBNotPresentLive'] ? 'Is not on live site' : ' Is on live site';
@@ -310,7 +310,7 @@ class OneFileInfo implements Flushable, FileInfo
             'ErrorDBNotPresentStaging',
             'ErrorExtensionMisMatch',
             'ErrorFindingFolder',
-            'ErrorInFilenameCase',
+            'ErrorInFilename',
             'ErrorInSs3Ss4Comparison',
             'ErrorParentID',
         ];

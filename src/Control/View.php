@@ -21,6 +21,7 @@ use SilverStripe\Security\Security;
 use SilverStripe\View\ArrayData;
 use SilverStripe\View\Requirements;
 use SilverStripe\View\SSViewer;
+use SilverStripe\Versioned\Versioned;
 use Sunnysideup\AssetsOverview\Files\AllFilesInfo;
 use Sunnysideup\AssetsOverview\Files\OneFileInfo;
 use Sunnysideup\AssetsOverview\Traits\FilesystemRelatedTraits;
@@ -119,8 +120,8 @@ class View extends ContentController
         ],
 
         'bydatabaseerror' => [
-            'Title' => 'UPPER/lower case error in file name',
-            'Field' => 'ErrorInFilenameCase',
+            'Title' => 'Error in file name',
+            'Field' => 'ErrorInFilename',
             'Values' => [1, true],
         ],
         'byextensionerror' => [
@@ -240,7 +241,7 @@ class View extends ContentController
                 $this->getPageStatement(),
             ]
         );
-        if ($this->filter) {
+        if ($this->filter || count($this->allowedExtensions)) {
             $filterStatement = 'a filtered list (' .
                 $this->getTotalFileCountFiltered() . ' of ' . $this->getTotalFileCountRaw() . ' / ' .
                 $this->getTotalFileSizeFiltered() . ' of ' . $this->getTotalFileSizeRaw() .
@@ -254,7 +255,23 @@ class View extends ContentController
 
         return DBField::create_field(
             'HTMLText',
-            'Showing ' . $filterStatement . '<br /> - ' . implode('<br /> - ', $array)
+            'Showing ' . $filterStatement
+        );
+    }
+
+    public function getSubTitle(): string
+    {
+        $array = array_filter(
+            [
+                $this->getSortStatement(),
+                $this->getFilterStatement(),
+                $this->getPageStatement(),
+            ]
+        );
+
+        return DBField::create_field(
+            'HTMLText',
+            '- ' . implode('<br /> - ', $array)
         );
     }
 
@@ -329,6 +346,12 @@ class View extends ContentController
         Environment::increaseMemoryLimitTo();
         Environment::increaseTimeLimitTo(7200);
         SSViewer::config()->update('theme_enabled', false);
+        Versioned::set_stage(Versioned::DRAFT);
+        $this->getGetVariables();
+    }
+
+    protected function getGetVariables()
+    {
         if ($filter = $this->request->getVar('filter')) {
             $this->filter = $filter;
         }
@@ -430,6 +453,8 @@ class View extends ContentController
             $this->filesAsSortedArrayList = ArrayList::create();
             $this->filesAsArrayList = $this->filesAsArrayList->Sort($sortField);
 
+            $count = 0;
+
             $innerArray = ArrayList::create();
             $prevHeader = 'nothing here....';
             $newHeader = '';
@@ -444,7 +469,12 @@ class View extends ContentController
                     unset($innerArray);
                     $innerArray = ArrayList::create();
                 }
-                $innerArray->push($file);
+                if ($count >= $this->startLimit && $count < $this->endLimit) {
+                    $innerArray->push($file);
+                    $count++;
+                } elseif ($count >= $this->endLimit) {
+                    break;
+                }
             }
 
             //last one!
@@ -480,7 +510,6 @@ class View extends ContentController
             //prepare loop
             $this->totalFileCountRaw = AllFilesInfo::getTotalFilesCount();
             $this->filesAsArrayList = ArrayList::create();
-            $count = 0;
             $filterFree = true;
             if (isset(self::FILTERS[$this->filter])) {
                 $filterFree = false;
@@ -491,16 +520,11 @@ class View extends ContentController
                 if ($this->isPathWithAllowedExtension($absoluteLocation)) {
                     $intel = $this->getDataAboutOneFile($absoluteLocation, $fileExists);
                     if ($filterFree || in_array($intel[$filterField], $filterValues, 1)) {
-                        $count++;
-                        if ($count >= $this->startLimit && $count < $this->endLimit) {
-                            $this->totalFileCountFiltered++;
-                            $this->totalFileSizeFiltered += $intel['PathFileSize'];
-                            $this->filesAsArrayList->push(
-                                ArrayData::create($intel)
-                            );
-                        } elseif ($count >= $this->endLimit) {
-                            break;
-                        }
+                        $this->totalFileCountFiltered++;
+                        $this->totalFileSizeFiltered += $intel['PathFileSize'];
+                        $this->filesAsArrayList->push(
+                            ArrayData::create($intel)
+                        );
                     }
                 }
             }
@@ -548,12 +572,12 @@ class View extends ContentController
     {
         $fieldList = FieldList::create(
             [
-                $this->createFormField('sorter', 'Sort By', $this->sorter, $this->getSorterList()),
+                $this->createFormField('sorter', 'Sort by', $this->sorter, $this->getSorterList()),
                 $this->createFormField('filter', 'Filter for errors', $this->filter, $this->getFilterList()),
                 $this->createFormField('extensions', 'Filter by extensions', $this->allowedExtensions, $this->getExtensionList()),
                 $this->createFormField('displayer', 'Displayed by', $this->displayer, $this->getDisplayerList()),
-                $this->createFormField('limit', 'Items Per Page', $this->limit, $this->getLimitList()),
-                $this->createFormField('page', 'Page Number', $this->pageNumber, $this->getPageNumberList()),
+                $this->createFormField('limit', 'Items per page', $this->limit, $this->getLimitList()),
+                $this->createFormField('page', 'Page number', $this->pageNumber, $this->getPageNumberList()),
                 // TextField::create('compare', 'Compare With')->setDescription('add a link to a comparison file - e.g. http://oldsite.com/assets-overview/test.json'),
             ]
         );
@@ -638,21 +662,21 @@ class View extends ContentController
 
     protected function getNumberOfPages(): Int
     {
-        return ceil($this->totalFileCountRaw / $this->limit);
+        return ceil($this->totalFileCountFiltered / $this->limit);
     }
 
     protected function getLimitList(): array
     {
-        $step = 250;
+        $step = 100;
         $array = [];
-        for ($i = $step; ($i - $step) < $this->totalFileCountRaw; $i += $step) {
-            if ($i > $this->limit && ! isset($array[$this->limit])) {
-                $array[$this->limit] = $this->limit;
+        $i = 0;
+        if ($this->totalFileCountRaw > $step) {
+            for ($i = $step; ($i - $step) < $this->totalFileCountFiltered; $i += $step) {
+                if ($i > $this->limit && ! isset($array[$this->limit])) {
+                    $array[$this->limit] = $this->limit;
+                }
+                $array[$i] = $i;
             }
-            $array[$i] = $i;
-        }
-        if ($i > $this->limit && ! isset($array[$this->limit])) {
-            $array[$this->limit] = $this->limit;
         }
         return $array;
     }

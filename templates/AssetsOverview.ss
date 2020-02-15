@@ -13,7 +13,8 @@
       font-family: Helvetica Neue,Helvetica,Arial,sans-serif;
       font-size: 13px;
   }
-  p {margin: 0; padding: 0; padding: 0.5em 0;}
+  p {
+      margin: 0; padding: 0.5em 0;}
   .break {
       clear: both;
       border-top: 1px solid #ccc;
@@ -23,10 +24,10 @@
       padding-top: 15px;
       padding-bottom: 0;
       margin-bottom: 5px;
+      text-transform: lowercase;
   }
   h1 {
       font-size: 20px;
-      text-transform: lowercase;
   }
   h1 strong {
       font-size: 20px;
@@ -81,12 +82,12 @@
   .toc li {
       list-style: none;
       border-bottom: 1px solid #eee;
-      padding: 0px;
       margin: 0;
+      padding: 2px;
   }
   .toc li a {
-      padding: 4px;
       display: block;
+      padding: 0 2px;
   }
   .toc li a:hover {
       background-color: #304e80;
@@ -297,6 +298,11 @@
         font-weight: bolder;
     }
 
+    .form #Form_index_extensions_Holder li {
+        width: 50%;
+        float: left;
+    }
+
 /* */
 
 
@@ -317,23 +323,32 @@
                 <% end_loop %>
                 </ul>
             <% end_if %>
+
             <h4>Additional options</h4>
-            <p>
-                <a href="$Link?flush=al"><strong>Reset Cache</strong></a>
-                /
-                <strong>View JSON:</strong>
-                <a href="$Link(json)">file list</a>,
-                <a href="$Link(jsonfull)">full details</a>
-                /
-                <strong>Download JSON:</strong>
-                <a href="$Link(json)?download=1">file list</a>,
-                <a href="$Link(jsonfull)?download=1">full details</a>
-            </p>
+            <ul>
+                <li>
+                    <a href="$Link?flush=al"><strong>Reset Cache</strong></a>
+                </li>
+
+
+                <li>
+                    <strong>View JSON:</strong>
+                    <a href="$Link(json)">file list</a>
+                    <a href="$Link(jsonfull)">full details</a>
+                </li>
+
+                <li>
+                    <strong>Download JSON:</strong>
+                    <a href="$Link(json)?download=1">file list</a>
+                    <a href="$Link(jsonfull)?download=1">full details</a>
+                </li>
+            </ul>
+
             <h4>Limitations</h4>
             <ul>
                 <li>Publicly accessible files only</li>
                 <li>Does not take into account "canView"</li>
-                <li></li>
+                <li>Only works with local file system</li>
             </ul>
         </div>
     </div>
@@ -351,6 +366,7 @@
 
             <% if FilesAsSortedArrayList.count %>
                 <h1>$Title.RAW</h1>
+                <h4>$Subtitle.RAW</h4>
 
                 <% if $Displayer = 'thumbs' %>
                     <% loop $FilesAsSortedArrayList %>
@@ -368,7 +384,7 @@
                         <ul id="section-$Number" class="break">
                         <% loop $Items %>
                             <li>
-                                <h4><a href="$PathFromAssetsFolder">$PathFromAssetsFolder</a></h4>
+                                <h5><a href="$PathFromPublicRoot">$PathFromAssetsFolder</a></h5>
                             </li>
                         <% end_loop %>
                         </ul>
@@ -380,7 +396,7 @@
                         <ul id="section-$Number" class="break">
                         <% loop $Items %>
                             <li>
-                                <h4>$PathFromAssetsFolder</h4>
+                                <h5><a href="$PathFromPublicRoot">$PathFromAssetsFolder</a></h5>
                                 <ul>
                                 <% loop $FullFields %>
                                     <li><strong>$Key:</strong> $Value</li>
