@@ -80,9 +80,9 @@ class OneFileInfo implements FileInfo
             $this->addHumanValues();
             ksort($this->intel);
             if ($this->intel['ErrorHasAnyError']) {
-                $this->addToflushNowBuffer('x ', '', false);
+                $this->flushNow('x ', '', false);
             } else {
-                $this->addToflushNowBuffer('✓ ', '', false);
+                $this->flushNow('✓ ', '', false);
             }
             self::setCacheValue($cachekey, $this->intel);
         } else {
@@ -252,7 +252,7 @@ class OneFileInfo implements FileInfo
             if (substr($ss3FileName, 0, strlen('assets/')) === 'assets/') {
                 $ss3FileName = substr($ss3FileName, strlen('assets/'));
             }
-            $this->intel['ErrorInSs3Ss4Comparison'] = $dbFileData['FileFilename'] !== $ss3FileName;
+            $this->intel['ErrorInSs3Ss4Comparison'] = $this->intel['DBFilenameSS3'] && $dbFileData['FileFilename'] !== $ss3FileName;
             $time = strtotime($dbFileData['LastEdited']);
             $this->intel['ErrorParentID'] = true;
             if ((int) $this->intel['FolderID'] === 0) {

@@ -194,6 +194,7 @@ class AllFilesInfo implements FileInfo
         if (count(self::$listOfFiles) === 0) {
             $cachekey = $this->getCacheKey();
             if (! $this->hasCacheKey($cachekey)) {
+                $this->flushNow('<h1>Analysing files</h1>');
                 //disk
                 $diskArray = $this->getArrayOfFilesOnDisk();
                 foreach ($diskArray as $path) {
@@ -231,9 +232,9 @@ class AllFilesInfo implements FileInfo
             if (! isset(self::$listOfFiles[$path])) {
                 self::$listOfFiles[$path] = $inFileSystem;
                 if ($inFileSystem) {
-                    $this->addToflushNowBuffer('. ', '', false);
+                    $this->flushNow('. ', '', false);
                 } else {
-                    $this->addToflushNowBuffer('x ', '', false);
+                    $this->flushNow('x ', '', false);
                 }
                 $extension = strtolower($this->getExtension($path));
                 self::$availableExtensions[$extension] = $extension;

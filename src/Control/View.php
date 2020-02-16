@@ -227,7 +227,7 @@ class View extends ContentController implements Flushable
 
     public static function flush()
     {
-        Cacher::flushCache();
+        AllFilesInfo::flushCache();
     }
 
     public function Link($action = null)
@@ -391,10 +391,9 @@ class View extends ContentController implements Flushable
         if ($this->displayer === 'rawlistfull') {
             $this->addMapToItems();
         }
-        if (Cacher::loadedFromCache() === false) {
-            die('asdfsdf');
+        if (AllFilesInfo::loadedFromCache() === false) {
             $url = $_SERVER["REQUEST_URI"];
-            str_replace('flush=', 'previousflush=', $url);
+            $url = str_replace('flush=', 'previousflush=', $url);
             die('<script>window.location = "'.$url.'";</script>go to '.$url.' if this page does not autoload');
         }
         return $this->renderWith('AssetsOverview');
