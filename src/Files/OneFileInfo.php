@@ -14,14 +14,19 @@ use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\DB;
 use SilverStripe\ORM\FieldType\DBDate;
 
+use Sunnysideup\Flush\FlushNow;
+
 use Sunnysideup\AssetsOverview\Interfaces\FileInfo;
 use Sunnysideup\AssetsOverview\Traits\FilesystemRelatedTraits;
+use Sunnysideup\AssetsOverview\Traits\Cacher;
 
-class OneFileInfo implements Flushable, FileInfo
+class OneFileInfo implements FileInfo
 {
     use FilesystemRelatedTraits;
     use Injectable;
     use Configurable;
+    use Cacher;
+    use FlushNow;
 
     /**
      * @var string
@@ -57,26 +62,15 @@ class OneFileInfo implements Flushable, FileInfo
     public function __construct(string $absoluteLocation, ?bool $fileExists)
     {
         $this->path = $absoluteLocation;
-        if ($fileExists) {
-            $this->hash = md5_file($this->path);
-        } else {
-            $this->hash = 'no-file' . md5($absoluteLocation);
-        }
+        $this->hash = md5($this->path);
         $fileExists = $fileExists === null ? file_exists($this->path) : $fileExists;
         $this->fileExists = $fileExists;
-    }
-
-    public static function flush()
-    {
-        $cache = self::getCache();
-        $cache->clear();
     }
 
     public function toArray(): array
     {
         $cachekey = $this->getCacheKey();
-        if (self::hasCacheKey($cacheKey)) {
-            echo '<li>processing: '.$this->path.'</li>';
+        if (! $this->hasCacheKey($cachekey)) {
             $this->addFileSystemDetails();
             $this->addImageDetails();
             $dbFileData = AllFilesInfo::getAnyData($this->intel['PathFromAssetsFolder']);
@@ -85,6 +79,11 @@ class OneFileInfo implements Flushable, FileInfo
             $this->addCalculatedValues();
             $this->addHumanValues();
             ksort($this->intel);
+            if ($this->intel['ErrorHasAnyError']) {
+                $this->addToflushNowBuffer('x ', '', false);
+            } else {
+                $this->addToflushNowBuffer('✓ ', '', false);
+            }
             self::setCacheValue($cachekey, $this->intel);
         } else {
             $this->intel = self::getCacheValue($cachekey);

@@ -5,6 +5,7 @@ namespace Sunnysideup\AssetsOverview\Control;
 use SilverStripe\CMS\Controllers\ContentController;
 use SilverStripe\Control\Director;
 use SilverStripe\Control\HTTPRequest;
+use SilverStripe\Core\Flushable;
 use SilverStripe\Core\Environment;
 use SilverStripe\Forms\CheckboxSetField;
 use SilverStripe\Forms\DropdownField;
@@ -25,8 +26,9 @@ use SilverStripe\Versioned\Versioned;
 use Sunnysideup\AssetsOverview\Files\AllFilesInfo;
 use Sunnysideup\AssetsOverview\Files\OneFileInfo;
 use Sunnysideup\AssetsOverview\Traits\FilesystemRelatedTraits;
+use Sunnysideup\AssetsOverview\Traits\Cacher;
 
-class View extends ContentController
+class View extends ContentController implements Flushable
 {
     use FilesystemRelatedTraits;
 
@@ -223,6 +225,11 @@ class View extends ContentController
         'jsonfull' => 'ADMIN',
     ];
 
+    public static function flush()
+    {
+        Cacher::flushCache();
+    }
+
     public function Link($action = null)
     {
         $str = Director::absoluteURL(DIRECTORY_SEPARATOR . 'assets-overview' . DIRECTORY_SEPARATOR);
@@ -384,7 +391,12 @@ class View extends ContentController
         if ($this->displayer === 'rawlistfull') {
             $this->addMapToItems();
         }
-
+        if (Cacher::loadedFromCache() === false) {
+            die('asdfsdf');
+            $url = $_SERVER["REQUEST_URI"];
+            str_replace('flush=', 'previousflush=', $url);
+            die('<script>window.location = "'.$url.'";</script>go to '.$url.' if this page does not autoload');
+        }
         return $this->renderWith('AssetsOverview');
     }
 

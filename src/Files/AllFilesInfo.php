@@ -10,20 +10,24 @@ use SilverStripe\Assets\File;
 use SilverStripe\Assets\Folder;
 use SilverStripe\Core\Config\Config;
 use SilverStripe\Core\Config\Configurable;
-use SilverStripe\Core\Flushable;
 use SilverStripe\Core\Injector\Injectable;
 use SilverStripe\Core\Injector\Injector;
+
+use Sunnysideup\Flush\FlushNow;
 
 use SilverStripe\ORM\DB;
 use Sunnysideup\AssetsOverview\Interfaces\FileInfo;
 use Sunnysideup\AssetsOverview\Traits\FilesystemRelatedTraits;
+use Sunnysideup\AssetsOverview\Traits\Cacher;
 use Sunnysideup\AssetsOverview\Control\View;
 
-class AllFilesInfo implements Flushable, FileInfo
+class AllFilesInfo implements FileInfo
 {
     use FilesystemRelatedTraits;
     use Injectable;
     use Configurable;
+    use Cacher;
+    use FlushNow;
 
     /**
      * @var string
@@ -172,11 +176,6 @@ class AllFilesInfo implements Flushable, FileInfo
         return self::findInData(self::$dataLive, $fieldName, $value);
     }
 
-    public static function flush()
-    {
-        $cache = self::getCache();
-        $cache->clear();
-    }
 
     public static function getTotalFileSizesRaw()
     {
@@ -231,7 +230,11 @@ class AllFilesInfo implements Flushable, FileInfo
         if ($path) {
             if (! isset(self::$listOfFiles[$path])) {
                 self::$listOfFiles[$path] = $inFileSystem;
-                echo '<li>adding: '.$path.'</li>';
+                if ($inFileSystem) {
+                    $this->addToflushNowBuffer('. ', '', false);
+                } else {
+                    $this->addToflushNowBuffer('x ', '', false);
+                }
                 $extension = strtolower($this->getExtension($path));
                 self::$availableExtensions[$extension] = $extension;
             }

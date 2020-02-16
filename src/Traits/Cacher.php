@@ -3,11 +3,29 @@
 namespace Sunnysideup\AssetsOverview\Traits;
 
 use Psr\SimpleCache\CacheInterface;
+use SilverStripe\Core\Injector\Injector;
 
 trait Cacher
 {
 
+    private static $loadedFromCache = true;
+
     private static $cacheCache = null;
+
+    /**
+     * return false if the cache has been set or a cache key was not found.
+     * @return bool
+     */
+    public static function loadedFromCache() : bool
+    {
+        return self::$loadedFromCache;
+    }
+
+    public static function flushCache()
+    {
+        $cache = self::getCache();
+        $cache->clear();
+    }
 
     /**
      * @return CacheInterface
@@ -24,8 +42,9 @@ trait Cacher
      * @param string  $cacheKey
      * @param mixed   $value
      */
-    protected static function setCacheValue(string $cacheKey, $value)
+    protected function setCacheValue(string $cacheKey, $value)
     {
+        self::$loadedFromCache = false;
         $cache = self::getCache();
 
         $cache->set($cacheKey, serialize($value));
@@ -36,7 +55,7 @@ trait Cacher
      *
      * @return mixed
      */
-    protected static function getCacheValue(string $cacheKey)
+    protected function getCacheValue(string $cacheKey)
     {
         $cache = self::getCache();
 
