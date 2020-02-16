@@ -76,6 +76,7 @@ class OneFileInfo implements Flushable, FileInfo
     {
         $cachekey = $this->getCacheKey();
         if (self::hasCacheKey($cacheKey)) {
+            echo '<li>processing: '.$this->path.'</li>';
             $this->addFileSystemDetails();
             $this->addImageDetails();
             $dbFileData = AllFilesInfo::getAnyData($this->intel['PathFromAssetsFolder']);
