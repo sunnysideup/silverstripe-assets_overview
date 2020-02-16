@@ -5,7 +5,7 @@ namespace Sunnysideup\AssetsOverview\Files;
 use \FilesystemIterator;
 use \RecursiveDirectoryIterator;
 use \RecursiveIteratorIterator;
-use Psr\SimpleCache\CacheInterface;
+
 use SilverStripe\Assets\File;
 use SilverStripe\Assets\Folder;
 use SilverStripe\Core\Config\Config;
@@ -192,11 +192,9 @@ class AllFilesInfo implements Flushable, FileInfo
 
     public function toArray(): array
     {
-        $cache = self::getCache();
-        $cachekey = $this->getCacheKey();
         if (count(self::$listOfFiles) === 0) {
-            if (! $cache->has($cachekey)) {
-                View::setReload(true);
+            $cachekey = $this->getCacheKey();
+            if (! $this->hasCacheKey($cachekey)) {
                 //disk
                 $diskArray = $this->getArrayOfFilesOnDisk();
                 foreach ($diskArray as $path) {
@@ -209,19 +207,19 @@ class AllFilesInfo implements Flushable, FileInfo
                 }
                 asort(self::$listOfFiles);
                 asort(self::$availableExtensions);
-                $cache->set($cachekey, serialize(self::$listOfFiles));
-                $cache->set($cachekey . 'availableExtensions', serialize(self::$availableExtensions));
-                $cache->set($cachekey . 'dataStaging', serialize(self::$dataStaging));
-                $cache->set($cachekey . 'dataLive', serialize(self::$dataLive));
-                $cache->set($cachekey . 'databaseLookupStaging', serialize(self::$databaseLookupListStaging));
-                $cache->set($cachekey . 'databaseLookupLive', serialize(self::$databaseLookupListLive));
+                $this->setCacheValue($cachekey, self::$listOfFiles);
+                $this->setCacheValue($cachekey . 'availableExtensions', self::$availableExtensions);
+                $this->setCacheValue($cachekey . 'dataStaging', self::$dataStaging);
+                $this->setCacheValue($cachekey . 'dataLive', self::$dataLive);
+                $this->setCacheValue($cachekey . 'databaseLookupStaging', self::$databaseLookupListStaging);
+                $this->setCacheValue($cachekey . 'databaseLookupLive', self::$databaseLookupListLive);
             } else {
-                self::$listOfFiles = unserialize($cache->get($cachekey));
-                self::$availableExtensions = unserialize($cache->get($cachekey . 'availableExtensions'));
-                self::$dataStaging = unserialize($cache->get($cachekey . 'dataStaging'));
-                self::$dataLive = unserialize($cache->get($cachekey . 'dataLive'));
-                self::$databaseLookupListStaging = unserialize($cache->get($cachekey . 'databaseLookupStaging'));
-                self::$databaseLookupListLive = unserialize($cache->get($cachekey . 'databaseLookupLive'));
+                self::$listOfFiles = $this->getCacheValue($cachekey);
+                self::$availableExtensions = $this->getCacheValue($cachekey . 'availableExtensions');
+                self::$dataStaging = $this->getCacheValue($cachekey . 'dataStaging');
+                self::$dataLive = $this->getCacheValue($cachekey . 'dataLive');
+                self::$databaseLookupListStaging = $this->getCacheValue($cachekey . 'databaseLookupStaging');
+                self::$databaseLookupListLive = $this->getCacheValue($cachekey . 'databaseLookupLive');
             }
         }
 

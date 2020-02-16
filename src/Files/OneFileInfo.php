@@ -4,7 +4,6 @@ namespace Sunnysideup\AssetsOverview\Files;
 
 use \Exception;
 
-use Psr\SimpleCache\CacheInterface;
 use SilverStripe\Assets\File;
 use SilverStripe\Assets\Folder;
 use SilverStripe\Core\Config\Configurable;
@@ -75,9 +74,8 @@ class OneFileInfo implements Flushable, FileInfo
 
     public function toArray(): array
     {
-        $cache = self::getCache();
         $cachekey = $this->getCacheKey();
-        if (! $cache->has($cachekey)) {
+        if (self::hasCacheKey($cacheKey)) {
             $this->addFileSystemDetails();
             $this->addImageDetails();
             $dbFileData = AllFilesInfo::getAnyData($this->intel['PathFromAssetsFolder']);
@@ -86,12 +84,9 @@ class OneFileInfo implements Flushable, FileInfo
             $this->addCalculatedValues();
             $this->addHumanValues();
             ksort($this->intel);
-
-            $fullArrayString = serialize($this->intel);
-            $cache->set($cachekey, $fullArrayString);
+            self::setCacheValue($cachekey, $this->intel);
         } else {
-            $fullArrayString = $cache->get($cachekey);
-            $this->intel = unserialize($fullArrayString);
+            $this->intel = self::getCacheValue($cachekey);
         }
 
         return $this->intel;
@@ -342,13 +337,6 @@ class OneFileInfo implements Flushable, FileInfo
     # CACHE
     ##############################################
 
-    /**
-     * @return CacheInterface
-     */
-    protected static function getCache()
-    {
-        return Injector::inst()->get(CacheInterface::class . '.assetsoverviewCache');
-    }
 
     /**
      * @return string
