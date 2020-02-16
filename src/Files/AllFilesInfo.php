@@ -17,6 +17,7 @@ use SilverStripe\Core\Injector\Injector;
 use SilverStripe\ORM\DB;
 use Sunnysideup\AssetsOverview\Interfaces\FileInfo;
 use Sunnysideup\AssetsOverview\Traits\FilesystemRelatedTraits;
+use Sunnysideup\AssetsOverview\Control\View;
 
 class AllFilesInfo implements Flushable, FileInfo
 {
@@ -89,7 +90,7 @@ class AllFilesInfo implements Flushable, FileInfo
      * @param  int $id
      * @return bool
      */
-    public static function exists_on_staging(int $id): bool
+    public static function existsOnStaging(int $id): bool
     {
         return isset(self::$dataStaging[$id]);
     }
@@ -99,7 +100,7 @@ class AllFilesInfo implements Flushable, FileInfo
      * @param  int $id
      * @return bool
      */
-    public static function exists_on_live(int $id): bool
+    public static function existsOnLive(int $id): bool
     {
         return isset(self::$dataLive[$id]);
     }
@@ -110,11 +111,11 @@ class AllFilesInfo implements Flushable, FileInfo
      * @param  int $pathFromAssets id
      * @return array
      */
-    public static function get_any_data(string $pathFromAssets, ?int $id = 0): array
+    public static function getAnyData(string $pathFromAssets, ?int $id = 0): array
     {
-        $data = self::get_staging_data($pathFromAssets, $id);
+        $data = self::getStagingData($pathFromAssets, $id);
         if (empty($data)) {
-            $data = self::get_live_data($pathFromAssets, $id);
+            $data = self::getLiveData($pathFromAssets, $id);
         }
 
         return $data;
@@ -126,7 +127,7 @@ class AllFilesInfo implements Flushable, FileInfo
      * @param  int $id
      * @return array
      */
-    public static function get_staging_data(string $pathFromAssets, ?int $id = 0): array
+    public static function getStagingData(string $pathFromAssets, ?int $id = 0): array
     {
         if (! $id) {
             $id = self::$databaseLookupListStaging[$pathFromAssets] ?? 0;
@@ -139,7 +140,7 @@ class AllFilesInfo implements Flushable, FileInfo
      * @param  string $pathFromAssets - full lookup list
      * @return array
      */
-    public static function get_live_data(string $pathFromAssets, ?int $id = 0): array
+    public static function getLiveData(string $pathFromAssets, ?int $id = 0): array
     {
         if (! $id) {
             $id = self::$databaseLookupListLive[$pathFromAssets] ?? 0;
@@ -154,9 +155,9 @@ class AllFilesInfo implements Flushable, FileInfo
      * @param  mixed     $value
      * @return int
      */
-    public static function find_in_data_staging(string $fieldName, $value): int
+    public static function findInStagingData(string $fieldName, $value): int
     {
-        return self::find_in_data(self::$dataStaging, $fieldName, $value);
+        return self::findInData(self::$dataStaging, $fieldName, $value);
     }
 
     /**
@@ -166,9 +167,9 @@ class AllFilesInfo implements Flushable, FileInfo
      * @param  mixed     $value
      * @return int
      */
-    public static function find_in_data_live(string $fieldName, $value): int
+    public static function findInLiveData(string $fieldName, $value): int
     {
-        return self::find_in_data(self::$dataLive, $fieldName, $value);
+        return self::findInData(self::$dataLive, $fieldName, $value);
     }
 
     public static function flush()
@@ -195,25 +196,16 @@ class AllFilesInfo implements Flushable, FileInfo
         $cachekey = $this->getCacheKey();
         if (count(self::$listOfFiles) === 0) {
             if (! $cache->has($cachekey)) {
+                View::setReload(true);
                 //disk
                 $diskArray = $this->getArrayOfFilesOnDisk();
                 foreach ($diskArray as $path) {
-                    if ($path) {
-                        self::$listOfFiles[$path] = true;
-                        $extension = strtolower($this->getExtension($path));
-                        self::$availableExtensions[$extension] = $extension;
-                    }
+                    $this->registerFile($path, true);
                 }
                 //database
                 $databaseArray = $this->getArrayOfFilesInDatabase();
                 foreach ($databaseArray as $path) {
-                    if ($path) {
-                        if (! isset(self::$listOfFiles[$path])) {
-                            self::$listOfFiles[$path] = false;
-                            $extension = strtolower($this->getExtension($path));
-                            self::$availableExtensions[$extension] = $extension;
-                        }
-                    }
+                    $this->registerFile($path, false);
                 }
                 asort(self::$listOfFiles);
                 asort(self::$availableExtensions);
@@ -236,11 +228,23 @@ class AllFilesInfo implements Flushable, FileInfo
         return self::$listOfFiles;
     }
 
-    protected static function find_id_from_file_name(array $data, string $filename): int
+    protected function registerFile($path, $inFileSystem)
     {
-        $id = self::find_in_data($data, 'FileFilename', $filename);
+        if ($path) {
+            if (! isset(self::$listOfFiles[$path])) {
+                self::$listOfFiles[$path] = $inFileSystem;
+                echo '<li>'.$path.'</li>';
+                $extension = strtolower($this->getExtension($path));
+                self::$availableExtensions[$extension] = $extension;
+            }
+        }
+    }
+
+    protected static function findIdFromFileName(array $data, string $filename): int
+    {
+        $id = self::findInData($data, 'FileFilename', $filename);
         if (! $id) {
-            $id = self::find_in_data($data, 'Filename', $filename);
+            $id = self::findInData($data, 'Filename', $filename);
         }
 
         return $id;
@@ -252,7 +256,7 @@ class AllFilesInfo implements Flushable, FileInfo
      * @param  mixed  $value
      * @return int
      */
-    protected static function find_in_data(array $data, string $fieldName, $value): int
+    protected static function findInData(array $data, string $fieldName, $value): int
     {
         foreach ($data as $id => $row) {
             if (isset($row[$fieldName])) {

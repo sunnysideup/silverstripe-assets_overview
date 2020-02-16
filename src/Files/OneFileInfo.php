@@ -80,7 +80,7 @@ class OneFileInfo implements Flushable, FileInfo
         if (! $cache->has($cachekey)) {
             $this->addFileSystemDetails();
             $this->addImageDetails();
-            $dbFileData = AllFilesInfo::get_any_data($this->intel['PathFromAssetsFolder']);
+            $dbFileData = AllFilesInfo::getAnyData($this->intel['PathFromAssetsFolder']);
             $this->addFolderDetails($dbFileData);
             $this->addDBDetails($dbFileData);
             $this->addCalculatedValues();
@@ -246,8 +246,8 @@ class OneFileInfo implements Flushable, FileInfo
             $this->intel['DBParentID'] = $dbFileData['ParentID'];
             $this->intel['DBPath'] = $dbFileData['FileFilename'] ?? $dbFileData['Filename'] ?? '';
             $this->intel['DBFilename'] = $dbFileData['Name'] ?: basename($this->intel['DBPath']);
-            $this->intel['ErrorDBNotPresentStaging'] = AllFilesInfo::exists_on_staging($this->intel['DBID']) ? false : true;
-            $this->intel['ErrorDBNotPresentLive'] = AllFilesInfo::exists_on_live($this->intel['DBID']) ? false : true;
+            $this->intel['ErrorDBNotPresentStaging'] = AllFilesInfo::existsOnStaging($this->intel['DBID']) ? false : true;
+            $this->intel['ErrorDBNotPresentLive'] = AllFilesInfo::existsOnLive($this->intel['DBID']) ? false : true;
             $this->intel['DBCMSEditLink'] = '/admin/assets/EditForm/field/File/item/' . $this->intel['DBID'] . '/edit';
             $this->intel['DBTitle'] = $dbFileData['Title'];
             $this->intel['DBFilenameSS4'] = $dbFileData['FileFilename'];

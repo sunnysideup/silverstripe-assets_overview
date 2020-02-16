@@ -6,6 +6,9 @@
  <% base_tag %>
   <title>Assets Overview</title>
   <style>
+  body {
+      padding-bottom: 90vh;
+  }
   * {
       transition: all 0.2s ease;
       font-family: arial, sans-serif;
@@ -24,7 +27,6 @@
       padding-top: 15px;
       padding-bottom: 0;
       margin-bottom: 5px;
-      text-transform: lowercase;
   }
   h1 {
       font-size: 20px;
@@ -327,7 +329,7 @@
             <h4>Additional options</h4>
             <ul>
                 <li>
-                    <a href="$Link?flush=al"><strong>Reset Cache</strong></a>
+                    <a href="$Link?flush=al">Reset Cache</a>
                 </li>
 
 
@@ -366,7 +368,7 @@
 
             <% if FilesAsSortedArrayList.count %>
                 <h1>$Title.RAW</h1>
-                <h4>$Subtitle.RAW</h4>
+                <p>$Subtitle.RAW</p>
 
                 <% if $Displayer = 'thumbs' %>
                     <% loop $FilesAsSortedArrayList %>

@@ -242,20 +242,18 @@ class View extends ContentController
             ]
         );
         if ($this->filter || count($this->allowedExtensions)) {
-            $filterStatement = 'a filtered list (' .
-                $this->getTotalFileCountFiltered() . ' of ' . $this->getTotalFileCountRaw() . ' / ' .
-                $this->getTotalFileSizeFiltered() . ' of ' . $this->getTotalFileSizeRaw() .
-                ')';
+            $filterStatement = '' .
+                $this->getTotalFileCountFiltered() . ' (of ' . $this->getTotalFileCountRaw() . ') files / ' .
+                $this->getTotalFileSizeFiltered() . ' (of ' . $this->getTotalFileSizeRaw().')';
         } else {
-            $filterStatement = 'all files (' .
+            $filterStatement =
                 $this->getTotalFileCountRaw() . ' / ' .
-                $this->getTotalFileSizeRaw() .
-                ')';
+                $this->getTotalFileSizeRaw();
         }
 
         return DBField::create_field(
             'HTMLText',
-            'Showing ' . $filterStatement
+            'Found ' . $filterStatement
         );
     }
 
