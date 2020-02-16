@@ -231,7 +231,7 @@ class AllFilesInfo implements Flushable, FileInfo
         if ($path) {
             if (! isset(self::$listOfFiles[$path])) {
                 self::$listOfFiles[$path] = $inFileSystem;
-                echo '<li>'.$path.'</li>';
+                echo '<li>adding: '.$path.'</li>';
                 $extension = strtolower($this->getExtension($path));
                 self::$availableExtensions[$extension] = $extension;
             }
