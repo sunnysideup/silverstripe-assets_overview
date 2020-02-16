@@ -342,13 +342,6 @@ class AllFilesInfo implements Flushable, FileInfo
     # CACHE
     ##############################################
 
-    /**
-     * @return CacheInterface
-     */
-    protected static function getCache()
-    {
-        return Injector::inst()->get(CacheInterface::class . '.assetsoverviewCache');
-    }
 
     /**
      * @return string
