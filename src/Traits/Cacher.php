@@ -54,5 +54,4 @@ trait Cacher
 
         return $cache->has($cacheKey);
     }
-
 }
