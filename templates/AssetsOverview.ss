@@ -22,31 +22,29 @@
       clear: both;
       border-top: 1px solid #ccc;
   }
-  h1, h2, h3, h4 {
+  h1, h2, h3, h4, h5 {
       display: block;
       padding-top: 15px;
       padding-bottom: 0;
       margin-bottom: 5px;
   }
-  h1 {
-      font-size: 20px;
+  h1, h1 * {
+      font-size: 22px;
   }
   h1 strong {
-      font-size: 20px;
       text-decoration: underline;
   }
-  h2 {
-      font-size: 18px;
-
+  h2, h2 * {
+      font-size: 20px;
   }
-  h3 {
-      font-size: 16px;
+  h3, h3 * {
+      font-size: 18px;
       text-align: center;
       border-bottom: 1px dotted #ccc;
 
   }
-  h4 {
-      font-size: 14px;
+  h4, h5, h4 *, h5 * {
+      font-size: 16px;
   }
 
   a:link, a:visited {

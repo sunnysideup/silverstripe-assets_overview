@@ -304,6 +304,9 @@ class AllFilesInfo implements FileInfo
             if (strpos($path, '.protected')) {
                 continue;
             }
+            if (strpos($path, 'error') && strpos($path, '.html')) {
+                continue;
+            }
             if ($this->isRealFile($path) === false) {
                 continue;
             }

@@ -103,7 +103,7 @@ class View extends ContentController implements Flushable
         'bymissingfromdatabase' => [
             'Title' => 'Not in database',
             'Field' => 'ErrorDBNotPresent',
-            'Values' => [0, false],
+            'Values' => [1, true],
         ],
         'bymissingfromlive' => [
             'Title' => 'Not on live site',
@@ -248,10 +248,10 @@ class View extends ContentController implements Flushable
                 $this->getPageStatement(),
             ]
         );
-        if ($this->filter || count($this->allowedExtensions)) {
+        if ($this->hasFilter()) {
             $filterStatement = '' .
-                $this->getTotalFileCountFiltered() . ' (of ' . $this->getTotalFileCountRaw() . ') files / ' .
-                $this->getTotalFileSizeFiltered() . ' (of ' . $this->getTotalFileSizeRaw().')';
+                $this->getTotalFileCountFiltered() . ' files / ' .
+                $this->getTotalFileSizeFiltered() ;
         } else {
             $filterStatement =
                 $this->getTotalFileCountRaw() . ' / ' .
@@ -271,6 +271,7 @@ class View extends ContentController implements Flushable
                 $this->getSortStatement(),
                 $this->getFilterStatement(),
                 $this->getPageStatement(),
+                $this->getTotalsStatement(),
             ]
         );
 
@@ -278,6 +279,18 @@ class View extends ContentController implements Flushable
             'HTMLText',
             '- ' . implode('<br /> - ', $array)
         );
+    }
+
+    protected function getTotalsStatement()
+    {
+        return $this->hasFilter() ? '<strong>Totals</strong>: ' .
+            $this->getTotalFileCountRaw() . ' files / ' . $this->getTotalFileSizeRaw()
+            : '';
+    }
+
+    protected function hasFilter() : bool
+    {
+        return $this->filter || count($this->allowedExtensions);
     }
 
     public function getSortStatement(): string
