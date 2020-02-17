@@ -151,6 +151,7 @@ class OneFileInfo implements FileInfo
         //defaults
         $this->intel['ErrorIsInFileSystem'] = true;
         $this->intel['PathFileSize'] = 0;
+        $this->intel['IsDir'] = is_dir($this->path);
 
         //in file details
         if ($this->fileExists) {

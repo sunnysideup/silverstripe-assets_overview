@@ -65,13 +65,15 @@ class AllFilesInfo implements FileInfo
     protected static $databaseLookupListLive = [];
 
     private static $not_real_file_substrings = [
-        '_resampled',
-        '__Fit',
-        '__Pad',
-        '__Fill',
-        '__Focus',
-        '__Scale',
-        '__ResizedImage',
+        DIRECTORY_SEPARATOR . '_resampled',
+        DIRECTORY_SEPARATOR . '__',
+        DIRECTORY_SEPARATOR . '.',
+        // '__Fit',
+        // '__Pad',
+        // '__Fill',
+        // '__Focus',
+        // '__Scale',
+        // '__ResizedImage',
     ];
 
     public function __construct($path)
@@ -272,15 +274,15 @@ class AllFilesInfo implements FileInfo
 
     protected function isRealFile(string $path): bool
     {
-        $fileName = basename($path);
         $listOfItemsToSearchFor = Config::inst()->get(self::class, 'not_real_file_substrings');
-        if (substr($fileName, 0, 1) === '.') {
-            return false;
-        }
         foreach ($listOfItemsToSearchFor as $test) {
-            if (strpos($fileName, $test)) {
+            if (strpos($path, $test)) {
                 return false;
             }
+        }
+        $fileName = basename($path);
+        if (substr($fileName, 0, 5) ===  'error' && substr($fileName, -5) === '.html') {
+            return false;
         }
 
         return true;
@@ -298,15 +300,6 @@ class AllFilesInfo implements FileInfo
         );
         foreach ($arrayRaw as $src) {
             $path = $src->getPathName();
-            if (is_dir($path)) {
-                continue;
-            }
-            if (strpos($path, '.protected')) {
-                continue;
-            }
-            if (strpos($path, 'error') && strpos($path, '.html')) {
-                continue;
-            }
             if ($this->isRealFile($path) === false) {
                 continue;
             }

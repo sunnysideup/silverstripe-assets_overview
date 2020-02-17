@@ -133,7 +133,7 @@ class Fix extends ContentController
     {
         $file = $this->getFileObject();
         if ($file) {
-            $newFileName = $this->intel['PathFolderFromAssets'] . '/' .
+            $newFileName = $this->intel['PathFolderFromAssets'] .DIRECTORY_SEPARATOR .
                 $this->intel['PathFileName'] . '.' . $this->intel['PathExtensionAsLower'];
             $file = $this->getFileObject();
             if ($file) {
