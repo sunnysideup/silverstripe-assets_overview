@@ -28,6 +28,17 @@ class OneFileInfo implements FileInfo
     use Cacher;
     use FlushNow;
 
+    protected $errorFields = [
+        'ErrorDBNotPresent',
+        'ErrorDBNotPresentLive',
+        'ErrorDBNotPresentStaging',
+        'ErrorExtensionMisMatch',
+        'ErrorFindingFolder',
+        'ErrorInFilename',
+        'ErrorInSs3Ss4Comparison',
+        'ErrorParentID',
+    ];
+
     /**
      * @var string
      */
@@ -63,22 +74,14 @@ class OneFileInfo implements FileInfo
     {
         $this->path = $absoluteLocation;
         $this->hash = md5($this->path);
-        $fileExists = $fileExists === null ? file_exists($this->path) : $fileExists;
-        $this->fileExists = $fileExists;
+        $this->fileExists = $fileExists === null ? file_exists($this->path) : $fileExists;
     }
 
     public function toArray(): array
     {
         $cachekey = $this->getCacheKey();
         if (! $this->hasCacheKey($cachekey)) {
-            $this->addFileSystemDetails();
-            $this->addImageDetails();
-            $dbFileData = AllFilesInfo::getAnyData($this->intel['PathFromAssetsFolder']);
-            $this->addFolderDetails($dbFileData);
-            $this->addDBDetails($dbFileData);
-            $this->addCalculatedValues();
-            $this->addHumanValues();
-            ksort($this->intel);
+            $this->getUncachedIntel();
             if ($this->intel['ErrorHasAnyError']) {
                 $this->flushNow('x ', '', false);
             } else {
@@ -88,6 +91,20 @@ class OneFileInfo implements FileInfo
         } else {
             $this->intel = self::getCacheValue($cachekey);
         }
+
+        return $this->intel;
+    }
+
+    protected function getUncachedIntel()
+    {
+        $this->addFileSystemDetails();
+        $this->addImageDetails();
+        $dbFileData = AllFilesInfo::getAnyData($this->intel['PathFromAssetsFolder']);
+        $this->addFolderDetails($dbFileData);
+        $this->addDBDetails($dbFileData);
+        $this->addCalculatedValues();
+        $this->addHumanValues();
+        ksort($this->intel);
 
         return $this->intel;
     }
@@ -127,7 +144,6 @@ class OneFileInfo implements FileInfo
         //basics!
         $this->intel['Path'] = $this->path;
         $this->intel['PathFolderPath'] = $this->parthParts['dirname'] ?: dirname($this->intel['Path']);
-
         //file name
         $this->intel['PathFileName'] = $this->parthParts['filename'] ?: basename($this->path);
         $this->intel['PathFileNameFirstLetter'] = strtoupper(substr($this->intel['PathFileName'], 0, 1));
@@ -145,7 +161,6 @@ class OneFileInfo implements FileInfo
         $this->intel['PathFromPublicRoot'] = trim(str_replace($this->getPublicBaseFolder(), '', $this->path), DIRECTORY_SEPARATOR);
         $this->intel['PathFromAssetsFolder'] = trim(str_replace($this->getAssetsBaseFolder(), '', $this->path), DIRECTORY_SEPARATOR);
         $this->intel['PathFolderFromAssets'] = dirname($this->intel['PathFromAssetsFolder']);
-        $this->intel['PathFromAssetsFolderForSorting'] = $this->intel['PathFolderFromAssets'];
         if ($this->intel['PathFolderFromAssets'] === '.') {
             $this->intel['PathFolderFromAssets'] = '--in-root-folder--';
         }
@@ -157,6 +172,12 @@ class OneFileInfo implements FileInfo
         $this->intel['PathExtension'] = $this->parthParts['extension'] ?: $this->getExtension($this->path);
         $this->intel['PathExtensionAsLower'] = (string) strtolower($this->intel['PathExtension']);
         $this->intel['ErrorExtensionMisMatch'] = $this->intel['PathExtension'] !== $this->intel['PathExtensionAsLower'];
+        $pathExtensionWithDot = '.'.$this->intel['PathExtension'];
+        $extensionLength = strlen($pathExtensionWithDot);
+        $pathLength = strlen($this->intel['PathFileName']);
+        if (substr($this->intel['PathFileName'], (-1*$extensionLength)) === $pathExtensionWithDot) {
+            $this->intel['PathFileName'] = substr($this->intel['PathFileName'], 0, ($pathLength - $extensionLength));
+        }
     }
 
     protected function addImageDetails()
@@ -294,25 +315,15 @@ class OneFileInfo implements FileInfo
         $this->intel['HumanErrorDBNotPresent'] = $stageDBStatus . ', ' . $liveDBStatus;
         $this->intel['HumanErrorInSs3Ss4Comparison'] = $this->intel['ErrorInSs3Ss4Comparison'] ?
             'Filename and FileFilename do not match' : 'Filename and FileFilename match';
+        $this->intel['HumanIcon'] = File::get_icon_for_extension($this->intel['PathExtensionAsLower']);
     }
 
     protected function addCalculatedValues()
     {
         $this->intel['ErrorHasAnyError'] = false;
-        $errorFields = [
-            'ErrorDBNotPresent',
-            'ErrorDBNotPresentLive',
-            'ErrorDBNotPresentStaging',
-            'ErrorExtensionMisMatch',
-            'ErrorFindingFolder',
-            'ErrorInFilename',
-            'ErrorInSs3Ss4Comparison',
-            'ErrorParentID',
-        ];
-        foreach ($errorFields as $field) {
+        foreach ($this->errorFields as $field) {
             if ($this->intel[$field]) {
                 $this->intel['ErrorHasAnyError'] = true;
-                break;
             }
         }
     }

@@ -223,6 +223,7 @@ class View extends ContentController implements Flushable
         'index' => 'ADMIN',
         'json' => 'ADMIN',
         'jsonfull' => 'ADMIN',
+        'fix' => 'ADMIN',
     ];
 
     public static function flush()
@@ -426,6 +427,7 @@ class View extends ContentController implements Flushable
         }
         return $this->sendJSON($array);
     }
+
 
     public function addMapToItems()
     {

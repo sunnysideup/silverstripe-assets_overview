@@ -22,7 +22,7 @@
             <p><strong>Not in file-system</strong></p>
         <% else %>
             <p><strong>Folder:</strong> <a href="$FolderCMSEditLink" target="_blank">✎ $PathFolderFromAssets</a></p>
-            <p><strong>File: </strong>$PathFileName . $PathExtension</p>
+            <p><strong>File: </strong>$PathFileNameWithoutExtension . $PathExtension</p>
         <% end_if %>
         <p><strong>Last Changed:</strong> $DBLastEdited</p>
         <p><strong>Dimensions:</strong> $HumanImageDimensions</p>
