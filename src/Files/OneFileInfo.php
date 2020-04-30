@@ -17,6 +17,7 @@ use SilverStripe\ORM\FieldType\DBDate;
 
 use Sunnysideup\AssetsOverview\Interfaces\FileInfo;
 use Sunnysideup\AssetsOverview\Traits\FilesystemRelatedTraits;
+use Sunnysideup\AssetsOverview\Files\AllFilesInfo;
 
 class OneFileInfo implements Flushable, FileInfo
 {
@@ -58,10 +59,10 @@ class OneFileInfo implements Flushable, FileInfo
     public function __construct(string $absoluteLocation, ?bool $fileExists)
     {
         $this->path = $absoluteLocation;
-        if ($fileExists) {
+        if($fileExists) {
             $this->hash = md5_file($this->path);
         } else {
-            $this->hash = 'no-file' . md5($absoluteLocation);
+            $this->hash = 'no-file'.md5($absoluteLocation);
         }
         $fileExists = $fileExists === null ? file_exists($this->path) : $fileExists;
         $this->fileExists = $fileExists;
@@ -133,7 +134,7 @@ class OneFileInfo implements Flushable, FileInfo
         $this->intel['Dirname'] = $this->parthParts['dirname'] ?: dirname($this->intel['Path']);
 
         //file name
-        $this->intel['FileName'] = $this->parthParts['filename'] ?: basename($this->path);
+        $this->intel['FileName'] = $this->parthParts['filename'] ? : basename($this->path);
         $this->intel['FirstLetter'] = strtoupper(substr($this->intel['FileName'], 0, 1));
 
         //defaults
@@ -149,8 +150,7 @@ class OneFileInfo implements Flushable, FileInfo
         $this->intel['PathFromPublicRoot'] = trim(str_replace($this->getPublicBaseFolder(), '', $this->path), DIRECTORY_SEPARATOR);
         $this->intel['PathFromAssetsFolder'] = trim(str_replace($this->getAssetsBaseFolder(), '', $this->path), DIRECTORY_SEPARATOR);
         $this->intel['PathFromAssetsFolderFolderOnly'] = dirname($this->intel['PathFromAssetsFolder']);
-        $this->intel['PathFromAssetsFolderForSorting'] = $this->intel['PathFromAssetsFolderFolderOnly'];
-        if ($this->intel['PathFromAssetsFolderFolderOnly'] === '.') {
+        if($this->intel['PathFromAssetsFolderFolderOnly'] === '.') {
             $this->intel['PathFromAssetsFolderFolderOnly'] = '--in-root-folder--';
         }
 
@@ -158,7 +158,7 @@ class OneFileInfo implements Flushable, FileInfo
         $relativeDirFromAssetsFolder = str_replace($this->getAssetsBaseFolder(), '', $this->intel['Dirname']);
 
         //extension
-        $this->intel['Extension'] = $this->parthParts['extension'] ?: $this->getExtension($this->path);
+        $this->intel['Extension'] = $this->parthParts['extension'] ? : $this->getExtension($this->path);
         $this->intel['ExtensionAsLower'] = (string) strtolower($this->intel['Extension']);
         $this->intel['HasIrregularExtension'] = $this->intel['Extension'] !== $this->intel['ExtensionAsLower'];
     }
@@ -167,7 +167,7 @@ class OneFileInfo implements Flushable, FileInfo
     {
         $this->intel['Ratio'] = '0';
         $this->intel['Pixels'] = 'n/a';
-        $this->intel['IsImage'] = $this->isRegularImage($this->intel['Extension']);
+        $this->intel['IsImage'] = $this->isRegularImage($this->intel['Extension']);;
         $this->intel['IsRegularImage'] = false;
         $this->intel['Width'] = 0;
         $this->intel['Height'] = 0;
@@ -195,12 +195,13 @@ class OneFileInfo implements Flushable, FileInfo
 
     protected function addFolderDetails($dbFileData)
     {
+
         $folder = [];
         if (! empty($dbFileData['ParentID'])) {
             if (isset($this->folderCache['ParentID'])) {
                 $folder = $this->folderCache['ParentID'];
             } else {
-                $sql = 'SELECT * FROM "File" WHERE "ID" = ' . $dbFileData['ParentID'];
+                $sql = 'SELECT * FROM "File" WHERE "ID" = '.$dbFileData['ParentID'];
                 $rows = DB::query($sql);
                 foreach ($rows as $folder) {
                     $this->folderCache['ParentID'] = $folder;
@@ -217,12 +218,13 @@ class OneFileInfo implements Flushable, FileInfo
             $this->intel['HasFolderError'] = false;
             $this->intel['FolderID'] = $folder['ID'];
             $this->intel['HasFolder'] = true;
-            $this->intel['CMSEditLinkFolder'] = '/admin/assets/show/' . $folder['ID'] . '/';
+            $this->intel['CMSEditLinkFolder'] = '/admin/assets/show/' .$folder['ID'] . '/';
         }
     }
 
     protected function addDBDetails($dbFileData)
     {
+
         $time = 0;
         if (empty($dbFileData)) {
             $this->intel['ErrorParentID'] = false;
@@ -249,7 +251,7 @@ class OneFileInfo implements Flushable, FileInfo
             $this->intel['FilenameInDatabase'] = $dbFileData['Name'] ?: basename($this->intel['PathInDatabase']);
             $this->intel['IsInDatabaseStaging'] = AllFilesInfo::exists_on_staging($this->intel['ID']);
             $this->intel['IsInDatabaseLive'] = AllFilesInfo::exists_on_live($this->intel['ID']);
-            $this->intel['CMSEditLink'] = '/admin/assets/EditForm/field/File/item/' . $this->intel['ID'] . '/edit';
+            $this->intel['CMSEditLink'] = '/admin/assets/EditForm/field/File/item/' . $this->intel['ID']. '/edit';
             $this->intel['DBTitle'] = $dbFileData['Title'];
             $this->intel['FileFilename'] = $dbFileData['FileFilename'];
             $this->intel['DBTMPFilename'] = $dbFileData['Filename'];
@@ -262,16 +264,17 @@ class OneFileInfo implements Flushable, FileInfo
             $time = strtotime($dbFileData['LastEdited']);
             $this->intel['ErrorParentID'] = true;
             if ((int) $this->intel['FolderID'] === 0) {
-                if (intval($dbFileData['ParentID'])) {
+                if(intval($dbFileData['ParentID'])) {
                     $this->intel['ErrorParentID'] = true;
                 } else {
                     $this->intel['ErrorParentID'] = false;
                 }
             } elseif ($this->intel['FolderID']) {
-                $this->intel['ErrorParentID'] = (int) $this->intel['FolderID'] !== (int) $dbFileData['ParentID'] ? true : false;
+                $this->intel['ErrorParentID'] = ((int) $this->intel['FolderID'] !== (int) $dbFileData['ParentID']) ? true : false;
             }
         }
         $this->intel['IsInDatabase'] = $this->intel['IsInDatabaseLive'] || $this->intel['IsInDatabaseStaging'];
+
 
         $this->intel['LastEditedTS'] = $time;
         $this->intel['LastEdited'] = DBDate::create_field('Date', $time)->Ago();
@@ -297,9 +300,10 @@ class OneFileInfo implements Flushable, FileInfo
         $this->intel['HumanErrorParentID'] = $this->intel['ErrorParentID'] ? 'Error in folder ID' : 'Perfect folder ID';
         $stageDBStatus = $this->intel['IsInDatabaseStaging'] ? 'Is in Draft' : ' Is not in Draft';
         $liveDBStatus = $this->intel['IsInDatabaseLive'] ? 'Is in Live' : ' Is not in Live';
-        $this->intel['HumanIsInDatabase'] = $stageDBStatus . ', ' . $liveDBStatus;
+        $this->intel['HumanIsInDatabase'] = $stageDBStatus . ', '. $liveDBStatus;
         $this->intel['HumanErrorInSs3Ss4Comparison'] = $this->intel['ErrorInSs3Ss4Comparison'] ?
-            'Filename and FileFilename do not match' : 'Filename and FileFilename match';
+            'Filename and FileFilename do not match' :  'Filename and FileFilename match' ;
+
     }
 
     protected function getBackupDataObject()
@@ -313,10 +317,12 @@ class OneFileInfo implements Flushable, FileInfo
             }
         }
         $filter = ['FileFilename' => $this->intel['PathFromAssetsFolderFolderOnly']];
-        if (Folder::get()->filter($filter)->count() === 1) {
+        if(Folder::get()->filter($filter)->count() === 1) {
             $folder = DataObject::get_one(Folder::class, $filter);
         }
     }
+
+
 
     ##############################################
     # CACHE
@@ -337,4 +343,8 @@ class OneFileInfo implements Flushable, FileInfo
     {
         return $this->hash;
     }
+
+
+
+
 }
