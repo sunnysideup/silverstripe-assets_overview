@@ -20,7 +20,8 @@
         }
     ],
     "require": {
-        "silverstripe/recipe-core": "~4.4"
+        "silverstripe/recipe-core": "~4.4",
+        "sunnysideup/flush": "dev-master"
     },
     "suggest": {
         "inceddy/image-compare": "compare image similarities",

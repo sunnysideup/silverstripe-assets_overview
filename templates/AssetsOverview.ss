@@ -6,39 +6,45 @@
  <% base_tag %>
   <title>Assets Overview</title>
   <style>
+  body {
+      padding-bottom: 90vh;
+  }
   * {
       transition: all 0.2s ease;
       font-family: arial, sans-serif;
       color: rgb(79, 88, 97);
-      font-size: 13px;
       font-family: Helvetica Neue,Helvetica,Arial,sans-serif;
+      font-size: 13px;
   }
-  p {margin: 0; padding: 0; padding: 0.5em 0;}
+  p {
+      margin: 0; padding: 0.5em 0;}
   .break {
       clear: both;
       border-top: 1px solid #ccc;
   }
-  h1, h2, h3, h4 {
+  h1, h2, h3, h4, h5 {
       display: block;
       padding-top: 15px;
       padding-bottom: 0;
-      margin-bottom: 0;
+      margin-bottom: 5px;
   }
-  h1 {
+  h1, h1 * {
+      font-size: 22px;
+  }
+  h1 strong {
+      text-decoration: underline;
+  }
+  h2, h2 * {
       font-size: 20px;
   }
-  h2 {
+  h3, h3 * {
       font-size: 18px;
-
-  }
-  h3 {
-      font-size: 16px;
       text-align: center;
       border-bottom: 1px dotted #ccc;
 
   }
-  h4 {
-      font-size: 14px;
+  h4, h5, h4 *, h5 * {
+      font-size: 16px;
   }
 
   a:link, a:visited {
@@ -76,12 +82,12 @@
   .toc li {
       list-style: none;
       border-bottom: 1px solid #eee;
-      padding: 0px;
       margin: 0;
+      padding: 2px;
   }
   .toc li a {
-      padding: 4px;
       display: block;
+      padding: 0 2px;
   }
   .toc li a:hover {
       background-color: #304e80;
@@ -292,6 +298,11 @@
         font-weight: bolder;
     }
 
+    .form #Form_index_extensions_Holder li {
+        width: 50%;
+        float: left;
+    }
+
 /* */
 
 
@@ -302,31 +313,43 @@
     <div class="toc">
         <div class="padding">
             <% if FilesAsSortedArrayList.count %>
-                <% if $FilesAsSortedArrayList.count > 100 %>
-                    <p>
-                        Too many options to show
-                    </p>
-                <% else %>
-                    <ul>
-                        <li><a href="#top">Sort and Filter ...</a><br /></li>
-                    <% loop $FilesAsSortedArrayList %>
-                        <li><a href="#section-$Number">$SubTitle ($Items.Count)</a></li>
-                    <% end_loop %>
-                <% end_if %>
+                <h4>Find on this page</h4>
+                <p>
+                    <a href="#top">« update filter</a>
+                </p>
+                <ul>
+                <% loop $FilesAsSortedArrayList %>
+                    <li><a href="#section-$Number">$SubTitle ($Items.Count)</a></li>
+                <% end_loop %>
                 </ul>
             <% end_if %>
-            <h1>Additional Options:</h1>
-            <p>
-                <a href="$Link?flush=al"><strong>Reset Cache</strong></a>
-                /
-                <strong>View JSON:</strong>
-                <a href="$Link(json)">file list</a>,
-                <a href="$Link(jsonfull)">full details</a>
-                /
-                <strong>Download JSON:</strong>
-                <a href="$Link(json)?download=1">file list</a>,
-                <a href="$Link(jsonfull)?download=1">full details</a>
-            </p>
+
+            <h4>Additional options</h4>
+            <ul>
+                <li>
+                    <a href="$Link?flush=al">Reset Cache</a>
+                </li>
+
+
+                <li>
+                    <strong>View JSON:</strong>
+                    <a href="$Link(json)">file list</a>
+                    <a href="$Link(jsonfull)">full details</a>
+                </li>
+
+                <li>
+                    <strong>Download JSON:</strong>
+                    <a href="$Link(json)?download=1">file list</a>
+                    <a href="$Link(jsonfull)?download=1">full details</a>
+                </li>
+            </ul>
+
+            <h4>Limitations</h4>
+            <ul>
+                <li>Publicly accessible files only</li>
+                <li>Does not take into account "canView"</li>
+                <li>Only works with local file system</li>
+            </ul>
         </div>
     </div>
 
@@ -341,11 +364,9 @@
                 </div>
             </div>
 
-            <h1>Totals</h1>
-            <p>$TotalFileCountRaw files, current selection uses total of $TotalFileSize in storage</p>
-
             <% if FilesAsSortedArrayList.count %>
-                <h1>$Title</h1>
+                <h1>$Title.RAW</h1>
+                <p>$Subtitle.RAW</p>
 
                 <% if $Displayer = 'thumbs' %>
                     <% loop $FilesAsSortedArrayList %>
@@ -363,7 +384,7 @@
                         <ul id="section-$Number" class="break">
                         <% loop $Items %>
                             <li>
-                                <a href="$PathFromAssetsFolder">$PathFromAssetsFolder</a>
+                                <h5><a href="$PathFromPublicRoot">$PathFromAssetsFolder</a></h5>
                             </li>
                         <% end_loop %>
                         </ul>
@@ -375,10 +396,10 @@
                         <ul id="section-$Number" class="break">
                         <% loop $Items %>
                             <li>
-                                <strong>$PathFromAssetsFolder</strong>
+                                <h5><a href="$PathFromPublicRoot">$PathFromAssetsFolder</a></h5>
                                 <ul>
                                 <% loop $FullFields %>
-                                    <li><strong>$Key</strong> $Value</li>
+                                    <li><strong>$Key:</strong> $Value</li>
                                 <% end_loop %>
                                 </ul>
                             </li>
@@ -395,5 +416,27 @@
             </div>
         </div>
     </div>
+    <script>
+        window.addEventListener(
+            "DOMContentLoaded",
+            function(){
+                const els = document.querySelectorAll('input, select');
+                for (let i=0; i < els.length; i++) {
+                    els[i].setAttribute("onchange", "this.form.submit(); this.form.innerHTML = 'loading ...'; document.querySelector('.results').style.opacity = '0.5'");
+                }
+                const btn = document.querySelector('#Form_index_action_index');
+                btn.style.display = 'none';
+                // const form = document.querySelector('form');
+                // form.addEventListener(
+                //     "submit",
+                //     (event) => {
+                //         console.log('We do get here when both a submit button is clicked and the image')
+                //     }
+                // );
+            }
+        );
+
+
+    </script>
 </body>
 </html>

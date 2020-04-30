@@ -5,24 +5,29 @@ namespace Sunnysideup\AssetsOverview\Files;
 use \FilesystemIterator;
 use \RecursiveDirectoryIterator;
 use \RecursiveIteratorIterator;
-use Psr\SimpleCache\CacheInterface;
+
 use SilverStripe\Assets\File;
 use SilverStripe\Assets\Folder;
 use SilverStripe\Core\Config\Config;
 use SilverStripe\Core\Config\Configurable;
-use SilverStripe\Core\Flushable;
 use SilverStripe\Core\Injector\Injectable;
 use SilverStripe\Core\Injector\Injector;
+
+use Sunnysideup\Flush\FlushNow;
 
 use SilverStripe\ORM\DB;
 use Sunnysideup\AssetsOverview\Interfaces\FileInfo;
 use Sunnysideup\AssetsOverview\Traits\FilesystemRelatedTraits;
+use Sunnysideup\AssetsOverview\Traits\Cacher;
+use Sunnysideup\AssetsOverview\Control\View;
 
-class AllFilesInfo implements Flushable, FileInfo
+class AllFilesInfo implements FileInfo
 {
     use FilesystemRelatedTraits;
     use Injectable;
     use Configurable;
+    use Cacher;
+    use FlushNow;
 
     /**
      * @var string
@@ -60,13 +65,15 @@ class AllFilesInfo implements Flushable, FileInfo
     protected static $databaseLookupListLive = [];
 
     private static $not_real_file_substrings = [
-        '_resampled',
-        '__Fit',
-        '__Pad',
-        '__Fill',
-        '__Focus',
-        '__Scale',
-        '__ResizedImage',
+        DIRECTORY_SEPARATOR . '_resampled',
+        DIRECTORY_SEPARATOR . '__',
+        DIRECTORY_SEPARATOR . '.',
+        // '__Fit',
+        // '__Pad',
+        // '__Fill',
+        // '__Focus',
+        // '__Scale',
+        // '__ResizedImage',
     ];
 
     public function __construct($path)
@@ -89,7 +96,7 @@ class AllFilesInfo implements Flushable, FileInfo
      * @param  int $id
      * @return bool
      */
-    public static function exists_on_staging(int $id): bool
+    public static function existsOnStaging(int $id): bool
     {
         return isset(self::$dataStaging[$id]);
     }
@@ -99,7 +106,7 @@ class AllFilesInfo implements Flushable, FileInfo
      * @param  int $id
      * @return bool
      */
-    public static function exists_on_live(int $id): bool
+    public static function existsOnLive(int $id): bool
     {
         return isset(self::$dataLive[$id]);
     }
@@ -110,11 +117,11 @@ class AllFilesInfo implements Flushable, FileInfo
      * @param  int $pathFromAssets id
      * @return array
      */
-    public static function get_any_data(string $pathFromAssets, ?int $id = 0): array
+    public static function getAnyData(string $pathFromAssets, ?int $id = 0): array
     {
-        $data = self::get_staging_data($pathFromAssets, $id);
+        $data = self::getStagingData($pathFromAssets, $id);
         if (empty($data)) {
-            $data = self::get_live_data($pathFromAssets, $id);
+            $data = self::getLiveData($pathFromAssets, $id);
         }
 
         return $data;
@@ -126,7 +133,7 @@ class AllFilesInfo implements Flushable, FileInfo
      * @param  int $id
      * @return array
      */
-    public static function get_staging_data(string $pathFromAssets, ?int $id = 0): array
+    public static function getStagingData(string $pathFromAssets, ?int $id = 0): array
     {
         if (! $id) {
             $id = self::$databaseLookupListStaging[$pathFromAssets] ?? 0;
@@ -139,7 +146,7 @@ class AllFilesInfo implements Flushable, FileInfo
      * @param  string $pathFromAssets - full lookup list
      * @return array
      */
-    public static function get_live_data(string $pathFromAssets, ?int $id = 0): array
+    public static function getLiveData(string $pathFromAssets, ?int $id = 0): array
     {
         if (! $id) {
             $id = self::$databaseLookupListLive[$pathFromAssets] ?? 0;
@@ -154,9 +161,9 @@ class AllFilesInfo implements Flushable, FileInfo
      * @param  mixed     $value
      * @return int
      */
-    public static function find_in_data_staging(string $fieldName, $value): int
+    public static function findInStagingData(string $fieldName, $value): int
     {
-        return self::find_in_data(self::$dataStaging, $fieldName, $value);
+        return self::findInData(self::$dataStaging, $fieldName, $value);
     }
 
     /**
@@ -166,16 +173,11 @@ class AllFilesInfo implements Flushable, FileInfo
      * @param  mixed     $value
      * @return int
      */
-    public static function find_in_data_live(string $fieldName, $value): int
+    public static function findInLiveData(string $fieldName, $value): int
     {
-        return self::find_in_data(self::$dataLive, $fieldName, $value);
+        return self::findInData(self::$dataLive, $fieldName, $value);
     }
 
-    public static function flush()
-    {
-        $cache = self::getCache();
-        $cache->clear();
-    }
 
     public static function getTotalFileSizesRaw()
     {
@@ -191,56 +193,62 @@ class AllFilesInfo implements Flushable, FileInfo
 
     public function toArray(): array
     {
-        $cache = self::getCache();
-        $cachekey = $this->getCacheKey();
         if (count(self::$listOfFiles) === 0) {
-            if (! $cache->has($cachekey)) {
+            $cachekey = $this->getCacheKey();
+            if (! $this->hasCacheKey($cachekey)) {
+                $this->flushNow('<h1>Analysing files</h1>');
                 //disk
                 $diskArray = $this->getArrayOfFilesOnDisk();
                 foreach ($diskArray as $path) {
-                    if ($path) {
-                        self::$listOfFiles[$path] = true;
-                        $extension = strtolower($this->getExtension($path));
-                        self::$availableExtensions[$extension] = $extension;
-                    }
+                    $this->registerFile($path, true);
                 }
                 //database
                 $databaseArray = $this->getArrayOfFilesInDatabase();
                 foreach ($databaseArray as $path) {
-                    if ($path) {
-                        if (! isset(self::$listOfFiles[$path])) {
-                            self::$listOfFiles[$path] = false;
-                            $extension = strtolower($this->getExtension($path));
-                            self::$availableExtensions[$extension] = $extension;
-                        }
-                    }
+                    $this->registerFile($path, false);
                 }
                 asort(self::$listOfFiles);
                 asort(self::$availableExtensions);
-                $cache->set($cachekey, serialize(self::$listOfFiles));
-                $cache->set($cachekey . 'availableExtensions', serialize(self::$availableExtensions));
-                $cache->set($cachekey . 'dataStaging', serialize(self::$dataStaging));
-                $cache->set($cachekey . 'dataLive', serialize(self::$dataLive));
-                $cache->set($cachekey . 'databaseLookupStaging', serialize(self::$databaseLookupListStaging));
-                $cache->set($cachekey . 'databaseLookupLive', serialize(self::$databaseLookupListLive));
+                $this->setCacheValue($cachekey, self::$listOfFiles);
+                $this->setCacheValue($cachekey . 'availableExtensions', self::$availableExtensions);
+                $this->setCacheValue($cachekey . 'dataStaging', self::$dataStaging);
+                $this->setCacheValue($cachekey . 'dataLive', self::$dataLive);
+                $this->setCacheValue($cachekey . 'databaseLookupStaging', self::$databaseLookupListStaging);
+                $this->setCacheValue($cachekey . 'databaseLookupLive', self::$databaseLookupListLive);
             } else {
-                self::$listOfFiles = unserialize($cache->get($cachekey));
-                self::$availableExtensions = unserialize($cache->get($cachekey . 'availableExtensions'));
-                self::$dataStaging = unserialize($cache->get($cachekey . 'dataStaging'));
-                self::$dataLive = unserialize($cache->get($cachekey . 'dataLive'));
-                self::$databaseLookupListStaging = unserialize($cache->get($cachekey . 'databaseLookupStaging'));
-                self::$databaseLookupListLive = unserialize($cache->get($cachekey . 'databaseLookupLive'));
+                self::$listOfFiles = $this->getCacheValue($cachekey);
+                self::$availableExtensions = $this->getCacheValue($cachekey . 'availableExtensions');
+                self::$dataStaging = $this->getCacheValue($cachekey . 'dataStaging');
+                self::$dataLive = $this->getCacheValue($cachekey . 'dataLive');
+                self::$databaseLookupListStaging = $this->getCacheValue($cachekey . 'databaseLookupStaging');
+                self::$databaseLookupListLive = $this->getCacheValue($cachekey . 'databaseLookupLive');
             }
         }
 
         return self::$listOfFiles;
     }
 
-    protected static function find_id_from_file_name(array $data, string $filename): int
+    protected function registerFile($path, $inFileSystem)
     {
-        $id = self::find_in_data($data, 'FileFilename', $filename);
+        if ($path) {
+            if (! isset(self::$listOfFiles[$path])) {
+                self::$listOfFiles[$path] = $inFileSystem;
+                if ($inFileSystem) {
+                    $this->flushNow('. ', '', false);
+                } else {
+                    $this->flushNow('x ', '', false);
+                }
+                $extension = strtolower($this->getExtension($path));
+                self::$availableExtensions[$extension] = $extension;
+            }
+        }
+    }
+
+    protected static function findIdFromFileName(array $data, string $filename): int
+    {
+        $id = self::findInData($data, 'FileFilename', $filename);
         if (! $id) {
-            $id = self::find_in_data($data, 'Filename', $filename);
+            $id = self::findInData($data, 'Filename', $filename);
         }
 
         return $id;
@@ -252,7 +260,7 @@ class AllFilesInfo implements Flushable, FileInfo
      * @param  mixed  $value
      * @return int
      */
-    protected static function find_in_data(array $data, string $fieldName, $value): int
+    protected static function findInData(array $data, string $fieldName, $value): int
     {
         foreach ($data as $id => $row) {
             if (isset($row[$fieldName])) {
@@ -266,15 +274,15 @@ class AllFilesInfo implements Flushable, FileInfo
 
     protected function isRealFile(string $path): bool
     {
-        $fileName = basename($path);
         $listOfItemsToSearchFor = Config::inst()->get(self::class, 'not_real_file_substrings');
-        if (substr($fileName, 0, 1) === '.') {
-            return false;
-        }
         foreach ($listOfItemsToSearchFor as $test) {
-            if (strpos($fileName, $test)) {
+            if (strpos($path, $test)) {
                 return false;
             }
+        }
+        $fileName = basename($path);
+        if (substr($fileName, 0, 5) ===  'error' && substr($fileName, -5) === '.html') {
+            return false;
         }
 
         return true;
@@ -292,12 +300,6 @@ class AllFilesInfo implements Flushable, FileInfo
         );
         foreach ($arrayRaw as $src) {
             $path = $src->getPathName();
-            if (is_dir($path)) {
-                continue;
-            }
-            if (strpos($path, '.protected')) {
-                continue;
-            }
             if ($this->isRealFile($path) === false) {
                 continue;
             }
@@ -340,13 +342,6 @@ class AllFilesInfo implements Flushable, FileInfo
     # CACHE
     ##############################################
 
-    /**
-     * @return CacheInterface
-     */
-    protected static function getCache()
-    {
-        return Injector::inst()->get(CacheInterface::class . '.assetsoverviewCache');
-    }
 
     /**
      * @return string
