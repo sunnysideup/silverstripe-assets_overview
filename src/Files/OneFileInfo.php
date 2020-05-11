@@ -35,7 +35,7 @@ class OneFileInfo implements FileInfo
         'ErrorInFilename',
         'ErrorInSs3Ss4Comparison',
         'ErrorParentID',
-        'ErrorDraftOnly',
+        'ErrorInDraftOnly',
         'ErrorNotInDraft',
     ];
 
@@ -249,6 +249,8 @@ class OneFileInfo implements FileInfo
             $this->intel['DBFilenameSS4'] = '';
             $this->intel['ErrorDBNotPresentStaging'] = true;
             $this->intel['ErrorDBNotPresentLive'] = true;
+            $this->intel['ErrorInDraftOnly'] = false;
+            $this->intel['ErrorNotInDraft'] = false;
             $this->intel['DBCMSEditLink'] = '/admin/assets/';
             $this->intel['DBTitle'] = '-- no title set in database';
             $this->intel['ErrorInFilename'] = false;
@@ -257,17 +259,17 @@ class OneFileInfo implements FileInfo
                 $time = filemtime($this->path);
             }
         } else {
-            $existsOnStaging = AllFilesInfo::existsOnStaging($this->intel['DBID']);
-            $existsOnLive = AllFilesInfo::existsOnLive($this->intel['DBID']);
             $dbFileData['Filename'] = $dbFileData['Filename'] ?? '';
             $this->intel['DBID'] = $dbFileData['ID'];
             $this->intel['DBClassName'] = $dbFileData['ClassName'];
             $this->intel['DBParentID'] = $dbFileData['ParentID'];
             $this->intel['DBPath'] = $dbFileData['FileFilename'] ?? $dbFileData['Filename'] ?? '';
             $this->intel['DBFilename'] = $dbFileData['Name'] ?: basename($this->intel['DBPath']);
+            $existsOnStaging = AllFilesInfo::existsOnStaging($this->intel['DBID']);
+            $existsOnLive = AllFilesInfo::existsOnLive($this->intel['DBID']);
             $this->intel['ErrorDBNotPresentStaging'] = $existsOnStaging ? false : true;
             $this->intel['ErrorDBNotPresentLive'] = $existsOnLive ? false : true;
-            $this->intel['ErrorDraftOnly'] = $existsOnStaging && ! $existsOnLive;
+            $this->intel['ErrorInDraftOnly'] = $existsOnStaging && ! $existsOnLive;
             $this->intel['ErrorNotInDraft'] = ! $existsOnStaging && $existsOnLive;
             $this->intel['DBCMSEditLink'] = '/admin/assets/EditForm/field/File/item/' . $this->intel['DBID'] . '/edit';
             $this->intel['DBTitle'] = $dbFileData['Title'];

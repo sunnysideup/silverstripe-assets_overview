@@ -115,12 +115,12 @@ class View extends ContentController implements Flushable
             'Values' => [1, true],
         ],
         'bydraftonly' => [
-            'Title' => 'In draft only',
-            'Field' => 'ErrorDraftOnly',
+            'Title' => 'In draft only (not on live)',
+            'Field' => 'ErrorInDraftOnly',
             'Values' => [1, true],
         ],
         'byliveonly' => [
-            'Title' => 'Not in draft',
+            'Title' => 'On live only (not in draft)',
             'Field' => 'ErrorNotInDraft',
             'Values' => [1, true],
         ],
