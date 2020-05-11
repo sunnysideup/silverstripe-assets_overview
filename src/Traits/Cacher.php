@@ -7,7 +7,6 @@ use SilverStripe\Core\Injector\Injector;
 
 trait Cacher
 {
-
     private static $loadedFromCache = true;
 
     private static $cacheCache = null;
@@ -16,7 +15,7 @@ trait Cacher
      * return false if the cache has been set or a cache key was not found.
      * @return bool
      */
-    public static function loadedFromCache() : bool
+    public static function loadedFromCache(): bool
     {
         return self::$loadedFromCache;
     }
@@ -32,7 +31,7 @@ trait Cacher
      */
     protected static function getCache()
     {
-        if (self::$cacheCache == null) {
+        if (self::$cacheCache === null) {
             self::$cacheCache = Injector::inst()->get(CacheInterface::class . '.assetsoverviewCache');
         }
         return self::$cacheCache;
@@ -63,11 +62,10 @@ trait Cacher
     }
 
     /**
-     *
      * @param  string $cacheKey
      * @return bool
      */
-    protected function hasCacheKey(string $cacheKey) : bool
+    protected function hasCacheKey(string $cacheKey): bool
     {
         $cache = self::getCache();
 

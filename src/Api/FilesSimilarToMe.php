@@ -1,5 +1,7 @@
 <?php
 
+namespace Sunnysideup\AssetsOverview\Api;
+
 class FilesSimilarToMe
 {
     protected function workOutSimilarity()

@@ -7,18 +7,16 @@ use \Exception;
 use SilverStripe\Assets\File;
 use SilverStripe\Assets\Folder;
 use SilverStripe\Core\Config\Configurable;
-use SilverStripe\Core\Flushable;
 use SilverStripe\Core\Injector\Injectable;
-use SilverStripe\Core\Injector\Injector;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\DB;
 use SilverStripe\ORM\FieldType\DBDate;
 
-use Sunnysideup\Flush\FlushNow;
-
 use Sunnysideup\AssetsOverview\Interfaces\FileInfo;
-use Sunnysideup\AssetsOverview\Traits\FilesystemRelatedTraits;
+
 use Sunnysideup\AssetsOverview\Traits\Cacher;
+use Sunnysideup\AssetsOverview\Traits\FilesystemRelatedTraits;
+use Sunnysideup\Flush\FlushNow;
 
 class OneFileInfo implements FileInfo
 {
@@ -37,6 +35,8 @@ class OneFileInfo implements FileInfo
         'ErrorInFilename',
         'ErrorInSs3Ss4Comparison',
         'ErrorParentID',
+        'ErrorDraftOnly',
+        'ErrorNotInDraft',
     ];
 
     /**
@@ -87,9 +87,9 @@ class OneFileInfo implements FileInfo
             } else {
                 $this->flushNow('✓ ', '', false);
             }
-            self::setCacheValue($cachekey, $this->intel);
+            $this->setCacheValue($cachekey, $this->intel);
         } else {
-            $this->intel = self::getCacheValue($cachekey);
+            $this->intel = $this->getCacheValue($cachekey);
         }
 
         return $this->intel;
@@ -121,7 +121,7 @@ class OneFileInfo implements FileInfo
     protected function isImage(string $filename): bool
     {
         try {
-            $outcome = exif_imagetype($filename) ? true : false;
+            $outcome = @exif_imagetype($filename) ? true : false;
         } catch (Exception $e) {
             $outcome = false;
         }
@@ -167,16 +167,16 @@ class OneFileInfo implements FileInfo
         }
 
         //folder
-        $relativeDirFromAssetsFolder = str_replace($this->getAssetsBaseFolder(), '', $this->intel['PathFolderPath']);
+        // $relativeDirFromAssetsFolder = str_replace($this->getAssetsBaseFolder(), '', $this->intel['PathFolderPath']);
 
         //extension
         $this->intel['PathExtension'] = $this->parthParts['extension'] ?: $this->getExtension($this->path);
         $this->intel['PathExtensionAsLower'] = (string) strtolower($this->intel['PathExtension']);
         $this->intel['ErrorExtensionMisMatch'] = $this->intel['PathExtension'] !== $this->intel['PathExtensionAsLower'];
-        $pathExtensionWithDot = '.'.$this->intel['PathExtension'];
+        $pathExtensionWithDot = '.' . $this->intel['PathExtension'];
         $extensionLength = strlen($pathExtensionWithDot);
         $pathLength = strlen($this->intel['PathFileName']);
-        if (substr($this->intel['PathFileName'], (-1*$extensionLength)) === $pathExtensionWithDot) {
+        if (substr($this->intel['PathFileName'], (-1 * $extensionLength)) === $pathExtensionWithDot) {
             $this->intel['PathFileName'] = substr($this->intel['PathFileName'], 0, ($pathLength - $extensionLength));
         }
     }
@@ -257,14 +257,18 @@ class OneFileInfo implements FileInfo
                 $time = filemtime($this->path);
             }
         } else {
+            $existsOnStaging = AllFilesInfo::existsOnStaging($this->intel['DBID']);
+            $existsOnLive = AllFilesInfo::existsOnLive($this->intel['DBID']);
             $dbFileData['Filename'] = $dbFileData['Filename'] ?? '';
             $this->intel['DBID'] = $dbFileData['ID'];
             $this->intel['DBClassName'] = $dbFileData['ClassName'];
             $this->intel['DBParentID'] = $dbFileData['ParentID'];
             $this->intel['DBPath'] = $dbFileData['FileFilename'] ?? $dbFileData['Filename'] ?? '';
             $this->intel['DBFilename'] = $dbFileData['Name'] ?: basename($this->intel['DBPath']);
-            $this->intel['ErrorDBNotPresentStaging'] = AllFilesInfo::existsOnStaging($this->intel['DBID']) ? false : true;
-            $this->intel['ErrorDBNotPresentLive'] = AllFilesInfo::existsOnLive($this->intel['DBID']) ? false : true;
+            $this->intel['ErrorDBNotPresentStaging'] = $existsOnStaging ? false : true;
+            $this->intel['ErrorDBNotPresentLive'] = $existsOnLive ? false : true;
+            $this->intel['ErrorDraftOnly'] = $existsOnStaging && ! $existsOnLive;
+            $this->intel['ErrorNotInDraft'] = ! $existsOnStaging && $existsOnLive;
             $this->intel['DBCMSEditLink'] = '/admin/assets/EditForm/field/File/item/' . $this->intel['DBID'] . '/edit';
             $this->intel['DBTitle'] = $dbFileData['Title'];
             $this->intel['DBFilenameSS4'] = $dbFileData['FileFilename'];
@@ -305,7 +309,7 @@ class OneFileInfo implements FileInfo
         //file size
         $this->intel['HumanFileSize'] = $this->humanFileSize($this->intel['PathFileSize']);
         $this->intel['HumanFileSizeRounded'] = '~ ' . $this->humanFileSize(round($this->intel['PathFileSize'] / 204800) * 204800);
-        $this->intel['HumanErrorIsInFileSystem'] = $this->intel['ErrorIsInFileSystem'] ?  'File does not exist' : 'File exists' ;
+        $this->intel['HumanErrorIsInFileSystem'] = $this->intel['ErrorIsInFileSystem'] ? 'File does not exist' : 'File exists';
 
         $this->intel['HumanFolderIsInOrder'] = $this->intel['FolderID'] ? 'In sub-folder' : 'In root folder';
 
@@ -329,26 +333,27 @@ class OneFileInfo implements FileInfo
         }
     }
 
-    protected function getBackupDataObject()
-    {
-        $file = DataObject::get_one(File::class, ['FileFilename' => $this->intel['PathFromAssetsFolder']]);
-        //backup for file ...
-        if (! $file) {
-            if ($folder) {
-                $nameInDB = $this->intel['PathFileName'] . '.' . $this->intel['PathExtension'];
-                $file = DataObject::get_one(File::class, ['Name' => $nameInDB, 'ParentID' => $folder->ID]);
-            }
-        }
-        $filter = ['FileFilename' => $this->intel['PathFolderFromAssets']];
-        if (Folder::get()->filter($filter)->count() === 1) {
-            $folder = DataObject::get_one(Folder::class, $filter);
-        }
-    }
+    // protected function getBackupDataObject()
+    // {
+    //     $file = DataObject::get_one(File::class, ['FileFilename' => $this->intel['PathFromAssetsFolder']]);
+    //     //backup for file ...
+    //     if (! $file) {
+    //         if ($folder) {
+    //             $nameInDB = $this->intel['PathFileName'] . '.' . $this->intel['PathExtension'];
+    //             $file = DataObject::get_one(File::class, ['Name' => $nameInDB, 'ParentID' => $folder->ID]);
+    //         }
+    //     }
+    //     $filter = ['FileFilename' => $this->intel['PathFolderFromAssets']];
+    //     if (Folder::get()->filter($filter)->count() === 1) {
+    //         $folder = DataObject::get_one(Folder::class, $filter);
+    //     }
+    //
+    //     return $file;
+    // }
 
     ##############################################
     # CACHE
     ##############################################
-
 
     /**
      * @return string

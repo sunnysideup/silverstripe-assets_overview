@@ -2,6 +2,7 @@
 
 namespace Sunnysideup\AssetsOverview\Traits;
 
+use SilverStripe\Assets\File;
 use SilverStripe\Control\Director;
 
 trait FilesystemRelatedTraits

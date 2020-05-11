@@ -5,8 +5,8 @@ namespace Sunnysideup\AssetsOverview\Control;
 use SilverStripe\CMS\Controllers\ContentController;
 use SilverStripe\Control\Director;
 use SilverStripe\Control\HTTPRequest;
-use SilverStripe\Core\Flushable;
 use SilverStripe\Core\Environment;
+use SilverStripe\Core\Flushable;
 use SilverStripe\Forms\CheckboxSetField;
 use SilverStripe\Forms\DropdownField;
 use SilverStripe\Forms\FieldList;
@@ -19,14 +19,13 @@ use SilverStripe\ORM\ArrayList;
 use SilverStripe\ORM\FieldType\DBField;
 use SilverStripe\Security\Permission;
 use SilverStripe\Security\Security;
+use SilverStripe\Versioned\Versioned;
 use SilverStripe\View\ArrayData;
 use SilverStripe\View\Requirements;
 use SilverStripe\View\SSViewer;
-use SilverStripe\Versioned\Versioned;
 use Sunnysideup\AssetsOverview\Files\AllFilesInfo;
 use Sunnysideup\AssetsOverview\Files\OneFileInfo;
 use Sunnysideup\AssetsOverview\Traits\FilesystemRelatedTraits;
-use Sunnysideup\AssetsOverview\Traits\Cacher;
 
 class View extends ContentController implements Flushable
 {
@@ -115,12 +114,21 @@ class View extends ContentController implements Flushable
             'Field' => 'ErrorDBNotPresentStaging',
             'Values' => [1, true],
         ],
+        'bydraftonly' => [
+            'Title' => 'In draft only',
+            'Field' => 'ErrorDraftOnly',
+            'Values' => [1, true],
+        ],
+        'byliveonly' => [
+            'Title' => 'Not in draft',
+            'Field' => 'ErrorNotInDraft',
+            'Values' => [1, true],
+        ],
         'byfoldererror' => [
             'Title' => 'Folder error',
             'Field' => 'ErrorParentID',
             'Values' => [1, true],
         ],
-
         'bydatabaseerror' => [
             'Title' => 'Error in file name',
             'Field' => 'ErrorInFilename',
@@ -242,17 +250,14 @@ class View extends ContentController implements Flushable
 
     public function getTitle(): string
     {
-        $array = array_filter(
-            [
-                $this->getSortStatement(),
-                $this->getFilterStatement(),
-                $this->getPageStatement(),
-            ]
-        );
+        $this->getSortStatement();
+        $this->getFilterStatement();
+        $this->getPageStatement();
+
         if ($this->hasFilter()) {
             $filterStatement = '' .
                 $this->getTotalFileCountFiltered() . ' files / ' .
-                $this->getTotalFileSizeFiltered() ;
+                $this->getTotalFileSizeFiltered();
         } else {
             $filterStatement =
                 $this->getTotalFileCountRaw() . ' / ' .
@@ -282,18 +287,6 @@ class View extends ContentController implements Flushable
         );
     }
 
-    protected function getTotalsStatement()
-    {
-        return $this->hasFilter() ? '<strong>Totals</strong>: ' .
-            $this->getTotalFileCountRaw() . ' files / ' . $this->getTotalFileSizeRaw()
-            : '';
-    }
-
-    protected function hasFilter() : bool
-    {
-        return $this->filter || count($this->allowedExtensions);
-    }
-
     public function getSortStatement(): string
     {
         return '<strong>sorted by</strong>: ' . self::SORTERS[$this->sorter]['Title'] ?? 'ERROR IN SORTER';
@@ -314,7 +307,7 @@ class View extends ContentController implements Flushable
     public function getPageStatement(): string
     {
         return $this->getNumberOfPages() > 1 ?
-            '<strong>page</strong>: '.$this->pageNumber.' of '.$this->getNumberOfPages().', showing file ' . ($this->startLimit+1) . ' to ' . $this->endLimit
+            '<strong>page</strong>: ' . $this->pageNumber . ' of ' . $this->getNumberOfPages() . ', showing file ' . ($this->startLimit + 1) . ' to ' . $this->endLimit
             :
             '';
     }
@@ -369,6 +362,75 @@ class View extends ContentController implements Flushable
         $this->getGetVariables();
     }
 
+    public function index($request)
+    {
+        $this->setFilesAsSortedArrayList();
+        if ($this->displayer === 'rawlistfull') {
+            $this->addMapToItems();
+        }
+        if (AllFilesInfo::loadedFromCache() === false) {
+            $url = $_SERVER['REQUEST_URI'];
+            $url = str_replace('flush=', 'previousflush=', $url);
+            die('<script>window.location = "' . $url . '";</script>go to ' . $url . ' if this page does not autoload');
+        }
+        return $this->renderWith('AssetsOverview');
+    }
+
+    public function json($request)
+    {
+        return $this->sendJSON($this->getRawData());
+    }
+
+    public function jsonfull($request)
+    {
+        $array = [];
+        $this->setFilesAsArrayList();
+        foreach ($this->filesAsArrayList->toArray() as $item) {
+            $array[] = $item->toMap();
+        }
+        return $this->sendJSON($array);
+    }
+
+    public function addMapToItems()
+    {
+        $this->isThumbList = false;
+        foreach ($this->filesAsSortedArrayList as $group) {
+            foreach ($group->Items as $item) {
+                $map = $item->toMap();
+                $item->FullFields = ArrayList::create();
+                foreach ($map as $key => $value) {
+                    if ($value === false) {
+                        $value = 'no';
+                    }
+                    if ($value === true) {
+                        $value = 'yes';
+                    }
+                    $item->FullFields->push(ArrayData::create(['Key' => $key, 'Value' => $value]));
+                }
+            }
+        }
+    }
+
+    ##############################################
+    # FORM
+    ##############################################
+    public function Form()
+    {
+        return $this->getForm();
+    }
+
+    protected function getTotalsStatement()
+    {
+        return $this->hasFilter() ? '<strong>Totals</strong>: ' .
+            $this->getTotalFileCountRaw() . ' files / ' . $this->getTotalFileSizeRaw()
+            : '';
+    }
+
+    protected function hasFilter(): bool
+    {
+        return $this->filter || count($this->allowedExtensions);
+    }
+
     protected function getGetVariables()
     {
         if ($filter = $this->request->getVar('filter')) {
@@ -397,64 +459,6 @@ class View extends ContentController implements Flushable
         }
         $this->startLimit = $this->limit * ($this->pageNumber - 1);
         $this->endLimit = $this->limit * $this->pageNumber;
-    }
-
-    public function index($request)
-    {
-        $this->setFilesAsSortedArrayList();
-        if ($this->displayer === 'rawlistfull') {
-            $this->addMapToItems();
-        }
-        if (AllFilesInfo::loadedFromCache() === false) {
-            $url = $_SERVER["REQUEST_URI"];
-            $url = str_replace('flush=', 'previousflush=', $url);
-            die('<script>window.location = "'.$url.'";</script>go to '.$url.' if this page does not autoload');
-        }
-        return $this->renderWith('AssetsOverview');
-    }
-
-    public function json($request)
-    {
-        return $this->sendJSON($this->getRawData());
-    }
-
-    public function jsonfull($request)
-    {
-        $array = [];
-        $this->setFilesAsArrayList();
-        foreach ($this->filesAsArrayList->toArray() as $item) {
-            $array[] = $item->toMap();
-        }
-        return $this->sendJSON($array);
-    }
-
-
-    public function addMapToItems()
-    {
-        $this->isThumbList = false;
-        foreach ($this->filesAsSortedArrayList as $group) {
-            foreach ($group->Items as $item) {
-                $map = $item->toMap();
-                $item->FullFields = ArrayList::create();
-                foreach ($map as $key => $value) {
-                    if ($value === false) {
-                        $value = 'no';
-                    }
-                    if ($value === true) {
-                        $value = 'yes';
-                    }
-                    $item->FullFields->push(ArrayData::create(['Key' => $key, 'Value' => $value]));
-                }
-            }
-        }
-    }
-
-    ##############################################
-    # FORM
-    ##############################################
-    public function Form()
-    {
-        return $this->getForm();
     }
 
     protected function sendJSON($data)
@@ -535,6 +539,8 @@ class View extends ContentController implements Flushable
             $this->totalFileCountRaw = AllFilesInfo::getTotalFilesCount();
             $this->filesAsArrayList = ArrayList::create();
             $filterFree = true;
+            $filterField = null;
+            $filterValues = null;
             if (isset(self::FILTERS[$this->filter])) {
                 $filterFree = false;
                 $filterField = self::FILTERS[$this->filter]['Field'];

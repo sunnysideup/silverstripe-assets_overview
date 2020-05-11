@@ -11,15 +11,13 @@ use SilverStripe\Assets\Folder;
 use SilverStripe\Core\Config\Config;
 use SilverStripe\Core\Config\Configurable;
 use SilverStripe\Core\Injector\Injectable;
-use SilverStripe\Core\Injector\Injector;
-
-use Sunnysideup\Flush\FlushNow;
 
 use SilverStripe\ORM\DB;
+
 use Sunnysideup\AssetsOverview\Interfaces\FileInfo;
-use Sunnysideup\AssetsOverview\Traits\FilesystemRelatedTraits;
 use Sunnysideup\AssetsOverview\Traits\Cacher;
-use Sunnysideup\AssetsOverview\Control\View;
+use Sunnysideup\AssetsOverview\Traits\FilesystemRelatedTraits;
+use Sunnysideup\Flush\FlushNow;
 
 class AllFilesInfo implements FileInfo
 {
@@ -178,7 +176,6 @@ class AllFilesInfo implements FileInfo
         return self::findInData(self::$dataLive, $fieldName, $value);
     }
 
-
     public static function getTotalFileSizesRaw()
     {
         $bytestotal = 0;
@@ -281,7 +278,7 @@ class AllFilesInfo implements FileInfo
             }
         }
         $fileName = basename($path);
-        if (substr($fileName, 0, 5) ===  'error' && substr($fileName, -5) === '.html') {
+        if (substr($fileName, 0, 5) === 'error' && substr($fileName, -5) === '.html') {
             return false;
         }
 
@@ -341,7 +338,6 @@ class AllFilesInfo implements FileInfo
     ##############################################
     # CACHE
     ##############################################
-
 
     /**
      * @return string
