@@ -23,9 +23,9 @@ trait FilesystemRelatedTraits
     protected $assetsBaseFolder = '';
 
     /**
-     * @param  int     $bytes    [description]
-     * @param  integer $decimals [description]
-     * @return string            [description]
+     * @param  int     $bytes    
+     * @param  integer $decimals 
+     * @return string            
      */
     protected function humanFileSize(int $bytes, int $decimals = 0): string
     {

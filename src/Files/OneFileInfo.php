@@ -67,8 +67,8 @@ class OneFileInfo implements FileInfo
     protected $folderCache = [];
 
     /**
-     * @param string $absoluteLocation [description]
-     * @param ?bool  $fileExists       [description]
+     * @param string $absoluteLocation 
+     * @param ?bool  $fileExists       
      */
     public function __construct(string $absoluteLocation, ?bool $fileExists)
     {
