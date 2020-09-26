@@ -67,8 +67,8 @@ class OneFileInfo implements FileInfo
     protected $folderCache = [];
 
     /**
-     * @param string $absoluteLocation 
-     * @param ?bool  $fileExists       
+     * @param string $absoluteLocation
+     * @param ?bool  $fileExists
      */
     public function __construct(string $absoluteLocation, ?bool $fileExists)
     {
@@ -120,13 +120,7 @@ class OneFileInfo implements FileInfo
 
     protected function isImage(string $filename): bool
     {
-        try {
-            $outcome = @exif_imagetype($filename) ? true : false;
-        } catch (Exception $e) {
-            $outcome = false;
-        }
-
-        return $outcome;
+        return ( strpos(mime_content_type($filename), 'image/') === 0 );
     }
 
     protected function addFileSystemDetails()
