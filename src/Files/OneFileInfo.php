@@ -70,7 +70,7 @@ class OneFileInfo implements FileInfo
      * @param string $absoluteLocation
      * @param ?bool  $fileExists
      */
-    public function __construct(string $absoluteLocation, ?bool $fileExists)
+    public function __construct(string $absoluteLocation, ?bool $fileExists = null)
     {
         $this->path = $absoluteLocation;
         $this->hash = md5($this->path);
