@@ -100,7 +100,7 @@ class Fix extends ContentController
         $pathArray = pathinfo($this->path);
         $ext = $pathArray['extension'];
         $className = File::get_class_for_file_extension($ext);
-        if(class_exists($className)) {
+        if (class_exists($className)) {
             $obj = $className::create()->setFromLocalFile($this->path);
             $obj->writeToStage(Versioned::DRAFT);
             $obj->publishRecursive();
