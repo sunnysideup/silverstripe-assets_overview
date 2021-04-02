@@ -28,9 +28,9 @@ class CompareImages
 
         $hammeringDistance = 0;
 
-        for ($a = 0; $a < 64; $a++) {
+        for ($a = 0; $a < 64; ++$a) {
             if ($bits1[$a] !== $bits2[$a]) {
-                $hammeringDistance++;
+                ++$hammeringDistance;
             }
         }
 
@@ -87,8 +87,8 @@ class CompareImages
         /*returns the mean value of the colors and the list of all pixel's colors*/
         $colorList = [];
         $colorSum = 0;
-        for ($a = 0; $a < 8; $a++) {
-            for ($b = 0; $b < 8; $b++) {
+        for ($a = 0; $a < 8; ++$a) {
+            for ($b = 0; $b < 8; ++$b) {
                 $rgb = imagecolorat($i, $a, $b);
                 $colorList[] = $rgb & 0xFF;
                 $colorSum += $rgb & 0xFF;

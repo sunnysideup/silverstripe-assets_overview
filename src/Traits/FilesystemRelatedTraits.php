@@ -22,11 +22,6 @@ trait FilesystemRelatedTraits
      */
     protected $assetsBaseFolder = '';
 
-    /**
-     * @param  int     $bytes
-     * @param  integer $decimals
-     * @return string
-     */
     protected function humanFileSize(int $bytes, int $decimals = 0): string
     {
         return File::format_size($bytes);
@@ -42,9 +37,6 @@ trait FilesystemRelatedTraits
         return pathinfo($path, PATHINFO_EXTENSION);
     }
 
-    /**
-     * @return string
-     */
     protected function getBaseFolder(): string
     {
         if (! $this->baseFolder) {
@@ -53,9 +45,6 @@ trait FilesystemRelatedTraits
         return $this->baseFolder;
     }
 
-    /**
-     * @return string
-     */
     protected function getPublicBaseFolder(): string
     {
         if (! $this->publicBaseFolder) {
@@ -64,9 +53,6 @@ trait FilesystemRelatedTraits
         return $this->publicBaseFolder;
     }
 
-    /**
-     * @return string
-     */
     protected function getAssetsBaseFolder(): string
     {
         if (! $this->assetsBaseFolder) {

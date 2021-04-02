@@ -2,7 +2,7 @@
 
 namespace Sunnysideup\AssetsOverview\Files;
 
-use \Exception;
+use Exception;
 
 use SilverStripe\Assets\File;
 use SilverStripe\Assets\Folder;
@@ -66,10 +66,6 @@ class OneFileInfo implements FileInfo
 
     protected $folderCache = [];
 
-    /**
-     * @param string $absoluteLocation
-     * @param ?bool  $fileExists
-     */
     public function __construct(string $absoluteLocation, ?bool $fileExists = null)
     {
         $this->path = $absoluteLocation;
@@ -121,8 +117,8 @@ class OneFileInfo implements FileInfo
     protected function isImage(string $filename): bool
     {
         try {
-            $outcome = @exif_imagetype($filename) ? true : false;
-        } catch (Exception $e) {
+            $outcome = (bool) @exif_imagetype($filename);
+        } catch (Exception $exception) {
             $outcome = false;
         }
 
@@ -194,11 +190,7 @@ class OneFileInfo implements FileInfo
 
         if ($this->fileExists) {
             $this->intel['ImageIsRegularImage'] = $this->isRegularImage($this->intel['PathExtension']);
-            if ($this->intel['ImageIsRegularImage']) {
-                $this->intel['ImageIsImage'] = true;
-            } else {
-                $this->intel['ImageIsImage'] = $this->isImage($this->path);
-            }
+            $this->intel['ImageIsImage'] = $this->intel['ImageIsRegularImage'] ? true : $this->isImage($this->path);
             if ($this->intel['ImageIsImage']) {
                 list($width, $height, $type, $attr) = getimagesize($this->path);
                 $this->intel['ImageAttribute'] = print_r($attr, 1);
@@ -227,7 +219,7 @@ class OneFileInfo implements FileInfo
         }
 
         if (empty($folder)) {
-            $this->intel['ErrorFindingFolder'] = empty($dbFileData['ParentID']) ? false : true;
+            $this->intel['ErrorFindingFolder'] = ! empty($dbFileData['ParentID']);
             $this->intel['FolderID'] = 0;
         } else {
             $this->intel['ErrorFindingFolder'] = false;
@@ -267,8 +259,8 @@ class OneFileInfo implements FileInfo
             $this->intel['DBFilename'] = $dbFileData['Name'] ?: basename($this->intel['DBPath']);
             $existsOnStaging = AllFilesInfo::existsOnStaging($this->intel['DBID']);
             $existsOnLive = AllFilesInfo::existsOnLive($this->intel['DBID']);
-            $this->intel['ErrorDBNotPresentStaging'] = $existsOnStaging ? false : true;
-            $this->intel['ErrorDBNotPresentLive'] = $existsOnLive ? false : true;
+            $this->intel['ErrorDBNotPresentStaging'] = ! $existsOnStaging;
+            $this->intel['ErrorDBNotPresentLive'] = ! $existsOnLive;
             $this->intel['ErrorInDraftOnly'] = $existsOnStaging && ! $existsOnLive;
             $this->intel['ErrorNotInDraft'] = ! $existsOnStaging && $existsOnLive;
             $this->intel['DBCMSEditLink'] = '/admin/assets/EditForm/field/File/item/' . $this->intel['DBID'] . '/edit';
@@ -284,13 +276,9 @@ class OneFileInfo implements FileInfo
             $time = strtotime($dbFileData['LastEdited']);
             $this->intel['ErrorParentID'] = true;
             if ((int) $this->intel['FolderID'] === 0) {
-                if (intval($dbFileData['ParentID'])) {
-                    $this->intel['ErrorParentID'] = true;
-                } else {
-                    $this->intel['ErrorParentID'] = false;
-                }
+                $this->intel['ErrorParentID'] = (bool) (int) $dbFileData['ParentID'];
             } elseif ($this->intel['FolderID']) {
-                $this->intel['ErrorParentID'] = (int) $this->intel['FolderID'] !== (int) $dbFileData['ParentID'] ? true : false;
+                $this->intel['ErrorParentID'] = (int) $this->intel['FolderID'] !== (int) $dbFileData['ParentID'];
             }
         }
         $this->intel['ErrorDBNotPresent'] = $this->intel['ErrorDBNotPresentLive'] && $this->intel['ErrorDBNotPresentStaging'];
@@ -357,9 +345,6 @@ class OneFileInfo implements FileInfo
     # CACHE
     ##############################################
 
-    /**
-     * @return string
-     */
     protected function getCacheKey(): string
     {
         return $this->hash;

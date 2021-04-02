@@ -4,6 +4,8 @@ namespace Sunnysideup\AssetsOverview\Api;
 
 class FilesSimilarToMe
 {
+    public $filesAsArrayList;
+
     protected function workOutSimilarity()
     {
         set_time_limit(240);

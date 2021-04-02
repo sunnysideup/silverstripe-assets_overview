@@ -31,8 +31,14 @@ class View extends ContentController implements Flushable
 {
     use FilesystemRelatedTraits;
 
+    /**
+     * @var string
+     */
     private const ALL_FILES_INFO_CLASS = AllFilesInfo::class;
 
+    /**
+     * @var string
+     */
     private const ONE_FILE_INFO_CLASS = OneFileInfo::class;
 
     private const SORTERS = [
@@ -144,9 +150,11 @@ class View extends ContentController implements Flushable
             'Field' => 'ErrorInSs3Ss4Comparison',
             'Values' => [1, true],
         ],
-
     ];
 
+    /**
+     * @var array<string, string>
+     */
     private const DISPLAYERS = [
         'thumbs' => 'Thumbnails',
         'rawlist' => 'File List',
@@ -156,12 +164,12 @@ class View extends ContentController implements Flushable
     /**
      * @var ArrayList|null
      */
-    protected $filesAsArrayList = null;
+    protected $filesAsArrayList;
 
     /**
      * @var ArrayList|null
      */
-    protected $filesAsSortedArrayList = null;
+    protected $filesAsSortedArrayList;
 
     /**
      * @var string
@@ -347,21 +355,6 @@ class View extends ContentController implements Flushable
         return (string) $this->humanFileSize(AllFilesInfo::getTotalFileSizesRaw());
     }
 
-    public function init()
-    {
-        parent::init();
-        if (! Permission::check('ADMIN')) {
-            return Security::permissionFailure($this);
-        }
-        Requirements::clear();
-        ini_set('memory_limit', '1024M');
-        Environment::increaseMemoryLimitTo();
-        Environment::increaseTimeLimitTo(7200);
-        SSViewer::config()->update('theme_enabled', false);
-        Versioned::set_stage(Versioned::DRAFT);
-        $this->getGetVariables();
-    }
-
     public function index($request)
     {
         $this->setFilesAsSortedArrayList();
@@ -417,6 +410,21 @@ class View extends ContentController implements Flushable
     public function Form()
     {
         return $this->getForm();
+    }
+
+    protected function init()
+    {
+        parent::init();
+        if (! Permission::check('ADMIN')) {
+            return Security::permissionFailure($this);
+        }
+        Requirements::clear();
+        ini_set('memory_limit', '1024M');
+        Environment::increaseMemoryLimitTo();
+        Environment::increaseTimeLimitTo(7200);
+        SSViewer::config()->update('theme_enabled', false);
+        Versioned::set_stage(Versioned::DRAFT);
+        $this->getGetVariables();
     }
 
     protected function getTotalsStatement()
@@ -499,7 +507,7 @@ class View extends ContentController implements Flushable
                 }
                 if ($count >= $this->startLimit && $count < $this->endLimit) {
                     $innerArray->push($file);
-                    $count++;
+                    ++$count;
                 } elseif ($count >= $this->endLimit) {
                     break;
                 }
@@ -550,7 +558,7 @@ class View extends ContentController implements Flushable
                 if ($this->isPathWithAllowedExtension($absoluteLocation)) {
                     $intel = $this->getDataAboutOneFile($absoluteLocation, $fileExists);
                     if ($filterFree || in_array($intel[$filterField], $filterValues, 1)) {
-                        $this->totalFileCountFiltered++;
+                        ++$this->totalFileCountFiltered;
                         $this->totalFileSizeFiltered += $intel['PathFileSize'];
                         $this->filesAsArrayList->push(
                             ArrayData::create($intel)
@@ -582,8 +590,6 @@ class View extends ContentController implements Flushable
 
     /**
      * @param  string $path - does not have to be full path.
-     *
-     * @return bool
      */
     protected function isPathWithAllowedExtension(string $path): bool
     {
@@ -592,10 +598,7 @@ class View extends ContentController implements Flushable
             return true;
         }
         $extension = strtolower($this->getExtension($path));
-        if (in_array($extension, $this->allowedExtensions, true)) {
-            return true;
-        }
-        return false;
+        return in_array($extension, $this->allowedExtensions, true);
     }
 
     protected function getForm(): Form

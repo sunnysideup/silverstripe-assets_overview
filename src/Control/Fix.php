@@ -19,8 +19,14 @@ class Fix extends ContentController
 {
     use FilesystemRelatedTraits;
 
+    /**
+     * @var string
+     */
     private const ALL_FILES_INFO_CLASS = AllFilesInfo::class;
 
+    /**
+     * @var string
+     */
     private const ONE_FILE_INFO_CLASS = OneFileInfo::class;
 
     protected $intel = [];
@@ -29,29 +35,11 @@ class Fix extends ContentController
         'fix' => 'ADMIN',
     ];
 
-    public function init()
-    {
-        parent::init();
-        if (! Permission::check('ADMIN')) {
-            return Security::permissionFailure($this);
-        }
-        Requirements::clear();
-        ini_set('memory_limit', '1024M');
-        Environment::increaseMemoryLimitTo();
-        Environment::increaseTimeLimitTo(7200);
-        SSViewer::config()->update('theme_enabled', false);
-        Versioned::set_stage(Versioned::DRAFT);
-    }
-
     public function fix($request)
     {
         $path = $this->request->getVar('path');
         $error = $this->request->getVar('error');
-        if (empty($path)) {
-            $paths = $this->getRawData();
-        } else {
-            $paths = [$path];
-        }
+        $paths = empty($path) ? $this->getRawData() : [$path];
         foreach ($paths as $path) {
             if ($path) {
                 $this->intel = $this->getDataAboutOneFile($path);
@@ -67,6 +55,20 @@ class Fix extends ContentController
                 }
             }
         }
+    }
+
+    protected function init()
+    {
+        parent::init();
+        if (! Permission::check('ADMIN')) {
+            return Security::permissionFailure($this);
+        }
+        Requirements::clear();
+        ini_set('memory_limit', '1024M');
+        Environment::increaseMemoryLimitTo();
+        Environment::increaseTimeLimitTo(7200);
+        SSViewer::config()->update('theme_enabled', false);
+        Versioned::set_stage(Versioned::DRAFT);
     }
 
     protected function runMethod($method)

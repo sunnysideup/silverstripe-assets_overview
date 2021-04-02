@@ -2,9 +2,9 @@
 
 namespace Sunnysideup\AssetsOverview\Files;
 
-use \FilesystemIterator;
-use \RecursiveDirectoryIterator;
-use \RecursiveIteratorIterator;
+use FilesystemIterator;
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
 
 use SilverStripe\Assets\File;
 use SilverStripe\Assets\Folder;
@@ -91,8 +91,6 @@ class AllFilesInfo implements FileInfo
 
     /**
      * does the file exists in the database on staging?
-     * @param  int $id
-     * @return bool
      */
     public static function existsOnStaging(int $id): bool
     {
@@ -101,8 +99,6 @@ class AllFilesInfo implements FileInfo
 
     /**
      * does the file exists in the database on live?
-     * @param  int $id
-     * @return bool
      */
     public static function existsOnLive(int $id): bool
     {
@@ -111,9 +107,7 @@ class AllFilesInfo implements FileInfo
 
     /**
      * get data from staging database row
-     * @param  string $path from the root of assets
      * @param  int $pathFromAssets id
-     * @return array
      */
     public static function getAnyData(string $pathFromAssets, ?int $id = 0): array
     {
@@ -129,7 +123,6 @@ class AllFilesInfo implements FileInfo
      * get data from staging database row
      * @param  string $pathFromAssets from the root of assets
      * @param  int $id
-     * @return array
      */
     public static function getStagingData(string $pathFromAssets, ?int $id = 0): array
     {
@@ -142,7 +135,6 @@ class AllFilesInfo implements FileInfo
     /**
      * get data from live database row
      * @param  string $pathFromAssets - full lookup list
-     * @return array
      */
     public static function getLiveData(string $pathFromAssets, ?int $id = 0): array
     {
@@ -155,9 +147,7 @@ class AllFilesInfo implements FileInfo
     /**
      * find a value in a field in staging
      * returns ID of row
-     * @param  string    $fieldName
      * @param  mixed     $value
-     * @return int
      */
     public static function findInStagingData(string $fieldName, $value): int
     {
@@ -167,9 +157,7 @@ class AllFilesInfo implements FileInfo
     /**
      * find a value in a field in live
      * returns ID of row
-     * @param  string    $fieldName
      * @param  mixed     $value
-     * @return int
      */
     public static function findInLiveData(string $fieldName, $value): int
     {
@@ -252,10 +240,7 @@ class AllFilesInfo implements FileInfo
     }
 
     /**
-     * @param  array  $data
-     * @param  string $fieldName
      * @param  mixed  $value
-     * @return int
      */
     protected static function findInData(array $data, string $fieldName, $value): int
     {
@@ -278,16 +263,9 @@ class AllFilesInfo implements FileInfo
             }
         }
         $fileName = basename($path);
-        if (substr($fileName, 0, 5) === 'error' && substr($fileName, -5) === '.html') {
-            return false;
-        }
-
-        return true;
+        return ! (substr($fileName, 0, 5) === 'error' && substr($fileName, -5) === '.html');
     }
 
-    /**
-     * @return array
-     */
     protected function getArrayOfFilesOnDisk(): array
     {
         $finalArray = [];
@@ -306,14 +284,11 @@ class AllFilesInfo implements FileInfo
         return $finalArray;
     }
 
-    /**
-     * @return array
-     */
     protected function getArrayOfFilesInDatabase(): array
     {
         $finalArray = [];
         foreach (['', '_Live'] as $stage) {
-            $sql = 'SELECT * FROM "File' . $stage . '" WHERE "ClassName" <> \'' . addslashes(Folder::class) . '\';';
+            $sql = 'SELECT * FROM "File' . $stage . '" WHERE "ClassName" <> \'' . addslashes(Folder::class) . "';";
             $rows = DB::query($sql);
             foreach ($rows as $row) {
                 $file = $row['FileFilename'] ?? $row['Filename'];
@@ -339,9 +314,6 @@ class AllFilesInfo implements FileInfo
     # CACHE
     ##############################################
 
-    /**
-     * @return string
-     */
     protected function getCacheKey(): string
     {
         return 'allfiles';

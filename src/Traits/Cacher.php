@@ -9,11 +9,10 @@ trait Cacher
 {
     private static $loadedFromCache = true;
 
-    private static $cacheCache = null;
+    private static $cacheCache;
 
     /**
      * return false if the cache has been set or a cache key was not found.
-     * @return bool
      */
     public static function loadedFromCache(): bool
     {
@@ -38,7 +37,6 @@ trait Cacher
     }
 
     /**
-     * @param string  $cacheKey
      * @param mixed   $value
      */
     protected function setCacheValue(string $cacheKey, $value)
@@ -50,8 +48,6 @@ trait Cacher
     }
 
     /**
-     * @param string  $cacheKey
-     *
      * @return mixed
      */
     protected function getCacheValue(string $cacheKey)
@@ -61,10 +57,6 @@ trait Cacher
         return unserialize($cache->get($cacheKey));
     }
 
-    /**
-     * @param  string $cacheKey
-     * @return bool
-     */
     protected function hasCacheKey(string $cacheKey): bool
     {
         $cache = self::getCache();
