@@ -162,12 +162,12 @@ class View extends ContentController implements Flushable
     ];
 
     /**
-     * @var ArrayList|null
+     * @var null|ArrayList
      */
     protected $filesAsArrayList;
 
     /**
-     * @var ArrayList|null
+     * @var null|ArrayList
      */
     protected $filesAsSortedArrayList;
 
@@ -232,7 +232,8 @@ class View extends ContentController implements Flushable
     protected $allowedExtensions = [];
 
     /**
-     * Defines methods that can be called directly
+     * Defines methods that can be called directly.
+     *
      * @var array
      */
     private static $allowed_actions = [
@@ -253,6 +254,7 @@ class View extends ContentController implements Flushable
         if ($action) {
             $str = $action . DIRECTORY_SEPARATOR;
         }
+
         return $str;
     }
 
@@ -358,14 +360,15 @@ class View extends ContentController implements Flushable
     public function index($request)
     {
         $this->setFilesAsSortedArrayList();
-        if ($this->displayer === 'rawlistfull') {
+        if ('rawlistfull' === $this->displayer) {
             $this->addMapToItems();
         }
-        if (AllFilesInfo::loadedFromCache() === false) {
+        if (false === AllFilesInfo::loadedFromCache()) {
             $url = $_SERVER['REQUEST_URI'];
             $url = str_replace('flush=', 'previousflush=', $url);
             die('<script>window.location = "' . $url . '";</script>go to ' . $url . ' if this page does not autoload');
         }
+
         return $this->renderWith('AssetsOverview');
     }
 
@@ -381,6 +384,7 @@ class View extends ContentController implements Flushable
         foreach ($this->filesAsArrayList->toArray() as $item) {
             $array[] = $item->toMap();
         }
+
         return $this->sendJSON($array);
     }
 
@@ -392,10 +396,10 @@ class View extends ContentController implements Flushable
                 $map = $item->toMap();
                 $item->FullFields = ArrayList::create();
                 foreach ($map as $key => $value) {
-                    if ($value === false) {
+                    if (false === $value) {
                         $value = 'no';
                     }
-                    if ($value === true) {
+                    if (true === $value) {
                         $value = 'yes';
                     }
                     $item->FullFields->push(ArrayData::create(['Key' => $key, 'Value' => $value]));
@@ -404,9 +408,9 @@ class View extends ContentController implements Flushable
         }
     }
 
-    ##############################################
-    # FORM
-    ##############################################
+    //#############################################
+    // FORM
+    //#############################################
     public function Form()
     {
         return $this->getForm();
@@ -476,12 +480,13 @@ class View extends ContentController implements Flushable
         if ($this->request->getVar('download')) {
             return HTTPRequest::send_file($fileData, 'files.json', 'text/json');
         }
+
         return $fileData;
     }
 
     protected function setfilesAsSortedArrayList()
     {
-        if ($this->filesAsSortedArrayList === null) {
+        if (null === $this->filesAsSortedArrayList) {
             $sortField = self::SORTERS[$this->sorter]['Sort'];
             $headerField = self::SORTERS[$this->sorter]['Group'];
             //done only if not already done ...
@@ -541,7 +546,7 @@ class View extends ContentController implements Flushable
 
     protected function setFilesAsArrayList(): ArrayList
     {
-        if ($this->filesAsArrayList === null) {
+        if (null === $this->filesAsArrayList) {
             $rawArray = $this->getRawData();
             //prepare loop
             $this->totalFileCountRaw = AllFilesInfo::getTotalFilesCount();
@@ -589,15 +594,16 @@ class View extends ContentController implements Flushable
     }
 
     /**
-     * @param  string $path - does not have to be full path.
+     * @param string $path - does not have to be full path
      */
     protected function isPathWithAllowedExtension(string $path): bool
     {
         $count = count($this->allowedExtensions);
-        if ($count === 0) {
+        if (0 === $count) {
             return true;
         }
         $extension = strtolower($this->getExtension($path));
+
         return in_array($extension, $this->allowedExtensions, true);
     }
 
@@ -630,11 +636,11 @@ class View extends ContentController implements Flushable
     protected function createFormField(string $name, string $title, $value, ?array $list = [])
     {
         $listCount = count($list);
-        if ($listCount === 0) {
+        if (0 === $listCount) {
             $type = HiddenField::class;
-        } elseif ($name === 'limit' || $name === 'page') {
+        } elseif ('limit' === $name || 'page' === $name) {
             $type = DropdownField::class;
-        } elseif ($name === 'extensions') {
+        } elseif ('extensions' === $name) {
             $type = CheckboxSetField::class;
         } elseif ($listCount < 20) {
             $type = OptionsetField::class;
@@ -643,7 +649,8 @@ class View extends ContentController implements Flushable
         }
 
         $field = $type::create($name, $title)
-            ->setValue($value);
+            ->setValue($value)
+        ;
         if ($listCount) {
             $field->setSource($list);
         }
@@ -690,10 +697,11 @@ class View extends ContentController implements Flushable
         if (count($list) < 2) {
             return [];
         }
+
         return $list;
     }
 
-    protected function getNumberOfPages(): Int
+    protected function getNumberOfPages(): int
     {
         return ceil($this->totalFileCountFiltered / $this->limit);
     }
@@ -711,6 +719,7 @@ class View extends ContentController implements Flushable
                 $array[$i] = $i;
             }
         }
+
         return $array;
     }
 }

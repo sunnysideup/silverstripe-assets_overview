@@ -6,7 +6,7 @@ class CompareImages
 {
     public function compare($a, $b)
     {
-        /*main function. returns the hammering distance of two images' bit value*/
+        // main function. returns the hammering distance of two images' bit value
         $i1 = $this->createImage($a);
         $i2 = $this->createImage($b);
 
@@ -39,16 +39,18 @@ class CompareImages
 
     private function mimeType($i)
     {
-        /*returns array with mime type and if its jpg or png. Returns false if it isn't jpg or png*/
+        // returns array with mime type and if its jpg or png. Returns false if it isn't jpg or png
         $mime = getimagesize($i);
         $return = [$mime[0], $mime[1]];
 
         switch ($mime['mime']) {
             case 'image/jpeg':
                 $return[] = 'jpg';
+
                 return $return;
             case 'image/png':
                 $return[] = 'png';
+
                 return $return;
             default:
                 return false;
@@ -57,20 +59,22 @@ class CompareImages
 
     private function createImage($i)
     {
-        /*retuns image resource or false if its not jpg or png*/
+        // retuns image resource or false if its not jpg or png
         $mime = $this->mimeType($i);
 
-        if ($mime[2] === 'jpg') {
+        if ('jpg' === $mime[2]) {
             return imagecreatefromjpeg($i);
-        } elseif ($mime[2] === 'png') {
+        }
+        if ('png' === $mime[2]) {
             return imagecreatefrompng($i);
         }
+
         return false;
     }
 
     private function resizeImage($i, $source)
     {
-        /*resizes the image to a 8x8 squere and returns as image resource*/
+        // resizes the image to a 8x8 squere and returns as image resource
         $mime = $this->mimeType($source);
 
         $t = imagecreatetruecolor(8, 8);
@@ -84,7 +88,7 @@ class CompareImages
 
     private function colorMeanValue($i)
     {
-        /*returns the mean value of the colors and the list of all pixel's colors*/
+        // returns the mean value of the colors and the list of all pixel's colors
         $colorList = [];
         $colorSum = 0;
         for ($a = 0; $a < 8; ++$a) {
@@ -100,12 +104,13 @@ class CompareImages
 
     private function bits($colorMean)
     {
-        /*returns an array with 1 and zeros. If a color is bigger than the mean value of colors it is 1*/
+        // returns an array with 1 and zeros. If a color is bigger than the mean value of colors it is 1
         $bits = [];
 
         foreach ($colorMean[1] as $color) {
             $bits[] = $color >= $colorMean[0] ? 1 : 0;
         }
+
         return $bits;
     }
 }

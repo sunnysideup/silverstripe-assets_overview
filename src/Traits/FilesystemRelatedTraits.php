@@ -25,7 +25,6 @@ trait FilesystemRelatedTraits
     protected function humanFileSize(int $bytes, int $decimals = 0): string
     {
         return File::format_size($bytes);
-
         // $size = ['B', 'kB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
         // $factor = floor((strlen($bytes) - 1) / 3);
         //
@@ -42,6 +41,7 @@ trait FilesystemRelatedTraits
         if (! $this->baseFolder) {
             $this->baseFolder = rtrim(Director::baseFolder(), DIRECTORY_SEPARATOR);
         }
+
         return $this->baseFolder;
     }
 
@@ -50,6 +50,7 @@ trait FilesystemRelatedTraits
         if (! $this->publicBaseFolder) {
             $this->publicBaseFolder = rtrim(Director::publicFolder(), DIRECTORY_SEPARATOR);
         }
+
         return $this->publicBaseFolder;
     }
 
@@ -58,6 +59,7 @@ trait FilesystemRelatedTraits
         if (! $this->assetsBaseFolder) {
             $this->assetsBaseFolder = rtrim(ASSETS_PATH, DIRECTORY_SEPARATOR);
         }
+
         return $this->assetsBaseFolder;
     }
 }

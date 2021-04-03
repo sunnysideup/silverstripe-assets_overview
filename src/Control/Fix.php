@@ -12,7 +12,6 @@ use SilverStripe\View\Requirements;
 use SilverStripe\View\SSViewer;
 use Sunnysideup\AssetsOverview\Files\AllFilesInfo;
 use Sunnysideup\AssetsOverview\Files\OneFileInfo;
-
 use Sunnysideup\AssetsOverview\Traits\FilesystemRelatedTraits;
 
 class Fix extends ContentController
@@ -47,7 +46,7 @@ class Fix extends ContentController
                     $this->runMethod($error);
                 } else {
                     foreach ($this->intel as $key => $value) {
-                        if ($value === true) {
+                        if (true === $value) {
                             $method = 'fix' . $key;
                             $this->runMethod($method);
                         }
@@ -74,7 +73,7 @@ class Fix extends ContentController
     protected function runMethod($method)
     {
         $method = 'fix' . $method;
-        if (substr($method, 0, 5) === 'Error' && $this->hasMethod($method)) {
+        if ('Error' === substr($method, 0, 5) && $this->hasMethod($method)) {
             $this->{$method}();
         }
     }

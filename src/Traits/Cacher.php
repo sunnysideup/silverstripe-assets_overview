@@ -30,14 +30,15 @@ trait Cacher
      */
     protected static function getCache()
     {
-        if (self::$cacheCache === null) {
+        if (null === self::$cacheCache) {
             self::$cacheCache = Injector::inst()->get(CacheInterface::class . '.assetsoverviewCache');
         }
+
         return self::$cacheCache;
     }
 
     /**
-     * @param mixed   $value
+     * @param mixed $value
      */
     protected function setCacheValue(string $cacheKey, $value)
     {

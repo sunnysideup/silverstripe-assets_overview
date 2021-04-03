@@ -3,7 +3,6 @@
 namespace Sunnysideup\AssetsOverview\Files;
 
 use Exception;
-
 use SilverStripe\Assets\File;
 use SilverStripe\Assets\Folder;
 use SilverStripe\Core\Config\Configurable;
@@ -11,9 +10,7 @@ use SilverStripe\Core\Injector\Injectable;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\DB;
 use SilverStripe\ORM\FieldType\DBDate;
-
 use Sunnysideup\AssetsOverview\Interfaces\FileInfo;
-
 use Sunnysideup\AssetsOverview\Traits\Cacher;
 use Sunnysideup\AssetsOverview\Traits\FilesystemRelatedTraits;
 use Sunnysideup\Flush\FlushNow;
@@ -70,7 +67,7 @@ class OneFileInfo implements FileInfo
     {
         $this->path = $absoluteLocation;
         $this->hash = md5($this->path);
-        $this->fileExists = $fileExists === null ? file_exists($this->path) : $fileExists;
+        $this->fileExists = null === $fileExists ? file_exists($this->path) : $fileExists;
     }
 
     public function toArray(): array
@@ -127,7 +124,6 @@ class OneFileInfo implements FileInfo
 
     protected function addFileSystemDetails()
     {
-
         //get path parts
         $this->parthParts = [];
         if ($this->fileExists) {
@@ -158,7 +154,7 @@ class OneFileInfo implements FileInfo
         $this->intel['PathFromPublicRoot'] = trim(str_replace($this->getPublicBaseFolder(), '', $this->path), DIRECTORY_SEPARATOR);
         $this->intel['PathFromAssetsFolder'] = trim(str_replace($this->getAssetsBaseFolder(), '', $this->path), DIRECTORY_SEPARATOR);
         $this->intel['PathFolderFromAssets'] = dirname($this->intel['PathFromAssetsFolder']);
-        if ($this->intel['PathFolderFromAssets'] === '.') {
+        if ('.' === $this->intel['PathFolderFromAssets']) {
             $this->intel['PathFolderFromAssets'] = '--in-root-folder--';
         }
 
@@ -269,13 +265,13 @@ class OneFileInfo implements FileInfo
             $this->intel['DBFilenameSS3'] = $dbFileData['Filename'];
             $this->intel['ErrorInFilename'] = $this->intel['PathFromAssetsFolder'] !== $this->intel['DBPath'];
             $ss3FileName = $dbFileData['Filename'] ?? '';
-            if (substr($ss3FileName, 0, strlen('assets/')) === 'assets/') {
+            if ('assets/' === substr($ss3FileName, 0, strlen('assets/'))) {
                 $ss3FileName = substr($ss3FileName, strlen('assets/'));
             }
             $this->intel['ErrorInSs3Ss4Comparison'] = $this->intel['DBFilenameSS3'] && $dbFileData['FileFilename'] !== $ss3FileName;
             $time = strtotime($dbFileData['LastEdited']);
             $this->intel['ErrorParentID'] = true;
-            if ((int) $this->intel['FolderID'] === 0) {
+            if (0 === (int) $this->intel['FolderID']) {
                 $this->intel['ErrorParentID'] = (bool) (int) $dbFileData['ParentID'];
             } elseif ($this->intel['FolderID']) {
                 $this->intel['ErrorParentID'] = (int) $this->intel['FolderID'] !== (int) $dbFileData['ParentID'];
@@ -341,9 +337,9 @@ class OneFileInfo implements FileInfo
     //     return $file;
     // }
 
-    ##############################################
-    # CACHE
-    ##############################################
+    //#############################################
+    // CACHE
+    //#############################################
 
     protected function getCacheKey(): string
     {
