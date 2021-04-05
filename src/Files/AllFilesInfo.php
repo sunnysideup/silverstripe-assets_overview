@@ -104,8 +104,6 @@ class AllFilesInfo implements FileInfo
 
     /**
      * get data from staging database row.
-     *
-     * @param string $pathFromAssets
      */
     public static function getAnyData(string $pathFromAssets, ?int $id = 0): array
     {
