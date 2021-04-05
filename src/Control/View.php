@@ -162,12 +162,12 @@ class View extends ContentController implements Flushable
     ];
 
     /**
-     * @var null|ArrayList
+     * @var ArrayList
      */
     protected $filesAsArrayList;
 
     /**
-     * @var null|ArrayList
+     * @var ArrayList
      */
     protected $filesAsSortedArrayList;
 
