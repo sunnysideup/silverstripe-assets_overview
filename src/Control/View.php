@@ -530,7 +530,7 @@ class View extends ContentController implements Flushable
 
     protected function addTofilesAsSortedArrayList(string $header, ArrayList $arrayList)
     {
-        if ($arrayList->count()) {
+        if ($arrayList->exists()) {
             $count = $this->filesAsSortedArrayList->count();
             $this->filesAsSortedArrayList->push(
                 ArrayData::create(
