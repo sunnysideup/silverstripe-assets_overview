@@ -31,8 +31,14 @@ class View extends ContentController implements Flushable
 {
     use FilesystemRelatedTraits;
 
+    /**
+     * @var string
+     */
     private const ALL_FILES_INFO_CLASS = AllFilesInfo::class;
 
+    /**
+     * @var string
+     */
     private const ONE_FILE_INFO_CLASS = OneFileInfo::class;
 
     private const SORTERS = [
@@ -144,9 +150,11 @@ class View extends ContentController implements Flushable
             'Field' => 'ErrorInSs3Ss4Comparison',
             'Values' => [1, true],
         ],
-
     ];
 
+    /**
+     * @var array<string, string>
+     */
     private const DISPLAYERS = [
         'thumbs' => 'Thumbnails',
         'rawlist' => 'File List',
@@ -154,14 +162,14 @@ class View extends ContentController implements Flushable
     ];
 
     /**
-     * @var ArrayList|null
+     * @var ArrayList
      */
-    protected $filesAsArrayList = null;
+    protected $filesAsArrayList;
 
     /**
-     * @var ArrayList|null
+     * @var ArrayList
      */
-    protected $filesAsSortedArrayList = null;
+    protected $filesAsSortedArrayList;
 
     /**
      * @var string
@@ -224,7 +232,8 @@ class View extends ContentController implements Flushable
     protected $allowedExtensions = [];
 
     /**
-     * Defines methods that can be called directly
+     * Defines methods that can be called directly.
+     *
      * @var array
      */
     private static $allowed_actions = [
@@ -245,6 +254,7 @@ class View extends ContentController implements Flushable
         if ($action) {
             $str = $action . DIRECTORY_SEPARATOR;
         }
+
         return $str;
     }
 
@@ -347,32 +357,18 @@ class View extends ContentController implements Flushable
         return (string) $this->humanFileSize(AllFilesInfo::getTotalFileSizesRaw());
     }
 
-    public function init()
-    {
-        parent::init();
-        if (! Permission::check('ADMIN')) {
-            return Security::permissionFailure($this);
-        }
-        Requirements::clear();
-        ini_set('memory_limit', '1024M');
-        Environment::increaseMemoryLimitTo();
-        Environment::increaseTimeLimitTo(7200);
-        SSViewer::config()->update('theme_enabled', false);
-        Versioned::set_stage(Versioned::DRAFT);
-        $this->getGetVariables();
-    }
-
     public function index($request)
     {
         $this->setFilesAsSortedArrayList();
-        if ($this->displayer === 'rawlistfull') {
+        if ('rawlistfull' === $this->displayer) {
             $this->addMapToItems();
         }
-        if (AllFilesInfo::loadedFromCache() === false) {
+        if (false === AllFilesInfo::loadedFromCache()) {
             $url = $_SERVER['REQUEST_URI'];
             $url = str_replace('flush=', 'previousflush=', $url);
             die('<script>window.location = "' . $url . '";</script>go to ' . $url . ' if this page does not autoload');
         }
+
         return $this->renderWith('AssetsOverview');
     }
 
@@ -388,6 +384,7 @@ class View extends ContentController implements Flushable
         foreach ($this->filesAsArrayList->toArray() as $item) {
             $array[] = $item->toMap();
         }
+
         return $this->sendJSON($array);
     }
 
@@ -399,10 +396,10 @@ class View extends ContentController implements Flushable
                 $map = $item->toMap();
                 $item->FullFields = ArrayList::create();
                 foreach ($map as $key => $value) {
-                    if ($value === false) {
+                    if (false === $value) {
                         $value = 'no';
                     }
-                    if ($value === true) {
+                    if (true === $value) {
                         $value = 'yes';
                     }
                     $item->FullFields->push(ArrayData::create(['Key' => $key, 'Value' => $value]));
@@ -411,12 +408,27 @@ class View extends ContentController implements Flushable
         }
     }
 
-    ##############################################
-    # FORM
-    ##############################################
+    //#############################################
+    // FORM
+    //#############################################
     public function Form()
     {
         return $this->getForm();
+    }
+
+    protected function init()
+    {
+        parent::init();
+        if (! Permission::check('ADMIN')) {
+            return Security::permissionFailure($this);
+        }
+        Requirements::clear();
+        ini_set('memory_limit', '1024M');
+        Environment::increaseMemoryLimitTo();
+        Environment::increaseTimeLimitTo(7200);
+        SSViewer::config()->update('theme_enabled', false);
+        Versioned::set_stage(Versioned::DRAFT);
+        $this->getGetVariables();
     }
 
     protected function getTotalsStatement()
@@ -468,12 +480,13 @@ class View extends ContentController implements Flushable
         if ($this->request->getVar('download')) {
             return HTTPRequest::send_file($fileData, 'files.json', 'text/json');
         }
+
         return $fileData;
     }
 
     protected function setfilesAsSortedArrayList()
     {
-        if ($this->filesAsSortedArrayList === null) {
+        if (null === $this->filesAsSortedArrayList) {
             $sortField = self::SORTERS[$this->sorter]['Sort'];
             $headerField = self::SORTERS[$this->sorter]['Group'];
             //done only if not already done ...
@@ -499,7 +512,7 @@ class View extends ContentController implements Flushable
                 }
                 if ($count >= $this->startLimit && $count < $this->endLimit) {
                     $innerArray->push($file);
-                    $count++;
+                    ++$count;
                 } elseif ($count >= $this->endLimit) {
                     break;
                 }
@@ -517,7 +530,7 @@ class View extends ContentController implements Flushable
 
     protected function addTofilesAsSortedArrayList(string $header, ArrayList $arrayList)
     {
-        if ($arrayList->count()) {
+        if ($arrayList->exists()) {
             $count = $this->filesAsSortedArrayList->count();
             $this->filesAsSortedArrayList->push(
                 ArrayData::create(
@@ -533,7 +546,7 @@ class View extends ContentController implements Flushable
 
     protected function setFilesAsArrayList(): ArrayList
     {
-        if ($this->filesAsArrayList === null) {
+        if (null === $this->filesAsArrayList) {
             $rawArray = $this->getRawData();
             //prepare loop
             $this->totalFileCountRaw = AllFilesInfo::getTotalFilesCount();
@@ -550,7 +563,7 @@ class View extends ContentController implements Flushable
                 if ($this->isPathWithAllowedExtension($absoluteLocation)) {
                     $intel = $this->getDataAboutOneFile($absoluteLocation, $fileExists);
                     if ($filterFree || in_array($intel[$filterField], $filterValues, 1)) {
-                        $this->totalFileCountFiltered++;
+                        ++$this->totalFileCountFiltered;
                         $this->totalFileSizeFiltered += $intel['PathFileSize'];
                         $this->filesAsArrayList->push(
                             ArrayData::create($intel)
@@ -581,21 +594,17 @@ class View extends ContentController implements Flushable
     }
 
     /**
-     * @param  string $path - does not have to be full path.
-     *
-     * @return bool
+     * @param string $path - does not have to be full path
      */
     protected function isPathWithAllowedExtension(string $path): bool
     {
         $count = count($this->allowedExtensions);
-        if ($count === 0) {
+        if (0 === $count) {
             return true;
         }
         $extension = strtolower($this->getExtension($path));
-        if (in_array($extension, $this->allowedExtensions, true)) {
-            return true;
-        }
-        return false;
+
+        return in_array($extension, $this->allowedExtensions, true);
     }
 
     protected function getForm(): Form
@@ -627,11 +636,11 @@ class View extends ContentController implements Flushable
     protected function createFormField(string $name, string $title, $value, ?array $list = [])
     {
         $listCount = count($list);
-        if ($listCount === 0) {
+        if (0 === $listCount) {
             $type = HiddenField::class;
-        } elseif ($name === 'limit' || $name === 'page') {
+        } elseif ('limit' === $name || 'page' === $name) {
             $type = DropdownField::class;
-        } elseif ($name === 'extensions') {
+        } elseif ('extensions' === $name) {
             $type = CheckboxSetField::class;
         } elseif ($listCount < 20) {
             $type = OptionsetField::class;
@@ -640,7 +649,8 @@ class View extends ContentController implements Flushable
         }
 
         $field = $type::create($name, $title)
-            ->setValue($value);
+            ->setValue($value)
+        ;
         if ($listCount) {
             $field->setSource($list);
         }
@@ -687,10 +697,11 @@ class View extends ContentController implements Flushable
         if (count($list) < 2) {
             return [];
         }
+
         return $list;
     }
 
-    protected function getNumberOfPages(): Int
+    protected function getNumberOfPages(): int
     {
         return ceil($this->totalFileCountFiltered / $this->limit);
     }
@@ -708,6 +719,7 @@ class View extends ContentController implements Flushable
                 $array[$i] = $i;
             }
         }
+
         return $array;
     }
 }

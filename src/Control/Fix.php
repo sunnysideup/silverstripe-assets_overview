@@ -12,15 +12,20 @@ use SilverStripe\View\Requirements;
 use SilverStripe\View\SSViewer;
 use Sunnysideup\AssetsOverview\Files\AllFilesInfo;
 use Sunnysideup\AssetsOverview\Files\OneFileInfo;
-
 use Sunnysideup\AssetsOverview\Traits\FilesystemRelatedTraits;
 
 class Fix extends ContentController
 {
     use FilesystemRelatedTraits;
 
+    /**
+     * @var string
+     */
     private const ALL_FILES_INFO_CLASS = AllFilesInfo::class;
 
+    /**
+     * @var string
+     */
     private const ONE_FILE_INFO_CLASS = OneFileInfo::class;
 
     protected $intel = [];
@@ -29,7 +34,29 @@ class Fix extends ContentController
         'fix' => 'ADMIN',
     ];
 
-    public function init()
+    public function fix($request)
+    {
+        $path = $this->request->getVar('path');
+        $error = $this->request->getVar('error');
+        $paths = empty($path) ? $this->getRawData() : [$path];
+        foreach ($paths as $path) {
+            if ($path) {
+                $this->intel = $this->getDataAboutOneFile($path);
+                if ($error) {
+                    $this->runMethod($error);
+                } else {
+                    foreach ($this->intel as $key => $value) {
+                        if (true === $value) {
+                            $method = 'fix' . $key;
+                            $this->runMethod($method);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    protected function init()
     {
         parent::init();
         if (! Permission::check('ADMIN')) {
@@ -43,36 +70,10 @@ class Fix extends ContentController
         Versioned::set_stage(Versioned::DRAFT);
     }
 
-    public function fix($request)
-    {
-        $path = $this->request->getVar('path');
-        $error = $this->request->getVar('error');
-        if (empty($path)) {
-            $paths = $this->getRawData();
-        } else {
-            $paths = [$path];
-        }
-        foreach ($paths as $path) {
-            if ($path) {
-                $this->intel = $this->getDataAboutOneFile($path);
-                if ($error) {
-                    $this->runMethod($error);
-                } else {
-                    foreach ($this->intel as $key => $value) {
-                        if ($value === true) {
-                            $method = 'fix' . $key;
-                            $this->runMethod($method);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     protected function runMethod($method)
     {
         $method = 'fix' . $method;
-        if (substr($method, 0, 5) === 'Error' && $this->hasMethod($method)) {
+        if ('Error' === substr($method, 0, 5) && $this->hasMethod($method)) {
             $this->{$method}();
         }
     }
@@ -97,10 +98,14 @@ class Fix extends ContentController
 
     protected function fixErrorDBNotPresent()
     {
-        $className = File::get_class_for_file_extension();
-        $obj = $className::create()->setFromLocalFile($this->path);
-        $obj->writeToStage(Versioned::DRAFT);
-        $obj->publishRecursive();
+        $pathArray = pathinfo($this->path);
+        $ext = $pathArray['extension'];
+        $className = File::get_class_for_file_extension($ext);
+        if (class_exists($className)) {
+            $obj = $className::create()->setFromLocalFile($this->path);
+            $obj->writeToStage(Versioned::DRAFT);
+            $obj->publishRecursive();
+        }
     }
 
     protected function fixErrorDBNotPresentLive()

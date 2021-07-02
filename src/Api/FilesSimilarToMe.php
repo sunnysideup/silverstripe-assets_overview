@@ -4,6 +4,8 @@ namespace Sunnysideup\AssetsOverview\Api;
 
 class FilesSimilarToMe
 {
+    public $filesAsArrayList;
+
     protected function workOutSimilarity()
     {
         set_time_limit(240);
@@ -28,16 +30,17 @@ class FilesSimilarToMe
                             $easyFind = true;
                             $alreadyDone[$nameOne] = $nameOneFromAssets;
                             $alreadyDone[$compareImage->Path] = $nameOneFromAssets;
-                        } elseif ($easyFind === false && $file->ImageIsImage) {
+                        } elseif (false === $easyFind && $file->ImageIsImage) {
                             if ($file->ImageRatio === $compareImage->ImageRatio && $file->ImageRatio > 0) {
                                 $score = $engine->compare($nameOne, $nameTwo);
                                 $sortArray[$nameTwo] = $score;
+
                                 break;
                             }
                         }
                     }
                 }
-                if ($easyFind === false) {
+                if (false === $easyFind) {
                     if (count($sortArray)) {
                         asort($sortArray);
                         reset($sortArray);
@@ -46,6 +49,7 @@ class FilesSimilarToMe
                             if ($findImage->Path === $mostSimilarKey) {
                                 $alreadyDone[$nameOne] = $nameOneFromAssets;
                                 $alreadyDone[$findImage->Path] = $nameOneFromAssets;
+
                                 break;
                             }
                         }

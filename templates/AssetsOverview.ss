@@ -364,7 +364,7 @@
                 </div>
             </div>
 
-            <% if FilesAsSortedArrayList.count %>
+            <% if $FilesAsSortedArrayList.count %>
                 <h1>$Title.RAW</h1>
                 <p>$Subtitle.RAW</p>
 

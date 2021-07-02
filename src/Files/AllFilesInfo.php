@@ -2,18 +2,15 @@
 
 namespace Sunnysideup\AssetsOverview\Files;
 
-use \FilesystemIterator;
-use \RecursiveDirectoryIterator;
-use \RecursiveIteratorIterator;
-
+use FilesystemIterator;
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
 use SilverStripe\Assets\File;
 use SilverStripe\Assets\Folder;
 use SilverStripe\Core\Config\Config;
 use SilverStripe\Core\Config\Configurable;
 use SilverStripe\Core\Injector\Injectable;
-
 use SilverStripe\ORM\DB;
-
 use Sunnysideup\AssetsOverview\Interfaces\FileInfo;
 use Sunnysideup\AssetsOverview\Traits\Cacher;
 use Sunnysideup\AssetsOverview\Traits\FilesystemRelatedTraits;
@@ -91,8 +88,6 @@ class AllFilesInfo implements FileInfo
 
     /**
      * does the file exists in the database on staging?
-     * @param  int $id
-     * @return bool
      */
     public static function existsOnStaging(int $id): bool
     {
@@ -101,8 +96,6 @@ class AllFilesInfo implements FileInfo
 
     /**
      * does the file exists in the database on live?
-     * @param  int $id
-     * @return bool
      */
     public static function existsOnLive(int $id): bool
     {
@@ -110,10 +103,7 @@ class AllFilesInfo implements FileInfo
     }
 
     /**
-     * get data from staging database row
-     * @param  string $path from the root of assets
-     * @param  int $pathFromAssets id
-     * @return array
+     * get data from staging database row.
      */
     public static function getAnyData(string $pathFromAssets, ?int $id = 0): array
     {
@@ -126,38 +116,39 @@ class AllFilesInfo implements FileInfo
     }
 
     /**
-     * get data from staging database row
-     * @param  string $pathFromAssets from the root of assets
-     * @param  int $id
-     * @return array
+     * get data from staging database row.
+     *
+     * @param string $pathFromAssets from the root of assets
+     * @param int    $id
      */
     public static function getStagingData(string $pathFromAssets, ?int $id = 0): array
     {
         if (! $id) {
             $id = self::$databaseLookupListStaging[$pathFromAssets] ?? 0;
         }
+
         return self::$dataStaging[$id] ?? [];
     }
 
     /**
-     * get data from live database row
-     * @param  string $pathFromAssets - full lookup list
-     * @return array
+     * get data from live database row.
+     *
+     * @param string $pathFromAssets - full lookup list
      */
     public static function getLiveData(string $pathFromAssets, ?int $id = 0): array
     {
         if (! $id) {
             $id = self::$databaseLookupListLive[$pathFromAssets] ?? 0;
         }
+
         return self::$dataLive[$id] ?? [];
     }
 
     /**
      * find a value in a field in staging
-     * returns ID of row
-     * @param  string    $fieldName
-     * @param  mixed     $value
-     * @return int
+     * returns ID of row.
+     *
+     * @param mixed $value
      */
     public static function findInStagingData(string $fieldName, $value): int
     {
@@ -166,10 +157,9 @@ class AllFilesInfo implements FileInfo
 
     /**
      * find a value in a field in live
-     * returns ID of row
-     * @param  string    $fieldName
-     * @param  mixed     $value
-     * @return int
+     * returns ID of row.
+     *
+     * @param mixed $value
      */
     public static function findInLiveData(string $fieldName, $value): int
     {
@@ -180,17 +170,18 @@ class AllFilesInfo implements FileInfo
     {
         $bytestotal = 0;
         $path = realpath(ASSETS_PATH);
-        if ($path !== false && $path !== '' && file_exists($path)) {
+        if (false !== $path && '' !== $path && file_exists($path)) {
             foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($path, FilesystemIterator::SKIP_DOTS)) as $object) {
                 $bytestotal += $object->getSize();
             }
         }
+
         return $bytestotal;
     }
 
     public function toArray(): array
     {
-        if (count(self::$listOfFiles) === 0) {
+        if (0 === count(self::$listOfFiles)) {
             $cachekey = $this->getCacheKey();
             if (! $this->hasCacheKey($cachekey)) {
                 $this->flushNow('<h1>Analysing files</h1>');
@@ -252,10 +243,7 @@ class AllFilesInfo implements FileInfo
     }
 
     /**
-     * @param  array  $data
-     * @param  string $fieldName
-     * @param  mixed  $value
-     * @return int
+     * @param mixed $value
      */
     protected static function findInData(array $data, string $fieldName, $value): int
     {
@@ -266,6 +254,7 @@ class AllFilesInfo implements FileInfo
                 }
             }
         }
+
         return 0;
     }
 
@@ -278,16 +267,10 @@ class AllFilesInfo implements FileInfo
             }
         }
         $fileName = basename($path);
-        if (substr($fileName, 0, 5) === 'error' && substr($fileName, -5) === '.html') {
-            return false;
-        }
 
-        return true;
+        return ! ('error' === substr($fileName, 0, 5) && '.html' === substr($fileName, -5));
     }
 
-    /**
-     * @return array
-     */
     protected function getArrayOfFilesOnDisk(): array
     {
         $finalArray = [];
@@ -297,7 +280,7 @@ class AllFilesInfo implements FileInfo
         );
         foreach ($arrayRaw as $src) {
             $path = $src->getPathName();
-            if ($this->isRealFile($path) === false) {
+            if (false === $this->isRealFile($path)) {
                 continue;
             }
             $finalArray[$path] = $path;
@@ -306,23 +289,20 @@ class AllFilesInfo implements FileInfo
         return $finalArray;
     }
 
-    /**
-     * @return array
-     */
     protected function getArrayOfFilesInDatabase(): array
     {
         $finalArray = [];
         foreach (['', '_Live'] as $stage) {
-            $sql = 'SELECT * FROM "File' . $stage . '" WHERE "ClassName" <> \'' . addslashes(Folder::class) . '\';';
+            $sql = 'SELECT * FROM "File' . $stage . '" WHERE "ClassName" <> \'' . addslashes(Folder::class) . "';";
             $rows = DB::query($sql);
             foreach ($rows as $row) {
                 $file = $row['FileFilename'] ?? $row['Filename'];
                 if (trim($file)) {
                     $absoluteLocation = $this->path . DIRECTORY_SEPARATOR . $file;
-                    if ($stage === '') {
+                    if ('' === $stage) {
                         self::$dataStaging[$row['ID']] = $row;
                         self::$databaseLookupListStaging[$file] = $row['ID'];
-                    } elseif ($stage === '_Live') {
+                    } elseif ('_Live' === $stage) {
                         self::$dataLive[$row['ID']] = $row;
                         self::$databaseLookupListLive[$file] = $row['ID'];
                     } else {
@@ -332,16 +312,14 @@ class AllFilesInfo implements FileInfo
                 }
             }
         }
+
         return $finalArray;
     }
 
-    ##############################################
-    # CACHE
-    ##############################################
+    //#############################################
+    // CACHE
+    //#############################################
 
-    /**
-     * @return string
-     */
     protected function getCacheKey(): string
     {
         return 'allfiles';
