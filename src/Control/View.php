@@ -445,17 +445,21 @@ class View extends ContentController implements Flushable
 
     protected function getGetVariables()
     {
-        if ($filter = $this->request->getVar('filter')) {
+        $filter = $this->request->getVar('filter');
+        if ($filter) {
             $this->filter = $filter;
         }
-        if ($sorter = $this->request->getVar('sorter')) {
+        $sorter = $this->request->getVar('sorter');
+        if ($sorter) {
             $this->sorter = $sorter;
         }
-        if ($displayer = $this->request->getVar('displayer')) {
+        $displayer = $this->request->getVar('displayer');
+        if ($displayer) {
             $this->displayer = $displayer;
         }
 
-        if ($extensions = $this->request->getVar('extensions')) {
+        $extensions = $this->request->getVar('extensions');
+        if ($extensions) {
             if (! is_array($extensions)) {
                 $extensions = [$extensions];
             }
@@ -463,10 +467,12 @@ class View extends ContentController implements Flushable
             //make sure all are valid!
             $this->allowedExtensions = array_filter($this->allowedExtensions);
         }
-        if ($limit = $this->request->getVar('limit')) {
+        $limit = $this->request->getVar('limit');
+        if ($limit) {
             $this->limit = $limit;
         }
-        if ($pageNumber = $this->request->getVar('page')) {
+        $pageNumber = $this->request->getVar('page');
+        if ($pageNumber) {
             $this->pageNumber = $pageNumber;
         }
         $this->startLimit = $this->limit * ($this->pageNumber - 1);
