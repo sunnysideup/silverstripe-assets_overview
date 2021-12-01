@@ -163,6 +163,6 @@ class Fix extends ContentController
 
     protected function getFileObject(): ?File
     {
-        return File::get()->byID($this->intel['DBID']);
+        return File::get_by_id($this->intel['DBID']);
     }
 }
