@@ -1,7 +1,9 @@
 ---
 name: AssetsOverviewRules
+Before:
+  - '#adminroutes'
 ---
 
 SilverStripe\Control\Director:
   rules:
-    'assets-overview//$Action/$ID/$OtherID': 'Sunnysideup\AssetsOverview\Control\View'
+    'admin/assets-overview//$Action/$ID/$OtherID': 'Sunnysideup\AssetsOverview\Control\View'

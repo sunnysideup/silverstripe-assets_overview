@@ -342,6 +342,12 @@
                     <a href="$Link(json)?download=1">file list</a>
                     <a href="$Link(jsonfull)?download=1">full details</a>
                 </li>
+                <li>
+                    <strong>Sync:</strong>
+                    <a href="$Link(sync)" onclick="return confirm('Danger - Danger - Have you made a backup of files and database?')">update DB based on files on disk</a>
+                    <a href="$Link(addtodb)" onclick="return confirm('Danger - Danger - Have you made a backup of files and database?')">add to DB</a>
+                    <a href="$Link(removefromdb)" onclick="return confirm('Danger - Danger - Have you made a backup of files and database?')">add to DB</a>
+                </li>
             </ul>
 
             <h4>Limitations</h4>

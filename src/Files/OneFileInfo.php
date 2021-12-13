@@ -5,11 +5,16 @@ namespace Sunnysideup\AssetsOverview\Files;
 use Exception;
 use SilverStripe\Assets\File;
 use SilverStripe\Assets\Folder;
+
+use SilverStripe\Assets\Storage\DBFile;
 use SilverStripe\Core\Config\Configurable;
+use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Core\Injector\Injectable;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\DB;
 use SilverStripe\ORM\FieldType\DBDate;
+
+use SilverStripe\ORM\ValidationResult;
 use Sunnysideup\AssetsOverview\Interfaces\FileInfo;
 use Sunnysideup\AssetsOverview\Traits\Cacher;
 use Sunnysideup\AssetsOverview\Traits\FilesystemRelatedTraits;
@@ -171,6 +176,15 @@ class OneFileInfo implements FileInfo
         if (substr($this->intel['PathFileName'], (-1 * $extensionLength)) === $pathExtensionWithDot) {
             $this->intel['PathFileName'] = substr($this->intel['PathFileName'], 0, ($pathLength - $extensionLength));
         }
+        $this->intel['ErrorInvalidExtension'] = false;
+        if($this->intel['IsDir'] !== false) {
+            $test = Injector::inst()->get(DBFile::class);
+            $validationResult = Injector::inst()->get(ValidationResult::class);
+            $this->intel['ErrorInvalidExtension'] = $test->validate(
+                $validationResult,
+                $this->intel['PathFileName']
+            ) ? true : false;
+        }
     }
 
     protected function addImageDetails()
@@ -195,6 +209,7 @@ class OneFileInfo implements FileInfo
                 $this->intel['ImageRatio'] = round($width / $height, 3);
                 $this->intel['ImagePixels'] = $width * $height;
                 $this->intel['ImageType'] = $type;
+                $this->intel['IsResizedImage'] = strpos($this->intel['PathFileName'], '__') ? true : false;
             }
         }
     }

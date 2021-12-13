@@ -14,7 +14,7 @@ class AssetAdminExtension extends Extension
                 'AssetsOverviewLink',
                 '
                     <h2>Quick Overview of Images</h2>
-                    <p>Here is a <a href="/assets-overview/">quick overview tool</a> for all CMS Images.</p>
+                    <p>Here is a <a href="/admin/assets-overview/">quick overview tool</a> for all CMS Images.</p>
                 '
             )
         );

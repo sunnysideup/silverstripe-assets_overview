@@ -7,6 +7,8 @@ use SilverStripe\Control\Director;
 use SilverStripe\Control\HTTPRequest;
 use SilverStripe\Core\Environment;
 use SilverStripe\Core\Flushable;
+
+use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Forms\CheckboxSetField;
 use SilverStripe\Forms\DropdownField;
 use SilverStripe\Forms\FieldList;
@@ -23,6 +25,7 @@ use SilverStripe\Versioned\Versioned;
 use SilverStripe\View\ArrayData;
 use SilverStripe\View\Requirements;
 use SilverStripe\View\SSViewer;
+use Sunnysideup\AssetsOverview\Api\AddAndRemoveFromDb;
 use Sunnysideup\AssetsOverview\Files\AllFilesInfo;
 use Sunnysideup\AssetsOverview\Files\OneFileInfo;
 use Sunnysideup\AssetsOverview\Traits\FilesystemRelatedTraits;
@@ -145,6 +148,11 @@ class View extends ContentController implements Flushable
             'Field' => 'ErrorExtensionMisMatch',
             'Values' => [1, true],
         ],
+        'byextensionallowed' => [
+            'Title' => 'Extension not allowed',
+            'Field' => 'ErrorInvalidExtension',
+            'Values' => [1, true],
+        ],
         'by3to4error' => [
             'Title' => 'Potential SS4 migration error',
             'Field' => 'ErrorInSs3Ss4Comparison',
@@ -240,7 +248,7 @@ class View extends ContentController implements Flushable
         'index' => 'ADMIN',
         'json' => 'ADMIN',
         'jsonfull' => 'ADMIN',
-        'fix' => 'ADMIN',
+        'sync' => 'ADMIN',
     ];
 
     public static function flush()
@@ -250,9 +258,9 @@ class View extends ContentController implements Flushable
 
     public function Link($action = null)
     {
-        $str = Director::absoluteURL(DIRECTORY_SEPARATOR . 'assets-overview' . DIRECTORY_SEPARATOR);
+        $str = Director::absoluteURL(DIRECTORY_SEPARATOR . 'admin/assets-overview' . DIRECTORY_SEPARATOR);
         if ($action) {
-            $str = $action . DIRECTORY_SEPARATOR;
+            $str .= $action . DIRECTORY_SEPARATOR;
         }
 
         return $str;
@@ -366,7 +374,7 @@ class View extends ContentController implements Flushable
         if (false === AllFilesInfo::loadedFromCache()) {
             $url = $_SERVER['REQUEST_URI'];
             $url = str_replace('flush=', 'previousflush=', $url);
-            die('<script>window.location = "' . $url . '";</script>go to ' . $url . ' if this page does not autoload');
+            die('go to <a href="'.$url.'">' . $url . '</a> if this page does not autoload');
         }
 
         return $this->renderWith('AssetsOverview');
@@ -386,6 +394,16 @@ class View extends ContentController implements Flushable
         }
 
         return $this->sendJSON($array);
+    }
+
+    public function sync()
+    {
+        $array = [];
+        $this->setFilesAsArrayList();
+        foreach ($this->filesAsArrayList->toArray() as $item) {
+            $obj = Injector::inst()->get(AddAndRemoveFromDb::class);
+            $obj->run($item->toMap());
+        }
     }
 
     public function addMapToItems()
@@ -471,10 +489,7 @@ class View extends ContentController implements Flushable
         if ($limit) {
             $this->limit = $limit;
         }
-        $pageNumber = $this->request->getVar('page');
-        if ($pageNumber) {
-            $this->pageNumber = $pageNumber;
-        }
+        $pageNumber = $this->request->getVar('page') ?:0;
         $this->startLimit = $this->limit * ($this->pageNumber - 1);
         $this->endLimit = $this->limit * $this->pageNumber;
     }
@@ -518,10 +533,10 @@ class View extends ContentController implements Flushable
                 }
                 if ($count >= $this->startLimit && $count < $this->endLimit) {
                     $innerArray->push($file);
-                    ++$count;
                 } elseif ($count >= $this->endLimit) {
                     break;
                 }
+                ++$count;
             }
 
             //last one!
@@ -623,7 +638,7 @@ class View extends ContentController implements Flushable
                 $this->createFormField('displayer', 'Displayed by', $this->displayer, $this->getDisplayerList()),
                 $this->createFormField('limit', 'Items per page', $this->limit, $this->getLimitList()),
                 $this->createFormField('page', 'Page number', $this->pageNumber, $this->getPageNumberList()),
-                // TextField::create('compare', 'Compare With')->setDescription('add a link to a comparison file - e.g. http://oldsite.com/assets-overview/test.json'),
+                // TextField::create('compare', 'Compare With')->setDescription('add a link to a comparison file - e.g. http://oldsite.com/admin/assets-overview/test.json'),
             ]
         );
         $actionList = FieldList::create(
