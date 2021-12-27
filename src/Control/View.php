@@ -7,7 +7,6 @@ use SilverStripe\Control\Director;
 use SilverStripe\Control\HTTPRequest;
 use SilverStripe\Core\Environment;
 use SilverStripe\Core\Flushable;
-
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Forms\CheckboxSetField;
 use SilverStripe\Forms\DropdownField;
@@ -374,7 +373,7 @@ class View extends ContentController implements Flushable
         if (false === AllFilesInfo::loadedFromCache()) {
             $url = $_SERVER['REQUEST_URI'];
             $url = str_replace('flush=', 'previousflush=', $url);
-            die('go to <a href="'.$url.'">' . $url . '</a> if this page does not autoload');
+            die('go to <a href="' . $url . '">' . $url . '</a> if this page does not autoload');
         }
 
         return $this->renderWith('AssetsOverview');
@@ -489,7 +488,7 @@ class View extends ContentController implements Flushable
         if ($limit) {
             $this->limit = $limit;
         }
-        $pageNumber = $this->request->getVar('page') ?:0;
+        $pageNumber = $this->request->getVar('page') ?: 0;
         $this->startLimit = $this->limit * ($this->pageNumber - 1);
         $this->endLimit = $this->limit * $this->pageNumber;
     }

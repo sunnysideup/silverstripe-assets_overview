@@ -2,28 +2,14 @@
 
 namespace Sunnysideup\AssetsOverview\Api;
 
-use SilverStripe\Control\Controller;
-
-use SilverStripe\Core\Config\Config;
-use Dynamic\FileMigration\Tasks\FileMigrationTask;
-
-use FilesystemIterator;
-use RecursiveDirectoryIterator;
-use RecursiveIteratorIterator;
+use SilverStripe\AssetAdmin\Controller\AssetAdmin;
 use SilverStripe\Assets\File;
 use SilverStripe\Assets\Image;
-use SilverStripe\Assets\Folder;
 use SilverStripe\Core\Config\Configurable;
-use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Core\Injector\Injectable;
+use SilverStripe\Core\Injector\Injector;
 use SilverStripe\ORM\DB;
-use SilverStripe\AssetAdmin\Controller\AssetAdmin;
 use SilverStripe\Versioned\Versioned;
-use Sunnysideup\AssetsOverview\Interfaces\FileInfo;
-use Sunnysideup\AssetsOverview\Traits\Cacher;
-use Sunnysideup\AssetsOverview\Traits\FilesystemRelatedTraits;
-use Sunnysideup\Flush\FlushNow;
-use Sunnysideup\AssetsOverview\Files\OneFileInfo;
 
 class AddAndRemoveFromDb
 {
@@ -36,18 +22,18 @@ class AddAndRemoveFromDb
     {
         $pathFromAssetsFolder = $oneFileInfoArray['PathFromAssetsFolder'];
         $localPath = $oneFileInfoArray['Path'];
-        if($oneFileInfoArray['IsDir']) {
-            DB::alteration_message('Skipping '.$pathFromAssetsFolder.' as this is a folder', '');
+        if ($oneFileInfoArray['IsDir']) {
+            DB::alteration_message('Skipping ' . $pathFromAssetsFolder . ' as this is a folder', '');
         } elseif (! empty($oneFileInfoArray['IsResizedImage'])) {
             if (file_exists($localPath)) {
-                DB::alteration_message('Deleting '.$pathFromAssetsFolder, 'deleted');
+                DB::alteration_message('Deleting ' . $pathFromAssetsFolder, 'deleted');
                 //unlink($localPath);
             }
         } elseif ($oneFileInfoArray['ErrorDBNotPresent']) {
-            DB::alteration_message('Adding file to database '.$pathFromAssetsFolder, 'created');
+            DB::alteration_message('Adding file to database ' . $pathFromAssetsFolder, 'created');
             $this->addFileToDb($oneFileInfoArray);
         } elseif ($oneFileInfoArray['ErrorIsInFileSystem']) {
-            DB::alteration_message('Removing from database '.$pathFromAssetsFolder, 'deleted');
+            DB::alteration_message('Removing from database ' . $pathFromAssetsFolder, 'deleted');
             $this->removeFileFromDb($oneFileInfoArray);
         }
     }
@@ -55,7 +41,7 @@ class AddAndRemoveFromDb
     public function removeFileFromDb(array $oneFileInfoArray)
     {
         $file = File::get()->byID($oneFileInfoArray['DBID']);
-        if($file) {
+        if ($file) {
             $file->DeleteFromStage(Versioned::LIVE);
             $file->DeleteFromStage(Versioned::DRAFT);
         }
