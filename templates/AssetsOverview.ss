@@ -361,7 +361,10 @@
 
     <div id="top" class="results">
         <div class="padding">
-            <p>&laquo; <a href="/admin/assets/">back to CMS</a></p>
+            <p>
+            &laquo; <a href="/admin/assets/">back to CMS</a><br />
+            &laquo; <a href="/admin/reports/show/Sunnysideup-AssetsOverview-Reports-ImagesPerFieldReport/">Review Images per Field</a>
+            </p>
 
             <div class="form">
                 <h3>Sort and Filter</h3>
