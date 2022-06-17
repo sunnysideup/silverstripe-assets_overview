@@ -12,6 +12,7 @@ use SilverStripe\Core\Injector\Injector;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\DB;
 use SilverStripe\ORM\FieldType\DBDate;
+use SilverStripe\ORM\FieldType\DBDatetime;
 use SilverStripe\ORM\ValidationResult;
 use Sunnysideup\AssetsOverview\Interfaces\FileInfo;
 use Sunnysideup\AssetsOverview\Traits\Cacher;
@@ -293,7 +294,7 @@ class OneFileInfo implements FileInfo
         $this->intel['ErrorDBNotPresent'] = $this->intel['ErrorDBNotPresentLive'] && $this->intel['ErrorDBNotPresentStaging'];
 
         $this->intel['DBLastEditedTS'] = $time;
-        $this->intel['DBLastEdited'] = DBDate::create_field('Date', $time)->Ago();
+        $this->intel['DBLastEdited'] = DBDate::create_field(DBDatetime::class, $time)->Ago();
 
         $this->intel['DBTitleFirstLetter'] = strtoupper(substr($this->intel['DBTitle'], 0, 1));
     }
