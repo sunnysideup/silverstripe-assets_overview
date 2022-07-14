@@ -120,7 +120,7 @@ class ImagesPerFieldReport extends Report
                     $list = $list->{$filterMethod}([$field => 0]);
                 } else {
                     $list = $list->filterByCallBack(
-                        function ($item) {
+                        function ($item) use ($fieldUsed, $existsValue) {
                             return (bool) $item->{$fieldUsed}()->exists() === $existsValue;
                         }
                     );
@@ -197,7 +197,7 @@ class ImagesPerFieldReport extends Report
      *
      * @return int
      */
-    public function getCount($params = [])
+    public function getCount($params = [], $limit = null)
     {
         return count($this->getClassNameFieldCombos());
     }
