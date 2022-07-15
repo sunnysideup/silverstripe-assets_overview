@@ -178,6 +178,7 @@ class ImagesPerFieldReport extends Report
     {
         return [
             'Title' => ['title' => 'Title', 'link' => 'CMSEditLink'],
+            $this->fieldUsed.'.Link' => ['title' => 'Link', 'link' => $this->fieldUsed.'.URL'],
             $this->fieldUsed . '.CMSThumbnail' => 'Image',
         ];
     }
