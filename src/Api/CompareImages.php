@@ -65,6 +65,7 @@ class CompareImages
         if ('jpg' === $mime[2]) {
             return imagecreatefromjpeg($i);
         }
+
         if ('png' === $mime[2]) {
             return imagecreatefrompng($i);
         }

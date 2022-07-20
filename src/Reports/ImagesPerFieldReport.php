@@ -104,7 +104,7 @@ class ImagesPerFieldReport extends Report
             $this->classNameUsed = $classNameUsed;
             $this->fieldUsed = $fieldUsed;
             $this->typeUsed = $typeUsed;
-            $isSingularRel = 'has_one' === $typeUsed || 'belongs_to' === $typeUsed ? true : false;
+            $isSingularRel = 'has_one' === $typeUsed || 'belongs_to' === $typeUsed;
             // create list
             $list = $classNameUsed::get();
             if ($situation) {
@@ -115,6 +115,7 @@ class ImagesPerFieldReport extends Report
                     $existsValue = false;
                     $filterMethod = 'filter';
                 }
+
                 if ($isSingularRel) {
                     $field = $fieldUsed . 'ID';
                     $list = $list->{$filterMethod}([$field => 0]);
@@ -148,7 +149,7 @@ class ImagesPerFieldReport extends Report
             );
         }
 
-        return $this->sourceRecords($params, null, null)->dataQuery();
+        return $this->sourceRecords($params)->dataQuery();
     }
 
     /**
@@ -161,8 +162,9 @@ class ImagesPerFieldReport extends Report
     public function records($params)
     {
         if ($this->hasMethod('sourceRecords')) {
-            return $this->sourceRecords($params, null, null);
+            return $this->sourceRecords($params);
         }
+
         $query = $this->sourceQuery($params);
         $results = ArrayList::create();
         foreach ($query->execute() as $data) {
@@ -178,7 +180,7 @@ class ImagesPerFieldReport extends Report
     {
         return [
             'Title' => ['title' => 'Title', 'link' => 'CMSEditLink'],
-            $this->fieldUsed.'.Link' => ['title' => 'Link', 'link' => $this->fieldUsed.'.URL'],
+            $this->fieldUsed . '.Link' => ['title' => 'Link', 'link' => $this->fieldUsed . '.URL'],
             $this->fieldUsed . '.CMSThumbnail' => 'Image',
         ];
     }
@@ -194,7 +196,8 @@ class ImagesPerFieldReport extends Report
     /**
      * counts the number of objects returned.
      *
-     * @param array $params - any parameters for the sourceRecords
+     * @param array      $params - any parameters for the sourceRecords
+     * @param null|mixed $limit
      *
      * @return int
      */

@@ -33,6 +33,7 @@ class ImageFieldFinder
                     }
                 }
             }
+
             asort(self::$myCache);
         }
 

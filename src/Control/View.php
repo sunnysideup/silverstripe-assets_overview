@@ -370,6 +370,7 @@ class View extends ContentController implements Flushable
         if ('rawlistfull' === $this->displayer) {
             $this->addMapToItems();
         }
+
         if (false === AllFilesInfo::loadedFromCache()) {
             $url = $_SERVER['REQUEST_URI'];
             $url = str_replace('flush=', 'previousflush=', $url);
@@ -416,9 +417,11 @@ class View extends ContentController implements Flushable
                     if (false === $value) {
                         $value = 'no';
                     }
+
                     if (true === $value) {
                         $value = 'yes';
                     }
+
                     $item->FullFields->push(ArrayData::create(['Key' => $key, 'Value' => $value]));
                 }
             }
@@ -439,6 +442,7 @@ class View extends ContentController implements Flushable
         if (! Permission::check('ADMIN')) {
             return Security::permissionFailure($this);
         }
+
         Requirements::clear();
         ini_set('memory_limit', '1024M');
         Environment::increaseMemoryLimitTo();
@@ -466,10 +470,12 @@ class View extends ContentController implements Flushable
         if ($filter) {
             $this->filter = $filter;
         }
+
         $sorter = $this->request->getVar('sorter');
         if ($sorter) {
             $this->sorter = $sorter;
         }
+
         $displayer = $this->request->getVar('displayer');
         if ($displayer) {
             $this->displayer = $displayer;
@@ -480,14 +486,17 @@ class View extends ContentController implements Flushable
             if (! is_array($extensions)) {
                 $extensions = [$extensions];
             }
+
             $this->allowedExtensions = $extensions;
             //make sure all are valid!
             $this->allowedExtensions = array_filter($this->allowedExtensions);
         }
+
         $limit = $this->request->getVar('limit');
         if ($limit) {
             $this->limit = $limit;
         }
+
         $pageNumber = $this->request->getVar('page') ?: 0;
         $this->startLimit = $this->limit * ($this->pageNumber - 1);
         $this->endLimit = $this->limit * $this->pageNumber;
@@ -530,11 +539,13 @@ class View extends ContentController implements Flushable
                     unset($innerArray);
                     $innerArray = ArrayList::create();
                 }
+
                 if ($count >= $this->startLimit && $count < $this->endLimit) {
                     $innerArray->push($file);
                 } elseif ($count >= $this->endLimit) {
                     break;
                 }
+
                 ++$count;
             }
 
@@ -579,6 +590,7 @@ class View extends ContentController implements Flushable
                 $filterField = self::FILTERS[$this->filter]['Field'];
                 $filterValues = self::FILTERS[$this->filter]['Values'];
             }
+
             foreach ($rawArray as $absoluteLocation => $fileExists) {
                 if ($this->isPathWithAllowedExtension($absoluteLocation)) {
                     $intel = $this->getDataAboutOneFile($absoluteLocation, $fileExists);
@@ -622,6 +634,7 @@ class View extends ContentController implements Flushable
         if (0 === $count) {
             return true;
         }
+
         $extension = strtolower($this->getExtension($path));
 
         return in_array($extension, $this->allowedExtensions, true);
@@ -674,6 +687,7 @@ class View extends ContentController implements Flushable
         if ($listCount) {
             $field->setSource($list);
         }
+
         // $field->setAttribute('onchange', 'this.form.submit()');
 
         return $field;
@@ -736,6 +750,7 @@ class View extends ContentController implements Flushable
                 if ($i > $this->limit && ! isset($array[$this->limit])) {
                     $array[$this->limit] = $this->limit;
                 }
+
                 $array[$i] = $i;
             }
         }

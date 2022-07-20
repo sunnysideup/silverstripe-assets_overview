@@ -40,8 +40,9 @@ class FilesSimilarToMe
                         }
                     }
                 }
+
                 if (false === $easyFind) {
-                    if (count($sortArray)) {
+                    if ([] !== $sortArray) {
                         asort($sortArray);
                         reset($sortArray);
                         $mostSimilarKey = key($sortArray);
@@ -59,9 +60,11 @@ class FilesSimilarToMe
                 }
             }
         }
+
         foreach ($this->filesAsArrayList as $file) {
             $file->MostSimilarTo = $alreadyDone[$file->Path] ?? '[N/A]';
         }
+
         $this->setFilesAsSortedArrayList('MostSimilarTo', 'MostSimilarTo');
     }
 }

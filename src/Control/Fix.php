@@ -62,6 +62,7 @@ class Fix extends ContentController
         if (! Permission::check('ADMIN')) {
             return Security::permissionFailure($this);
         }
+
         Requirements::clear();
         ini_set('memory_limit', '1024M');
         Environment::increaseMemoryLimitTo();

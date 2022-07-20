@@ -181,7 +181,7 @@ class AllFilesInfo implements FileInfo
 
     public function toArray(): array
     {
-        if (0 === count(self::$listOfFiles)) {
+        if ([] === self::$listOfFiles) {
             $cachekey = $this->getCacheKey();
             if (! $this->hasCacheKey($cachekey)) {
                 $this->flushNow('<h1>Analysing files</h1>');
@@ -190,11 +190,13 @@ class AllFilesInfo implements FileInfo
                 foreach ($diskArray as $path) {
                     $this->registerFile($path, true);
                 }
+
                 //database
                 $databaseArray = $this->getArrayOfFilesInDatabase();
                 foreach ($databaseArray as $path) {
                     $this->registerFile($path, false);
                 }
+
                 asort(self::$listOfFiles);
                 asort(self::$availableExtensions);
                 $this->setCacheValue($cachekey, self::$listOfFiles);
@@ -226,6 +228,7 @@ class AllFilesInfo implements FileInfo
                 } else {
                     $this->flushNow('x ', '', false);
                 }
+
                 $extension = strtolower($this->getExtension($path));
                 self::$availableExtensions[$extension] = $extension;
             }
@@ -266,6 +269,7 @@ class AllFilesInfo implements FileInfo
                 return false;
             }
         }
+
         $fileName = basename($path);
 
         return ! ('error' === substr($fileName, 0, 5) && '.html' === substr($fileName, -5));
@@ -283,6 +287,7 @@ class AllFilesInfo implements FileInfo
             if (false === $this->isRealFile($path)) {
                 continue;
             }
+
             $finalArray[$path] = $path;
         }
 
@@ -308,6 +313,7 @@ class AllFilesInfo implements FileInfo
                     } else {
                         user_error('Can not find stage');
                     }
+
                     $finalArray[$absoluteLocation] = $absoluteLocation;
                 }
             }
