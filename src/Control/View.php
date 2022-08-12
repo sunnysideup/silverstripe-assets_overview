@@ -5,6 +5,9 @@ namespace Sunnysideup\AssetsOverview\Control;
 use SilverStripe\CMS\Controllers\ContentController;
 use SilverStripe\Control\Director;
 use SilverStripe\Control\HTTPRequest;
+use SilverStripe\Control\HTTPResponse;
+
+use SilverStripe\Control\Middleware\HTTPCacheControlMiddleware;
 use SilverStripe\Core\Environment;
 use SilverStripe\Core\Flushable;
 use SilverStripe\Core\Injector\Injector;
@@ -504,13 +507,20 @@ class View extends ContentController implements Flushable
 
     protected function sendJSON($data)
     {
-        $this->response->addHeader('Content-Type', 'application/json');
-        $fileData = json_encode($data, JSON_PRETTY_PRINT);
+        $json = json_encode($data, JSON_PRETTY_PRINT);
         if ($this->request->getVar('download')) {
-            return HTTPRequest::send_file($fileData, 'files.json', 'text/json');
+            return HTTPRequest::send_file($json, 'files.json', 'text/json');
         }
-
-        return $fileData;
+        $response = (new HTTPResponse($json));
+        $response->addHeader('Content-Type', 'application/json; charset="utf-8"');
+        $response->addHeader('Pragma', 'no-cache');
+        $response->addHeader('cache-control', 'no-cache, no-store, must-revalidate');
+        $response->addHeader('Access-Control-Allow-Origin', '*');
+        $response->addHeader('Expires', 0);
+        HTTPCacheControlMiddleware::singleton()
+                   ->disableCache();
+        $response->output();
+        die();
     }
 
     protected function setfilesAsSortedArrayList()
