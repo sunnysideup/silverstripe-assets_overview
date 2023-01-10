@@ -25,7 +25,7 @@ class ImageFieldFinder
                     if (is_array($rels) && ! empty($rels)) {
                         foreach ($rels as $relName => $relType) {
                             if (Image::class === $relType) {
-                                $title = $obj->i18n_singular_name() . ' - ' . ($fieldLabes[$relName] ?? $relName);
+                                $title = $obj->i18n_singular_name() . ' - ' . ($fieldLabels[$relName] ?? $relName);
                                 $key = $className . ',' . $relName . ',' . $type;
                                 self::$myCache[$key] = $title;
                             }
