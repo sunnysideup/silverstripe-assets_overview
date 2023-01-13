@@ -158,8 +158,8 @@ class OneFileInfo implements FileInfo
         }
 
         //path
-        $this->intel['PathFromPublicRoot'] = trim(str_replace($this->getPublicBaseFolder(), '', $this->path), DIRECTORY_SEPARATOR);
-        $this->intel['PathFromAssetsFolder'] = trim(str_replace($this->getAssetsBaseFolder(), '', $this->path), DIRECTORY_SEPARATOR);
+        $this->intel['PathFromPublicRoot'] = trim(str_replace($this->getPublicBaseFolder(), '', (string) $this->path), DIRECTORY_SEPARATOR);
+        $this->intel['PathFromAssetsFolder'] = trim(str_replace($this->getAssetsBaseFolder(), '', (string) $this->path), DIRECTORY_SEPARATOR);
         $this->intel['PathFolderFromAssets'] = dirname($this->intel['PathFromAssetsFolder']);
         if ('.' === $this->intel['PathFolderFromAssets']) {
             $this->intel['PathFolderFromAssets'] = '--in-root-folder--';
