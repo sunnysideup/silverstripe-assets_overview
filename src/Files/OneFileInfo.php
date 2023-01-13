@@ -289,7 +289,7 @@ class OneFileInfo implements FileInfo
             }
 
             $this->intel['ErrorInSs3Ss4Comparison'] = $this->intel['DBFilenameSS3'] && $dbFileData['FileFilename'] !== $ss3FileName;
-            $time = strtotime($dbFileData['LastEdited']);
+            $time = strtotime((string) $dbFileData['LastEdited']);
             $this->intel['ErrorParentID'] = true;
             if (0 === (int) $this->intel['FolderID']) {
                 $this->intel['ErrorParentID'] = (bool) (int) $dbFileData['ParentID'];
