@@ -144,7 +144,7 @@ class OneFileInfo implements FileInfo
         $this->intel['PathFolderPath'] = $this->parthParts['dirname'] ?: dirname($this->intel['Path']);
         //file name
         $this->intel['PathFileName'] = $this->parthParts['filename'] ?: basename($this->path);
-        $this->intel['PathFileNameFirstLetter'] = strtoupper(substr($this->intel['PathFileName'], 0, 1));
+        $this->intel['PathFileNameFirstLetter'] = strtoupper(substr((string) $this->intel['PathFileName'], 0, 1));
 
         //defaults
         $this->intel['ErrorIsInFileSystem'] = true;
@@ -166,7 +166,7 @@ class OneFileInfo implements FileInfo
         }
 
         //folder
-        // $relativeDirFromAssetsFolder = str_replace($this->getAssetsBaseFolder(), '', $this->intel['PathFolderPath']);
+        // $relativeDirFromAssetsFolder = str_replace($this->getAssetsBaseFolder(), '', (string) $this->intel['PathFolderPath']);
 
         //extension
         $this->intel['PathExtension'] = $this->parthParts['extension'] ?: $this->getExtension($this->path);
@@ -175,8 +175,8 @@ class OneFileInfo implements FileInfo
         $pathExtensionWithDot = '.' . $this->intel['PathExtension'];
         $extensionLength = strlen($pathExtensionWithDot);
         $pathLength = strlen($this->intel['PathFileName']);
-        if (substr($this->intel['PathFileName'], (-1 * $extensionLength)) === $pathExtensionWithDot) {
-            $this->intel['PathFileName'] = substr($this->intel['PathFileName'], 0, ($pathLength - $extensionLength));
+        if (substr((string) $this->intel['PathFileName'], (-1 * $extensionLength)) === $pathExtensionWithDot) {
+            $this->intel['PathFileName'] = substr((string) $this->intel['PathFileName'], 0, ($pathLength - $extensionLength));
         }
 
         $this->intel['ErrorInvalidExtension'] = false;
@@ -284,8 +284,8 @@ class OneFileInfo implements FileInfo
             $this->intel['DBFilenameSS3'] = $dbFileData['Filename'];
             $this->intel['ErrorInFilename'] = $this->intel['PathFromAssetsFolder'] !== $this->intel['DBPath'];
             $ss3FileName = $dbFileData['Filename'] ?? '';
-            if ('assets/' === substr($ss3FileName, 0, strlen('assets/'))) {
-                $ss3FileName = substr($ss3FileName, strlen('assets/'));
+            if ('assets/' === substr((string) $ss3FileName, 0, strlen('assets/'))) {
+                $ss3FileName = substr((string) $ss3FileName, strlen('assets/'));
             }
 
             $this->intel['ErrorInSs3Ss4Comparison'] = $this->intel['DBFilenameSS3'] && $dbFileData['FileFilename'] !== $ss3FileName;
@@ -303,7 +303,7 @@ class OneFileInfo implements FileInfo
         $this->intel['DBLastEditedTS'] = $time;
         $this->intel['DBLastEdited'] = DBDate::create_field(DBDatetime::class, $time)->Ago();
 
-        $this->intel['DBTitleFirstLetter'] = strtoupper(substr($this->intel['DBTitle'], 0, 1));
+        $this->intel['DBTitleFirstLetter'] = strtoupper(substr((string) $this->intel['DBTitle'], 0, 1));
     }
 
     protected function addHumanValues()

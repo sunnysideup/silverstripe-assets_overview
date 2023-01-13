@@ -76,7 +76,7 @@ class Fix extends ContentController
     protected function runMethod($method)
     {
         $method = 'fix' . $method;
-        if ('Error' === substr($method, 0, 5) && $this->hasMethod($method)) {
+        if ('Error' === substr((string) $method, 0, 5) && $this->hasMethod($method)) {
             $this->{$method}();
         }
     }

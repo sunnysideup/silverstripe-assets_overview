@@ -272,7 +272,7 @@ class AllFilesInfo implements FileInfo
 
         $fileName = basename($path);
 
-        return ! ('error' === substr($fileName, 0, 5) && '.html' === substr($fileName, -5));
+        return ! ('error' === substr((string) $fileName, 0, 5) && '.html' === substr((string) $fileName, -5));
     }
 
     protected function getArrayOfFilesOnDisk(): array
