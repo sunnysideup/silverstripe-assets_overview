@@ -55,7 +55,7 @@ trait Cacher
     {
         $cache = self::getCache();
 
-        return unserialize($cache->get($cacheKey));
+        return unserialize((string) $cache->get($cacheKey));
     }
 
     protected function hasCacheKey(string $cacheKey): bool
