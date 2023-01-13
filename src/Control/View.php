@@ -6,7 +6,6 @@ use SilverStripe\CMS\Controllers\ContentController;
 use SilverStripe\Control\Director;
 use SilverStripe\Control\HTTPRequest;
 use SilverStripe\Control\HTTPResponse;
-
 use SilverStripe\Control\Middleware\HTTPCacheControlMiddleware;
 use SilverStripe\Core\Environment;
 use SilverStripe\Core\Flushable;
@@ -518,7 +517,8 @@ class View extends ContentController implements Flushable
         $response->addHeader('Access-Control-Allow-Origin', '*');
         $response->addHeader('Expires', 0);
         HTTPCacheControlMiddleware::singleton()
-                   ->disableCache();
+            ->disableCache()
+        ;
         $response->output();
         die();
     }
