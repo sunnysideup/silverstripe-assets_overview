@@ -173,8 +173,8 @@ class OneFileInfo implements FileInfo
         $this->intel['PathExtensionAsLower'] = (string) strtolower($this->intel['PathExtension']);
         $this->intel['ErrorExtensionMisMatch'] = $this->intel['PathExtension'] !== $this->intel['PathExtensionAsLower'];
         $pathExtensionWithDot = '.' . $this->intel['PathExtension'];
-        $extensionLength = strlen($pathExtensionWithDot);
-        $pathLength = strlen($this->intel['PathFileName']);
+        $extensionLength = strlen( (string) $pathExtensionWithDot);
+        $pathLength = strlen( (string) $this->intel['PathFileName']);
         if (substr((string) $this->intel['PathFileName'], (-1 * $extensionLength)) === $pathExtensionWithDot) {
             $this->intel['PathFileName'] = substr((string) $this->intel['PathFileName'], 0, ($pathLength - $extensionLength));
         }

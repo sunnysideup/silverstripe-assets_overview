@@ -26,7 +26,7 @@ trait FilesystemRelatedTraits
     {
         return File::format_size($bytes);
         // $size = ['B', 'kB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
-        // $factor = floor((strlen($bytes) - 1) / 3);
+        // $factor = floor((strlen( (string) $bytes) - 1) / 3);
         //
         // return sprintf("%.{$decimals}f", $bytes / pow(1024, $factor)) . @$size[$factor];
     }
