@@ -5,6 +5,11 @@ namespace Sunnysideup\AssetsOverview\Control;
 use SilverStripe\Core\Extension;
 use SilverStripe\Forms\LiteralField;
 
+/**
+ * Class \Sunnysideup\AssetsOverview\Control\AssetAdminExtension
+ *
+ * @property \SilverStripe\AssetAdmin\Controller\AssetAdmin|\Sunnysideup\AssetsOverview\Control\AssetAdminExtension $owner
+ */
 class AssetAdminExtension extends Extension
 {
     public function updateEditForm($form)

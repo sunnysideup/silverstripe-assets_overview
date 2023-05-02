@@ -31,6 +31,13 @@ use Sunnysideup\AssetsOverview\Files\AllFilesInfo;
 use Sunnysideup\AssetsOverview\Files\OneFileInfo;
 use Sunnysideup\AssetsOverview\Traits\FilesystemRelatedTraits;
 
+/**
+ * Class \Sunnysideup\AssetsOverview\Control\View
+ *
+ * @property \Sunnysideup\AssetsOverview\Control\View $dataRecord
+ * @method \Sunnysideup\AssetsOverview\Control\View data()
+ * @mixin \Sunnysideup\AssetsOverview\Control\View
+ */
 class View extends ContentController implements Flushable
 {
     use FilesystemRelatedTraits;

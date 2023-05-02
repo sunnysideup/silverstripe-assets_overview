@@ -15,6 +15,13 @@ use Sunnysideup\AssetsOverview\Files\AllFilesInfo;
 use Sunnysideup\AssetsOverview\Files\OneFileInfo;
 use Sunnysideup\AssetsOverview\Traits\FilesystemRelatedTraits;
 
+/**
+ * Class \Sunnysideup\AssetsOverview\Control\Fix
+ *
+ * @property \Sunnysideup\AssetsOverview\Control\Fix $dataRecord
+ * @method \Sunnysideup\AssetsOverview\Control\Fix data()
+ * @mixin \Sunnysideup\AssetsOverview\Control\Fix
+ */
 class Fix extends ContentController
 {
     use FilesystemRelatedTraits;
