@@ -20,7 +20,7 @@
         }
     ],
     "require": {
-        "silverstripe/recipe-core": "~4.4",
+        "silverstripe/recipe-cms": "^4 || ^5",
         "sunnysideup/flush": "dev-master",
         "dynamic/silverstripe-file-migration-task": "*"
     },
