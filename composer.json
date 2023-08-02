@@ -20,7 +20,7 @@
         }
     ],
     "require": {
-        "silverstripe/recipe-cms": "^4 || ^5",
+        "silverstripe/cms": "^4 || ^5",
         "sunnysideup/flush": "dev-master"
     },
     "suggest": {
