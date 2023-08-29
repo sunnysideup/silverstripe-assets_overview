@@ -456,7 +456,7 @@ class View extends ContentController implements Flushable
         ini_set('memory_limit', '1024M');
         Environment::increaseMemoryLimitTo();
         Environment::increaseTimeLimitTo(7200);
-        SSViewer::config()->update('theme_enabled', false);
+        SSViewer::config()->merge('theme_enabled', false);
         Versioned::set_stage(Versioned::DRAFT);
         $this->getGetVariables();
     }
