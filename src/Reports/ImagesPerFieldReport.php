@@ -94,7 +94,7 @@ class ImagesPerFieldReport extends Report
         return $fields;
     }
 
-    public function sourceRecords($params)
+    public function sourceRecords($params = [], $sort = null, $limit = null)
     {
         $classNameFieldComboString = $params['ClassNameFieldCombo'] ?? ',,';
         $situation = $params['Situation'] ?? '';
@@ -267,7 +267,7 @@ class ImagesPerFieldReport extends Report
                     'WithImage' => 'With Image(s)',
                     'Without' => 'Without Image(s)',
                 ]
-            )->setEmptyString('--- any ---')
+            )->setEmptyString('(Any)')
         );
 
         return $params;
