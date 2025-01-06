@@ -346,7 +346,7 @@
                     <strong>Sync:</strong>
                     <a href="$Link(sync)" onclick="return confirm('Danger - Danger - Have you made a backup of files and database?')">update DB based on files on disk</a>
                     <a href="$Link(addtodb)" onclick="return confirm('Danger - Danger - Have you made a backup of files and database?')">add to DB only</a>
-                    <a href="$Link(removefromdb)" onclick="return confirm('Danger - Danger - Have you made a backup of files and database?')">remove from DB</a>
+                    <a href="$Link(removefromdb)" onclick="return confirm('Danger - Danger - Have you made a backup of files and database?')">remove from DB only</a>
                 </li>
             </ul>
 
