@@ -27,48 +27,48 @@ class AllFilesInfo implements FileInfo
     /**
      * @var string
      */
-    protected $path = '';
+    protected string $path = '';
 
     /**
      * @var array
      */
-    protected static $dataStaging = [];
+    protected static array $dataStaging = [];
 
     /**
      * @var array
      */
-    protected static $dataLive = [];
+    protected static array $dataLive = [];
 
     /**
      * @var array
      */
-    protected static $listOfFiles = [];
+    protected static array $listOfFiles = [];
 
     /**
      * @var array
      */
-    protected static $databaseLookupListStaging = [];
+    protected static array $databaseLookupListStaging = [];
 
     /**
      * @var array
      */
-    protected static $availableExtensions = [];
+    protected static array $availableExtensions = [];
 
     /**
      * @var array
      */
-    protected static $databaseLookupListLive = [];
+    protected static array $databaseLookupListLive = [];
 
-    private static $not_real_file_substrings = [
+    private static array $not_real_file_substrings = [
         DIRECTORY_SEPARATOR . '_resampled',
         DIRECTORY_SEPARATOR . '__',
         DIRECTORY_SEPARATOR . '.',
-        // '__Fit',
-        // '__Pad',
-        // '__Fill',
-        // '__Focus',
-        // '__Scale',
-        // '__ResizedImage',
+        '__Fit',
+        '__Pad',
+        '__Fill',
+        '__Focus',
+        '__Scale',
+        '__ResizedImage',
     ];
 
     public function __construct($path)

@@ -84,6 +84,8 @@
       border-bottom: 1px solid #eee;
       margin: 0;
       padding: 2px;
+      padding-top: 10px;
+      line-height: 1.5em;
   }
   .toc li a {
       display: block;
@@ -246,7 +248,9 @@
         box-sizing: border-box;
         border: 1px solid #B0BEC7;
     }
-
+    label {
+        vertical-align: top;
+    }
     .form form fieldset .field > label {
         font-weight: bold;
         display: block;

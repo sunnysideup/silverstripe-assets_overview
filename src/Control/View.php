@@ -528,7 +528,7 @@ class View extends ContentController implements Flushable
             $this->limit = $limit;
         }
 
-        $pageNumber = $this->request->getVar('page') ?: 0;
+        $this->pageNumber = $this->request->getVar('page') ?: 0;
         $this->startLimit = $this->limit * ($this->pageNumber - 1);
         $this->endLimit = $this->limit * $this->pageNumber;
     }
@@ -675,6 +675,9 @@ class View extends ContentController implements Flushable
         }
 
         $extension = strtolower($this->getExtension($path));
+        if ($extension === '') {
+            $extension = 'n/a';
+        }
 
         return in_array($extension, $this->allowedExtensions, true);
     }
@@ -758,7 +761,9 @@ class View extends ContentController implements Flushable
 
     protected function getExtensionList(): array
     {
-        return AllFilesInfo::getAvailableExtensions();
+        $list = array_filter(AllFilesInfo::getAvailableExtensions());
+        $list = ['n/a' => 'n/a'] + $list;
+        return $list;
     }
 
     protected function getPageNumberList(): array
