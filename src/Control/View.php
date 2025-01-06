@@ -257,6 +257,8 @@ class View extends ContentController implements Flushable
         'json' => 'ADMIN',
         'jsonfull' => 'ADMIN',
         'sync' => 'ADMIN',
+        'addtodb' => 'ADMIN',
+        'removefromdb' => 'ADMIN',
     ];
 
     public static function flush()
@@ -268,7 +270,7 @@ class View extends ContentController implements Flushable
     {
         $str = Director::absoluteURL(DIRECTORY_SEPARATOR . 'admin/assets-overview' . DIRECTORY_SEPARATOR);
         if ($action) {
-            $str .= $action . DIRECTORY_SEPARATOR;
+            $str .= DIRECTORY_SEPARATOR . $action;
         }
 
         return $str;
@@ -415,6 +417,26 @@ class View extends ContentController implements Flushable
         }
     }
 
+    public function addtodb()
+    {
+        $array = [];
+        $this->setFilesAsArrayList();
+        foreach ($this->filesAsArrayList->toArray() as $item) {
+            $obj = Injector::inst()->get(AddAndRemoveFromDb::class);
+            $obj->run($item->toMap(), 'add');
+        }
+    }
+
+    public function removefromdb()
+    {
+        $array = [];
+        $this->setFilesAsArrayList();
+        foreach ($this->filesAsArrayList->toArray() as $item) {
+            $obj = Injector::inst()->get(AddAndRemoveFromDb::class);
+            $obj->run($item->toMap(), 'remove');
+        }
+    }
+
     public function addMapToItems()
     {
         $this->isThumbList = false;
@@ -456,7 +478,7 @@ class View extends ContentController implements Flushable
         ini_set('memory_limit', '1024M');
         Environment::increaseMemoryLimitTo();
         Environment::increaseTimeLimitTo(7200);
-        SSViewer::config()->merge('theme_enabled', false);
+        SSViewer::config()->set('theme_enabled', false);
         Versioned::set_stage(Versioned::DRAFT);
         $this->getGetVariables();
     }
@@ -699,8 +721,7 @@ class View extends ContentController implements Flushable
         }
 
         $field = $type::create($name, $title)
-            ->setValue($value)
-        ;
+            ->setValue($value);
         if ($listCount) {
             $field->setSource($list);
         }

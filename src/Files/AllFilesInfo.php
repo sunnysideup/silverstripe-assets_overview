@@ -301,8 +301,9 @@ class AllFilesInfo implements FileInfo
             $sql = 'SELECT * FROM "File' . $stage . '" WHERE "ClassName" <> \'' . addslashes(Folder::class) . "';";
             $rows = DB::query($sql);
             foreach ($rows as $row) {
-                $file = $row['FileFilename'] ?? $row['Filename'];
-                if (trim($file)) {
+                $file = $row['FileFilename'] ?? $row['Filename'] ?? '';
+                $file = trim($file);
+                if ($file) {
                     $absoluteLocation = $this->path . DIRECTORY_SEPARATOR . $file;
                     if ('' === $stage) {
                         self::$dataStaging[$row['ID']] = $row;

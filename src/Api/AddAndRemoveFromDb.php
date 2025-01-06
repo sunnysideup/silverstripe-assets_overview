@@ -18,8 +18,11 @@ class AddAndRemoveFromDb
 
     private static $publish_recursive = true;
 
-    public function run(array $oneFileInfoArray)
+    public function run(array $oneFileInfoArray, ?string $mode = null)
     {
+        if ($mode !== 'add' && $mode !== 'remove' && $mode !== null) {
+            user_error('Mode must be either "add" or "remove" or not set at all', E_USER_ERROR);
+        }
         $pathFromAssetsFolder = $oneFileInfoArray['PathFromAssetsFolder'];
         $localPath = $oneFileInfoArray['Path'];
         if ($oneFileInfoArray['IsDir']) {
@@ -29,10 +32,10 @@ class AddAndRemoveFromDb
                 DB::alteration_message('Deleting ' . $pathFromAssetsFolder, 'deleted');
                 //unlink($localPath);
             }
-        } elseif ($oneFileInfoArray['ErrorDBNotPresent']) {
+        } elseif ($oneFileInfoArray['ErrorDBNotPresent'] && $mode !== 'remove') {
             DB::alteration_message('Adding file to database ' . $pathFromAssetsFolder, 'created');
             $this->addFileToDb($oneFileInfoArray);
-        } elseif ($oneFileInfoArray['ErrorIsInFileSystem']) {
+        } elseif ($oneFileInfoArray['ErrorIsInFileSystem'] && $mode !== 'add') {
             DB::alteration_message('Removing from database ' . $pathFromAssetsFolder, 'deleted');
             $this->removeFileFromDb($oneFileInfoArray);
         }
