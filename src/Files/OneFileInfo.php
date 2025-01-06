@@ -173,8 +173,8 @@ class OneFileInfo implements FileInfo
         $this->intel['PathExtensionAsLower'] = (string) strtolower($this->intel['PathExtension']);
         $this->intel['ErrorExtensionMisMatch'] = $this->intel['PathExtension'] !== $this->intel['PathExtensionAsLower'];
         $pathExtensionWithDot = '.' . $this->intel['PathExtension'];
-        $extensionLength = strlen( (string) $pathExtensionWithDot);
-        $pathLength = strlen( (string) $this->intel['PathFileName']);
+        $extensionLength = strlen((string) $pathExtensionWithDot);
+        $pathLength = strlen((string) $this->intel['PathFileName']);
         if (substr((string) $this->intel['PathFileName'], (-1 * $extensionLength)) === $pathExtensionWithDot) {
             $this->intel['PathFileName'] = substr((string) $this->intel['PathFileName'], 0, ($pathLength - $extensionLength));
         }
@@ -205,11 +205,22 @@ class OneFileInfo implements FileInfo
             $this->intel['ImageIsRegularImage'] = $this->isRegularImage($this->intel['PathExtension']);
             $this->intel['ImageIsImage'] = $this->intel['ImageIsRegularImage'] ? true : $this->isImage($this->path);
             if ($this->intel['ImageIsImage']) {
-                list($width, $height, $type, $attr) = getimagesize($this->path);
+                try {
+                    list($width, $height, $type, $attr) = getimagesize($this->path);
+                } catch (Exception $exception) {
+                    $width = 0;
+                    $height = 0;
+                    $type = 0;
+                    $attr = [];
+                }
                 $this->intel['ImageAttribute'] = print_r($attr, 1);
                 $this->intel['ImageWidth'] = $width;
                 $this->intel['ImageHeight'] = $height;
-                $this->intel['ImageRatio'] = round($width / $height, 3);
+                if ($height > 0) {
+                    $this->intel['ImageRatio'] = round($width / $height, 3);
+                } else {
+                    $this->intel['ImageRatio'] = 0;
+                }
                 $this->intel['ImagePixels'] = $width * $height;
                 $this->intel['ImageType'] = $type;
                 $this->intel['IsResizedImage'] = (bool) strpos($this->intel['PathFileName'], '__');
