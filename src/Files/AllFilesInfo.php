@@ -11,6 +11,7 @@ use SilverStripe\Core\Config\Config;
 use SilverStripe\Core\Config\Configurable;
 use SilverStripe\Core\Injector\Injectable;
 use SilverStripe\ORM\DB;
+use SilverStripe\Versioned\Versioned;
 use Sunnysideup\AssetsOverview\Interfaces\FileInfo;
 use Sunnysideup\AssetsOverview\Traits\Cacher;
 use Sunnysideup\AssetsOverview\Traits\FilesystemRelatedTraits;
@@ -218,7 +219,7 @@ class AllFilesInfo implements FileInfo
         return self::$listOfFiles;
     }
 
-    protected function registerFile($path, $inFileSystem)
+    protected function registerFile($path, ?bool $inFileSystem = true)
     {
         if ($path) {
             if (! isset(self::$listOfFiles[$path])) {
@@ -294,32 +295,35 @@ class AllFilesInfo implements FileInfo
         return $finalArray;
     }
 
+    /**
+     *
+     * returns all the files in the database except for folders.
+     * @return array
+     */
     protected function getArrayOfFilesInDatabase(): array
     {
         $finalArray = [];
-        foreach (['', '_Live'] as $stage) {
-            $sql = 'SELECT * FROM "File' . $stage . '" WHERE "ClassName" <> \'' . addslashes(Folder::class) . "';";
-            $rows = DB::query($sql);
-            foreach ($rows as $row) {
-                $file = $row['FileFilename'] ?? $row['Filename'] ?? '';
-                $file = trim($file);
-                if ($file) {
-                    $absoluteLocation = $this->path . DIRECTORY_SEPARATOR . $file;
-                    if ('' === $stage) {
-                        self::$dataStaging[$row['ID']] = $row;
-                        self::$databaseLookupListStaging[$file] = $row['ID'];
-                    } elseif ('_Live' === $stage) {
-                        self::$dataLive[$row['ID']] = $row;
-                        self::$databaseLookupListLive[$file] = $row['ID'];
-                    } else {
-                        user_error('Can not find stage');
-                    }
-
-                    $finalArray[$absoluteLocation] = $absoluteLocation;
+        foreach (['Stage', 'Live'] as $stage) {
+            Versioned::set_stage($stage);
+            $files = File::get()->filter(['ClassName:not' => Folder::class])->filter(['ID' => 65]);
+            foreach ($files as $file) {
+                $row = $file->toMap();
+                $absoluteLocation =  $this->path . DIRECTORY_SEPARATOR .  $file->getFilename();
+                if ('Stage' === $stage) {
+                    self::$dataStaging[$row['ID']] = $row;
+                    self::$databaseLookupListStaging[$absoluteLocation] = $row['ID'];
+                } elseif ('Live' === $stage) {
+                    self::$dataLive[$row['ID']] = $row;
+                    self::$databaseLookupListLive[$absoluteLocation] = $row['ID'];
+                } else {
+                    user_error('Can not find stage');
                 }
+
+                $finalArray[$absoluteLocation] = $absoluteLocation;
             }
         }
-
+        print_r($finalArray);
+        die('xxx');
         return $finalArray;
     }
 

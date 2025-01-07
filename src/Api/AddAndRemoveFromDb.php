@@ -57,8 +57,17 @@ class AddAndRemoveFromDb
         $extension = File::get_file_extension($localPath);
         $newClass = File::get_class_for_file_extension($extension);
         $newFile = Injector::inst()->create($newClass);
-        $newFile->setFromLocalFile($localPath, $pathFromAssetsFolder);
-        $newFile->write();
+        if (file_exists($localPath)) {
+            $newFile->setFromLocalFile($localPath, $pathFromAssetsFolder);
+            try {
+                $newFile->write();
+            } catch (\Exception $e) {
+                DB::alteration_message('Could not write file ' . $pathFromAssetsFolder . ' because ' . $e->getMessage(), 'deleted');
+                return;
+            }
+        } else {
+            return;
+        }
 
         // If file is an image, generate thumbnails
         if (is_a($newFile, Image::class)) {

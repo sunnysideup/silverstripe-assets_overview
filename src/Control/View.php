@@ -352,6 +352,7 @@ class View extends ContentController implements Flushable
 
     public function getfilesAsSortedArrayList(): ArrayList
     {
+        $this->setfilesAsSortedArrayList();
         return $this->filesAsSortedArrayList;
     }
 
@@ -377,7 +378,7 @@ class View extends ContentController implements Flushable
 
     public function index($request)
     {
-        $this->setFilesAsSortedArrayList();
+        $this->setFilesAsArrayList();
         if ('rawlistfull' === $this->displayer) {
             $this->addMapToItems();
         }
@@ -385,7 +386,13 @@ class View extends ContentController implements Flushable
         if (false === AllFilesInfo::loadedFromCache()) {
             $url = $_SERVER['REQUEST_URI'];
             $url = str_replace('flush=', 'previousflush=', $url);
-            die('go to <a href="' . $url . '">' . $url . '</a> if this page does not autoload');
+            $js = 'window.location.href = \'' . $url . '\';';
+            die('go to <a href="' . $url . '">' . $url . '</a> if this page does not autoload' . $js);
+        }
+        while ($this->startLimit > $this->filesAsArrayList->count()) {
+            $this->pageNumber--;
+            $this->startLimit = $this->limit * ($this->pageNumber - 1);
+            $this->endLimit = $this->limit * ($this->pageNumber + 0);
         }
 
         return $this->renderWith('AssetsOverview');
@@ -528,9 +535,9 @@ class View extends ContentController implements Flushable
             $this->limit = $limit;
         }
 
-        $this->pageNumber = $this->request->getVar('page') ?: 0;
+        $this->pageNumber = ($this->request->getVar('page') ?: 1);
         $this->startLimit = $this->limit * ($this->pageNumber - 1);
-        $this->endLimit = $this->limit * $this->pageNumber;
+        $this->endLimit = $this->limit * ($this->pageNumber + 0);
     }
 
     protected function sendJSON($data)
@@ -554,7 +561,7 @@ class View extends ContentController implements Flushable
 
     protected function setfilesAsSortedArrayList()
     {
-        if (null === $this->filesAsSortedArrayList) {
+        if (empty($this->filesAsSortedArrayList)) {
             $sortField = self::SORTERS[$this->sorter]['Sort'];
             $headerField = self::SORTERS[$this->sorter]['Group'];
             //done only if not already done ...
