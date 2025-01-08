@@ -1,7 +1,6 @@
 ---
 name: AssetsOverview
 ---
-
 SilverStripe\AssetAdmin\Controller\AssetAdmin:
   extensions:
     - 'Sunnysideup\AssetsOverview\Control\AssetAdminExtension'
@@ -10,4 +9,4 @@ SilverStripe\Core\Injector\Injector:
   Psr\SimpleCache\CacheInterface.assetsoverviewCache:
     factory: SilverStripe\Core\Cache\CacheFactory
     constructor:
-      namespace: "assetsoverviewCache"
+      namespace: 'assetsoverviewCache'

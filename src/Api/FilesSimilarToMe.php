@@ -10,7 +10,7 @@ class FilesSimilarToMe
     {
         set_time_limit(240);
         $engine = new CompareImages();
-        $this->setFilesAsArrayList();
+        $engine->setFilesAsArrayList();
         $a = clone $this->filesAsArrayList;
         $b = clone $this->filesAsArrayList;
         $c = clone $this->filesAsArrayList;

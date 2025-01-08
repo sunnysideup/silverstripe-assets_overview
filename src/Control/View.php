@@ -45,11 +45,6 @@ class View extends ContentController implements Flushable
     /**
      * @var string
      */
-    private const ALL_FILES_INFO_CLASS = AllFilesInfo::class;
-
-    /**
-     * @var string
-     */
     private const ONE_FILE_INFO_CLASS = OneFileInfo::class;
 
     private const SORTERS = [
@@ -386,8 +381,9 @@ class View extends ContentController implements Flushable
         if (false === AllFilesInfo::loadedFromCache()) {
             $url = $_SERVER['REQUEST_URI'];
             $url = str_replace('flush=', 'previousflush=', $url);
-            $js = 'window.location.href = \'' . $url . '\';';
-            die('go to <a href="' . $url . '">' . $url . '</a> if this page does not autoload' . $js);
+
+            $js = '<script>window.location.href = \'' . $url . '\';</script>';
+            return 'go to <a href="' . $url . '">' . $url . '</a> if this page does not autoload';
         }
         while ($this->startLimit > $this->filesAsArrayList->count()) {
             $this->pageNumber--;
@@ -657,10 +653,9 @@ class View extends ContentController implements Flushable
     protected function getRawData(): array
     {
         //get data
-        $class = self::ALL_FILES_INFO_CLASS;
-        $obj = new $class($this->getAssetsBaseFolder());
 
-        return $obj->toArray();
+        return Injector::inst()->get(AllFilesInfo::class, true, [$this->getAssetsBaseFolder()])
+            ->toArray();
     }
 
     protected function getDataAboutOneFile(string $absoluteLocation, ?bool $fileExists): array

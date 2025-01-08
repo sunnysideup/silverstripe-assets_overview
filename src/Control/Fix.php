@@ -5,6 +5,7 @@ namespace Sunnysideup\AssetsOverview\Control;
 use SilverStripe\Assets\File;
 use SilverStripe\CMS\Controllers\ContentController;
 use SilverStripe\Core\Environment;
+use SilverStripe\Core\Injector\Injector;
 use SilverStripe\ORM\DB;
 use SilverStripe\Security\Permission;
 use SilverStripe\Security\Security;
@@ -25,11 +26,6 @@ use Sunnysideup\AssetsOverview\Traits\FilesystemRelatedTraits;
 class Fix extends ContentController
 {
     use FilesystemRelatedTraits;
-
-    /**
-     * @var string
-     */
-    private const ALL_FILES_INFO_CLASS = AllFilesInfo::class;
 
     /**
      * @var string
@@ -90,17 +86,13 @@ class Fix extends ContentController
     protected function getRawData(): array
     {
         //get data
-        $class = self::ALL_FILES_INFO_CLASS;
-        $obj = new $class($this->getAssetsBaseFolder());
-
-        return $obj->toArray();
+        return Injector::inst()->get(AllFilesInfo::class, true, [$this->getAssetsBaseFolder()])
+            ->toArray();
     }
 
     protected function getDataAboutOneFile(string $absoluteLocation): array
     {
-        $class = self::ONE_FILE_INFO_CLASS;
-        $obj = new $class($absoluteLocation);
-        print_r($obj);
+        $obj = Injector::inst()->get(OneFileInfo::class, true, [$absoluteLocation]);
 
         return $this->getUncachedIntel($absoluteLocation);
     }
@@ -117,13 +109,9 @@ class Fix extends ContentController
         }
     }
 
-    protected function fixErrorDBNotPresentLive()
-    {
-    }
+    protected function fixErrorDBNotPresentLive() {}
 
-    protected function fixErrorDBNotPresentStaging()
-    {
-    }
+    protected function fixErrorDBNotPresentStaging() {}
 
     protected function fixErrorExtensionMisMatch()
     {
@@ -156,9 +144,7 @@ class Fix extends ContentController
         return true;
     }
 
-    protected function fixErrorParentID()
-    {
-    }
+    protected function fixErrorParentID() {}
 
     protected function fixFileInDB()
     {

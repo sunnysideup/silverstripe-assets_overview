@@ -80,11 +80,10 @@ class OneFileInfo implements FileInfo
         if (! $this->hasCacheKey($cachekey)) {
             $this->getUncachedIntel();
             if ($this->intel['ErrorHasAnyError']) {
-                $this->flushNow('x ', '', false);
+                echo 'x ';
             } else {
-                $this->flushNow('✓ ', '', false);
+                echo '✓ ';
             }
-
             $this->setCacheValue($cachekey, $this->intel);
         } else {
             $this->intel = $this->getCacheValue($cachekey);

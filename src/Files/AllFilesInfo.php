@@ -184,7 +184,14 @@ class AllFilesInfo implements FileInfo
     {
         if ([] === self::$listOfFiles) {
             $cachekey = $this->getCacheKey();
-            if (! $this->hasCacheKey($cachekey)) {
+            if ($this->hasCacheKey($cachekey)) {
+                self::$listOfFiles = $this->getCacheValue($cachekey);
+                self::$availableExtensions = $this->getCacheValue($cachekey . 'availableExtensions');
+                self::$dataStaging = $this->getCacheValue($cachekey . 'dataStaging');
+                self::$dataLive = $this->getCacheValue($cachekey . 'dataLive');
+                self::$databaseLookupListStaging = $this->getCacheValue($cachekey . 'databaseLookupStaging');
+                self::$databaseLookupListLive = $this->getCacheValue($cachekey . 'databaseLookupLive');
+            } else {
                 $this->flushNow('<h1>Analysing files</h1>');
                 //disk
                 $diskArray = $this->getArrayOfFilesOnDisk();
@@ -206,13 +213,6 @@ class AllFilesInfo implements FileInfo
                 $this->setCacheValue($cachekey . 'dataLive', self::$dataLive);
                 $this->setCacheValue($cachekey . 'databaseLookupStaging', self::$databaseLookupListStaging);
                 $this->setCacheValue($cachekey . 'databaseLookupLive', self::$databaseLookupListLive);
-            } else {
-                self::$listOfFiles = $this->getCacheValue($cachekey);
-                self::$availableExtensions = $this->getCacheValue($cachekey . 'availableExtensions');
-                self::$dataStaging = $this->getCacheValue($cachekey . 'dataStaging');
-                self::$dataLive = $this->getCacheValue($cachekey . 'dataLive');
-                self::$databaseLookupListStaging = $this->getCacheValue($cachekey . 'databaseLookupStaging');
-                self::$databaseLookupListLive = $this->getCacheValue($cachekey . 'databaseLookupLive');
             }
         }
 
@@ -225,9 +225,9 @@ class AllFilesInfo implements FileInfo
             if (! isset(self::$listOfFiles[$path])) {
                 self::$listOfFiles[$path] = $inFileSystem;
                 if ($inFileSystem) {
-                    $this->flushNow('. ', '', false);
+                    echo '✓ ';
                 } else {
-                    $this->flushNow('x ', '', false);
+                    echo 'x ';
                 }
 
                 $extension = strtolower($this->getExtension($path));
@@ -305,7 +305,7 @@ class AllFilesInfo implements FileInfo
         $finalArray = [];
         foreach (['Stage', 'Live'] as $stage) {
             Versioned::set_stage($stage);
-            $files = File::get()->filter(['ClassName:not' => Folder::class])->filter(['ID' => 65]);
+            $files = File::get()->filter(['ClassName:not' => Folder::class]);
             foreach ($files as $file) {
                 $row = $file->toMap();
                 $absoluteLocation =  $this->path . DIRECTORY_SEPARATOR .  $file->getFilename();
@@ -322,8 +322,6 @@ class AllFilesInfo implements FileInfo
                 $finalArray[$absoluteLocation] = $absoluteLocation;
             }
         }
-        print_r($finalArray);
-        die('xxx');
         return $finalArray;
     }
 
