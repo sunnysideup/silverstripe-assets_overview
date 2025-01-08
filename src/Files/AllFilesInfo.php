@@ -10,8 +10,11 @@ use SilverStripe\Assets\Folder;
 use SilverStripe\Core\Config\Config;
 use SilverStripe\Core\Config\Configurable;
 use SilverStripe\Core\Injector\Injectable;
+use SilverStripe\Core\Injector\Injector;
+use SilverStripe\ORM\ArrayList;
 use SilverStripe\ORM\DB;
 use SilverStripe\Versioned\Versioned;
+use SilverStripe\View\ArrayData;
 use Sunnysideup\AssetsOverview\Interfaces\FileInfo;
 use Sunnysideup\AssetsOverview\Traits\Cacher;
 use Sunnysideup\AssetsOverview\Traits\FilesystemRelatedTraits;
@@ -25,40 +28,11 @@ class AllFilesInfo implements FileInfo
     use Cacher;
     use FlushNow;
 
-    /**
-     * @var string
-     */
-    protected string $path = '';
-
-    /**
-     * @var array
-     */
-    protected static array $dataStaging = [];
-
-    /**
-     * @var array
-     */
-    protected static array $dataLive = [];
-
-    /**
-     * @var array
-     */
-    protected static array $listOfFiles = [];
-
-    /**
-     * @var array
-     */
-    protected static array $databaseLookupListStaging = [];
-
-    /**
-     * @var array
-     */
-    protected static array $availableExtensions = [];
-
-    /**
-     * @var array
-     */
-    protected static array $databaseLookupListLive = [];
+    public static function inst(): AllFilesInfo
+    {
+        return Injector::inst()
+            ->get(AllFilesInfo::class, true, [ASSETS_PATH]);
+    }
 
     private static array $not_real_file_substrings = [
         DIRECTORY_SEPARATOR . '_resampled',
@@ -72,41 +46,150 @@ class AllFilesInfo implements FileInfo
         '__ResizedImage',
     ];
 
+    protected $debug = false;
+
+    /**
+     * @var string
+     */
+    protected string $path = '';
+
+    /**
+     * @var array
+     */
+    protected array $dataStaging = [];
+
+    /**
+     * @var array
+     */
+    protected array $dataLive = [];
+
+    /**
+     * @var array
+     */
+    protected array $listOfFiles = [];
+
+    /**
+     * @var array
+     */
+    protected array $databaseLookupListStaging = [];
+
+
+    /**
+     * @var array
+     */
+    protected array $databaseLookupListLive = [];
+
+
+    /**
+     * @var ArrayList
+     */
+    protected ArrayList $filesAsArrayList;
+
+    /**
+     * @var ArrayList
+     */
+    protected ArrayList $filesAsSortedArrayList;
+
+    /**
+     * @var array
+     */
+    protected array $availableExtensions = [];
+
+
+
+    /**
+     * @var int
+     */
+    protected int $totalFileCountRaw = 0;
+
+
+    /**
+     * @var int
+     */
+    protected int $totalFileCountFiltered = 0;
+
+    /**
+     * @var int
+     */
+    protected int $totalFileSizeFiltered = 0;
+
+    /**
+     * @var int
+     */
+    protected int $limit = 1000;
+
+    /**
+     * @var int
+     */
+    protected int $startLimit = 0;
+
+    /**
+     * @var int
+     */
+    protected int $endLimit = 0;
+
+    /**
+     * @var int
+     */
+    protected int $pageNumber = 1;
+
+    /**
+     * @var string
+     */
+    protected string $sorter = 'byfolder';
+    protected array $sorters = [];
+
+    /**
+     * @var string
+     */
+    protected string $filter = '';
+
+    /**
+     * @var string
+     */
+    protected array $filters = [];
+
+    /**
+     * @var string
+     */
+    protected string $displayer = 'thumbs';
+
+    /**
+     * @var array
+     */
+    protected array $allowedExtensions = [];
+
+
     public function __construct($path)
     {
         $this->path = $path;
     }
 
-    public static function getTotalFilesCount(): int
+    public function getTotalFilesCount(): int
     {
-        return (int) count(self::$listOfFiles);
-    }
-
-    public static function getAvailableExtensions(): array
-    {
-        return self::$availableExtensions ?? [];
+        return (int) count($this->listOfFiles);
     }
 
     /**
      * does the file exists in the database on staging?
      */
-    public static function existsOnStaging(int $id): bool
+    public function existsOnStaging(int $id): bool
     {
-        return isset(self::$dataStaging[$id]);
+        return isset($this->dataStaging[$id]);
     }
 
     /**
      * does the file exists in the database on live?
      */
-    public static function existsOnLive(int $id): bool
+    public function existsOnLive(int $id): bool
     {
-        return isset(self::$dataLive[$id]);
+        return isset($this->dataLive[$id]);
     }
 
     /**
      * get data from staging database row.
      */
-    public static function getAnyData(string $pathFromAssets, ?int $id = 0): array
+    public function getAnyData(string $pathFromAssets, ?int $id = 0): array
     {
         $data = self::getStagingData($pathFromAssets, $id);
         if (empty($data)) {
@@ -122,13 +205,14 @@ class AllFilesInfo implements FileInfo
      * @param string $pathFromAssets from the root of assets
      * @param int    $id
      */
-    public static function getStagingData(string $pathFromAssets, ?int $id = 0): array
+    public function getStagingData(string $pathFromAssets, ?int $id = 0): array
     {
         if (! $id) {
-            $id = self::$databaseLookupListStaging[$pathFromAssets] ?? 0;
+            echo "Searching for " . $pathFromAssets . ' in ' . print_r($this->databaseLookupListStaging, 1);
+            $id = $this->databaseLookupListStaging[$pathFromAssets] ?? 0;
         }
 
-        return self::$dataStaging[$id] ?? [];
+        return $this->dataStaging[$id] ?? [];
     }
 
     /**
@@ -136,13 +220,13 @@ class AllFilesInfo implements FileInfo
      *
      * @param string $pathFromAssets - full lookup list
      */
-    public static function getLiveData(string $pathFromAssets, ?int $id = 0): array
+    public function getLiveData(string $pathFromAssets, ?int $id = 0): array
     {
         if (! $id) {
-            $id = self::$databaseLookupListLive[$pathFromAssets] ?? 0;
+            $id = $this->databaseLookupListLive[$pathFromAssets] ?? 0;
         }
 
-        return self::$dataLive[$id] ?? [];
+        return $this->dataLive[$id] ?? [];
     }
 
     /**
@@ -151,9 +235,9 @@ class AllFilesInfo implements FileInfo
      *
      * @param mixed $value
      */
-    public static function findInStagingData(string $fieldName, $value): int
+    public function findInStagingData(string $fieldName, $value): int
     {
-        return self::findInData(self::$dataStaging, $fieldName, $value);
+        return self::findInData($this->dataStaging, $fieldName, $value);
     }
 
     /**
@@ -162,17 +246,17 @@ class AllFilesInfo implements FileInfo
      *
      * @param mixed $value
      */
-    public static function findInLiveData(string $fieldName, $value): int
+    public function findInLiveData(string $fieldName, $value): int
     {
-        return self::findInData(self::$dataLive, $fieldName, $value);
+        return self::findInData($this->dataLive, $fieldName, $value);
     }
 
-    public static function getTotalFileSizesRaw()
+    public function getTotalFileSizesRaw()
     {
         $bytestotal = 0;
-        $path = realpath(ASSETS_PATH);
-        if (false !== $path && '' !== $path && file_exists($path)) {
-            foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($path, FilesystemIterator::SKIP_DOTS)) as $object) {
+        $absoleteAssetPath = realpath(ASSETS_PATH);
+        if (false !== $absoleteAssetPath && '' !== $absoleteAssetPath && file_exists($absoleteAssetPath)) {
+            foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($absoleteAssetPath, FilesystemIterator::SKIP_DOTS)) as $object) {
                 $bytestotal += $object->getSize();
             }
         }
@@ -182,17 +266,16 @@ class AllFilesInfo implements FileInfo
 
     public function toArray(): array
     {
-        if ([] === self::$listOfFiles) {
+        if ([] === $this->listOfFiles) {
             $cachekey = $this->getCacheKey();
             if ($this->hasCacheKey($cachekey)) {
-                self::$listOfFiles = $this->getCacheValue($cachekey);
-                self::$availableExtensions = $this->getCacheValue($cachekey . 'availableExtensions');
-                self::$dataStaging = $this->getCacheValue($cachekey . 'dataStaging');
-                self::$dataLive = $this->getCacheValue($cachekey . 'dataLive');
-                self::$databaseLookupListStaging = $this->getCacheValue($cachekey . 'databaseLookupStaging');
-                self::$databaseLookupListLive = $this->getCacheValue($cachekey . 'databaseLookupLive');
+                $this->listOfFiles = $this->getCacheValue($cachekey);
+                $this->availableExtensions = $this->getCacheValue($cachekey . 'availableExtensions');
+                $this->dataStaging = $this->getCacheValue($cachekey . 'dataStaging');
+                $this->dataLive = $this->getCacheValue($cachekey . 'dataLive');
+                $this->databaseLookupListStaging = $this->getCacheValue($cachekey . 'databaseLookupStaging');
+                $this->databaseLookupListLive = $this->getCacheValue($cachekey . 'databaseLookupLive');
             } else {
-                $this->flushNow('<h1>Analysing files</h1>');
                 //disk
                 $diskArray = $this->getArrayOfFilesOnDisk();
                 foreach ($diskArray as $path) {
@@ -202,41 +285,158 @@ class AllFilesInfo implements FileInfo
                 //database
                 $databaseArray = $this->getArrayOfFilesInDatabase();
                 foreach ($databaseArray as $path) {
-                    $this->registerFile($path, false);
+                    $location = trim(str_repeat(ASSETS_PATH, $path), '/');
+                    $this->registerFile($location, false);
                 }
 
-                asort(self::$listOfFiles);
-                asort(self::$availableExtensions);
-                $this->setCacheValue($cachekey, self::$listOfFiles);
-                $this->setCacheValue($cachekey . 'availableExtensions', self::$availableExtensions);
-                $this->setCacheValue($cachekey . 'dataStaging', self::$dataStaging);
-                $this->setCacheValue($cachekey . 'dataLive', self::$dataLive);
-                $this->setCacheValue($cachekey . 'databaseLookupStaging', self::$databaseLookupListStaging);
-                $this->setCacheValue($cachekey . 'databaseLookupLive', self::$databaseLookupListLive);
+                asort($this->listOfFiles);
+                asort($this->availableExtensions);
+                $this->setCacheValue($cachekey, $this->listOfFiles);
+                $this->setCacheValue($cachekey . 'availableExtensions', $this->availableExtensions);
+                $this->setCacheValue($cachekey . 'dataStaging', $this->dataStaging);
+                $this->setCacheValue($cachekey . 'dataLive', $this->dataLive);
+                $this->setCacheValue($cachekey . 'databaseLookupStaging', $this->databaseLookupListStaging);
+                $this->setCacheValue($cachekey . 'databaseLookupLive', $this->databaseLookupListLive);
             }
         }
 
-        return self::$listOfFiles;
+        return $this->listOfFiles;
+    }
+
+    public function getFilesAsArrayList(): ArrayList
+    {
+        if (!isset($this->filesAsArrayList)) {
+            $rawArray = $this->toArray();
+            //prepare loop
+            $this->totalFileCountRaw = self::getTotalFilesCount();
+            $this->filesAsArrayList = ArrayList::create();
+            $filterFree = true;
+            $filterField = null;
+            $filterValues = [];
+            if (isset($this->filters[$this->filter])) {
+                $filterFree = false;
+                $filterField = $this->filters[$this->filter]['Field'];
+                $filterValues = $this->filters[$this->filter]['Values'];
+            }
+
+            foreach ($rawArray as $location => $fileExists) {
+                if ($this->isPathWithAllowedExtension($this->allowedExtensions, $location)) {
+                    $intel = $this->getDataAboutOneFile($location, $fileExists);
+                    if ($filterFree || in_array($intel[$filterField], $filterValues, 1)) {
+                        ++$this->totalFileCountFiltered;
+                        $this->totalFileSizeFiltered += $intel['PathFileSize'];
+                        $this->filesAsArrayList->push(
+                            ArrayData::create($intel)
+                        );
+                    }
+                }
+            }
+        }
+
+        return $this->filesAsArrayList;
+    }
+
+
+    public function getFilesAsSortedArrayList(): ArrayList
+    {
+        if (!isset($this->filesAsSortedArrayList)) {
+            $sortField = $this->sorters[$this->sorter]['Sort'];
+            $headerField = $this->sorters[$this->sorter]['Group'];
+            $this->filesAsSortedArrayList = ArrayList::create();
+            $this->filesAsArrayList = $this->filesAsArrayList->Sort($sortField);
+
+            $count = 0;
+
+            $innerArray = ArrayList::create();
+            $prevHeader = 'nothing here....';
+            $newHeader = '';
+            foreach ($this->filesAsArrayList as $file) {
+                $newHeader = $file->{$headerField};
+                if ($newHeader !== $prevHeader) {
+                    $this->addTofilesAsSortedArrayList(
+                        $prevHeader, //correct! important ...
+                        $innerArray
+                    );
+                    $prevHeader = $newHeader;
+                    unset($innerArray);
+                    $innerArray = ArrayList::create();
+                }
+
+                if ($count >= $this->startLimit && $count < $this->endLimit) {
+                    $innerArray->push($file);
+                } elseif ($count >= $this->endLimit) {
+                    break;
+                }
+
+                ++$count;
+            }
+
+            //last one!
+            $this->addTofilesAsSortedArrayList(
+                $newHeader,
+                $innerArray
+            );
+        }
+
+        return $this->filesAsSortedArrayList;
+    }
+
+    protected function addTofilesAsSortedArrayList(string $header, ArrayList $arrayList)
+    {
+        if ($arrayList->exists()) {
+            $count = $this->filesAsSortedArrayList->count();
+            $this->filesAsSortedArrayList->push(
+                ArrayData::create(
+                    [
+                        'Number' => $count,
+                        'SubTitle' => $header,
+                        'Items' => $arrayList,
+                    ]
+                )
+            );
+        }
+    }
+
+    protected function getDataAboutOneFile(string $location, ?bool $fileExists): array
+    {
+        return OneFileInfo::inst($location, $fileExists)
+            ->toArray();
+    }
+
+    /**
+     * @param string $path - does not have to be full path
+     */
+    protected function isPathWithAllowedExtension(array $allowedExtensions, string $path): bool
+    {
+        $count = count($allowedExtensions);
+        if (0 === $count) {
+            return true;
+        }
+
+        $extension = strtolower($this->getExtension($path));
+        if ($extension === '') {
+            $extension = 'n/a';
+        }
+
+        return in_array($extension, $allowedExtensions, true);
     }
 
     protected function registerFile($path, ?bool $inFileSystem = true)
     {
         if ($path) {
-            if (! isset(self::$listOfFiles[$path])) {
-                self::$listOfFiles[$path] = $inFileSystem;
-                if ($inFileSystem) {
-                    echo '✓ ';
-                } else {
-                    echo 'x ';
+            if (! isset($this->listOfFiles[$path])) {
+                $this->listOfFiles[$path] = $inFileSystem;
+                if ($this->debug) {
+                    echo $inFileSystem ? '✓ ' : 'x ';
                 }
 
                 $extension = strtolower($this->getExtension($path));
-                self::$availableExtensions[$extension] = $extension;
+                $this->availableExtensions[$extension] = $extension;
             }
         }
     }
 
-    protected static function findIdFromFileName(array $data, string $filename): int
+    protected function findIdFromFileName(array $data, string $filename): int
     {
         $id = self::findInData($data, 'FileFilename', $filename);
         if (! $id) {
@@ -249,7 +449,7 @@ class AllFilesInfo implements FileInfo
     /**
      * @param mixed $value
      */
-    protected static function findInData(array $data, string $fieldName, $value): int
+    protected function findInData(array $data, string $fieldName, $value): int
     {
         foreach ($data as $id => $row) {
             if (isset($row[$fieldName])) {
@@ -262,16 +462,16 @@ class AllFilesInfo implements FileInfo
         return 0;
     }
 
-    protected function isRealFile(string $path): bool
+    protected function isRealFile(string $absolutePath): bool
     {
         $listOfItemsToSearchFor = Config::inst()->get(self::class, 'not_real_file_substrings');
         foreach ($listOfItemsToSearchFor as $test) {
-            if (strpos($path, $test)) {
+            if (strpos($absolutePath, $test)) {
                 return false;
             }
         }
 
-        $fileName = basename($path);
+        $fileName = basename($absolutePath);
 
         return ! ('error' === substr((string) $fileName, 0, 5) && '.html' === substr((string) $fileName, -5));
     }
@@ -284,12 +484,12 @@ class AllFilesInfo implements FileInfo
             RecursiveIteratorIterator::SELF_FIRST
         );
         foreach ($arrayRaw as $src) {
-            $path = $src->getPathName();
-            if (false === $this->isRealFile($path)) {
+            $absolutePath = $src->getPathName();
+            if (false === $this->isRealFile($absolutePath)) {
                 continue;
             }
-
-            $finalArray[$path] = $path;
+            $location = trim(str_replace(ASSETS_PATH, '', $absolutePath), '/');
+            $finalArray[$location] = $location;
         }
 
         return $finalArray;
@@ -305,21 +505,24 @@ class AllFilesInfo implements FileInfo
         $finalArray = [];
         foreach (['Stage', 'Live'] as $stage) {
             Versioned::set_stage($stage);
-            $files = File::get()->filter(['ClassName:not' => Folder::class]);
+            $files = File::get();
             foreach ($files as $file) {
                 $row = $file->toMap();
-                $absoluteLocation =  $this->path . DIRECTORY_SEPARATOR .  $file->getFilename();
+                $location = trim($file->getFilename(), '/');
+                if (!$location) {
+                    $location = $file->generateFilename();
+                }
                 if ('Stage' === $stage) {
-                    self::$dataStaging[$row['ID']] = $row;
-                    self::$databaseLookupListStaging[$absoluteLocation] = $row['ID'];
+                    $this->dataStaging[$row['ID']] = $row;
+                    $this->databaseLookupListStaging[$location] = $row['ID'];
                 } elseif ('Live' === $stage) {
-                    self::$dataLive[$row['ID']] = $row;
-                    self::$databaseLookupListLive[$absoluteLocation] = $row['ID'];
+                    $this->dataLive[$row['ID']] = $row;
+                    $this->databaseLookupListLive[$location] = $row['ID'];
                 } else {
                     user_error('Can not find stage');
                 }
 
-                $finalArray[$absoluteLocation] = $absoluteLocation;
+                $finalArray[$location] = $location;
             }
         }
         return $finalArray;
@@ -332,5 +535,95 @@ class AllFilesInfo implements FileInfo
     protected function getCacheKey(): string
     {
         return 'allfiles';
+    }
+
+
+    public function getAvailableExtensions(): array
+    {
+        return $this->availableExtensions;
+    }
+
+
+    public function getTotalFileCountRaw(): int
+    {
+        return $this->totalFileCountRaw;
+    }
+
+
+    public function getTotalFileCountFiltered(): int
+    {
+        return $this->totalFileCountFiltered;
+    }
+
+
+    public function getTotalFileSizeFiltered(): int
+    {
+        return $this->totalFileSizeFiltered;
+    }
+
+    public function setAvailableExtensions(array $availableExtensions): static
+    {
+        $this->availableExtensions = $availableExtensions;
+        return $this;
+    }
+
+    public function setFilters(array $filters): static
+    {
+        $this->filters = $filters;
+        return $this;
+    }
+
+    public function setSorters(array $sorters): static
+    {
+        $this->sorters = $sorters;
+        return $this;
+    }
+
+    public function setLimit(int $limit): static
+    {
+        $this->limit = $limit;
+        return $this;
+    }
+
+    public function setStartLimit(int $startLimit): static
+    {
+        $this->startLimit = $startLimit;
+        return $this;
+    }
+
+    public function setEndLimit(int $endLimit): static
+    {
+        $this->endLimit = $endLimit;
+        return $this;
+    }
+
+    public function setPageNumber(int $pageNumber): static
+    {
+        $this->pageNumber = $pageNumber;
+        return $this;
+    }
+
+    public function setSorter(string $sorter): static
+    {
+        $this->sorter = $sorter;
+        return $this;
+    }
+
+    public function setFilter(string $filter): static
+    {
+        $this->filter = $filter;
+        return $this;
+    }
+
+    public function setDisplayer(string $displayer): static
+    {
+        $this->displayer = $displayer;
+        return $this;
+    }
+
+    public function setAllowedExtensions(array $allowedExtensions): static
+    {
+        $this->allowedExtensions = $allowedExtensions;
+        return $this;
     }
 }

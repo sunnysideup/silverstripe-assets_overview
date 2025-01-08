@@ -27,11 +27,6 @@ class Fix extends ContentController
 {
     use FilesystemRelatedTraits;
 
-    /**
-     * @var string
-     */
-    private const ONE_FILE_INFO_CLASS = OneFileInfo::class;
-
     protected $intel = [];
 
     private static $allowed_actions = [
@@ -92,9 +87,9 @@ class Fix extends ContentController
 
     protected function getDataAboutOneFile(string $absoluteLocation): array
     {
-        $obj = Injector::inst()->get(OneFileInfo::class, true, [$absoluteLocation]);
+        $obj = OneFileInfo::inst($absoluteLocation);
 
-        return $this->getUncachedIntel($absoluteLocation);
+        return $this->toArray($absoluteLocation);
     }
 
     protected function fixErrorDBNotPresent()

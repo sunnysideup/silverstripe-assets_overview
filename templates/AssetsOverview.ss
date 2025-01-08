@@ -397,7 +397,7 @@
                         <ul id="section-$Number" class="break">
                         <% loop $Items %>
                             <li>
-                                <h5><a href="$PathFromPublicRoot">$PathFromAssetsFolder</a></h5>
+                                <h5><a href="$PathFromPublicRoot">$Path</a></h5>
                             </li>
                         <% end_loop %>
                         </ul>
@@ -409,7 +409,7 @@
                         <ul id="section-$Number" class="break">
                         <% loop $Items %>
                             <li>
-                                <h5><a href="$PathFromPublicRoot">$PathFromAssetsFolder</a></h5>
+                                <h5><a href="$PathFromPublicRoot">$Path</a></h5>
                                 <ul>
                                 <% loop $FullFields %>
                                     <li><strong>$Key:</strong> $Value</li>

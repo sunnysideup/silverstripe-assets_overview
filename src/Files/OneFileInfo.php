@@ -6,6 +6,7 @@ use Exception;
 use SilverStripe\Assets\File;
 use SilverStripe\Assets\Folder;
 use SilverStripe\Assets\Storage\DBFile;
+use SilverStripe\Control\Controller;
 use SilverStripe\Core\Config\Configurable;
 use SilverStripe\Core\Injector\Injectable;
 use SilverStripe\Core\Injector\Injector;
@@ -27,7 +28,19 @@ class OneFileInfo implements FileInfo
     use Cacher;
     use FlushNow;
 
-    protected $errorFields = [
+    protected static array $cached_inst = [];
+
+    public static function inst(string $path, ?bool $exists = null): OneFileInfo
+    {
+        if (!isset(self::$cached_inst[$path])) {
+            self::$cached_inst[$path] = new OneFileInfo($path, $exists);
+        }
+        return self::$cached_inst[$path];
+    }
+
+    protected bool $debug = false;
+
+    protected array $errorFields = [
         'ErrorDBNotPresent',
         'ErrorDBNotPresentLive',
         'ErrorDBNotPresentStaging',
@@ -43,46 +56,46 @@ class OneFileInfo implements FileInfo
     /**
      * @var string
      */
-    protected $hash = '';
+    protected string $hash = '';
 
     /**
      * @var string
      */
-    protected $path = '';
+    protected string $path = '';
+    protected string $absoletePath = '';
 
     /**
      * @var array
      */
-    protected $intel = [];
+    protected array $intel = [];
 
     /**
      * @var array
      */
-    protected $parthParts = '';
+    protected array $parthParts = [];
 
     /**
      * @var bool
      */
-    protected $fileExists = false;
+    protected bool $fileExists = false;
 
-    protected $folderCache = [];
+    protected array $folderCache = [];
 
-    public function __construct(string $absoluteLocation, ?bool $fileExists = null)
+    public function __construct(string $location, ?bool $fileExists = null)
     {
-        $this->path = $absoluteLocation;
+        $this->path = $location;
+        $this->absoletePath = ASSETS_PATH . DIRECTORY_SEPARATOR . $this->path;
         $this->hash = md5($this->path);
-        $this->fileExists = null === $fileExists ? file_exists($this->path) : $fileExists;
+        $this->fileExists = null === $fileExists ? file_exists($this->absoletePath) : $fileExists;
     }
 
-    public function toArray(): array
+    public function toArray(?bool $recalc = false): array
     {
         $cachekey = $this->getCacheKey();
-        if (! $this->hasCacheKey($cachekey)) {
+        if (! $this->hasCacheKey($cachekey) || $recalc) {
             $this->getUncachedIntel();
-            if ($this->intel['ErrorHasAnyError']) {
-                echo 'x ';
-            } else {
-                echo '✓ ';
+            if ($this->debug) {
+                echo $this->intel['ErrorHasAnyError'] ? 'x ' : '✓ ';
             }
             $this->setCacheValue($cachekey, $this->intel);
         } else {
@@ -92,33 +105,34 @@ class OneFileInfo implements FileInfo
         return $this->intel;
     }
 
-    protected function getUncachedIntel()
+    protected function getUncachedIntel(): void
     {
+
         $this->addFileSystemDetails();
         $this->addImageDetails();
-        $dbFileData = AllFilesInfo::getAnyData($this->intel['PathFromAssetsFolder']);
+
+        $obj = AllFilesInfo::inst();
+        $dbFileData = $obj->getAnyData($this->intel['Path']);
         $this->addFolderDetails($dbFileData);
         $this->addDBDetails($dbFileData);
         $this->addCalculatedValues();
         $this->addHumanValues();
         ksort($this->intel);
-
-        return $this->intel;
     }
 
     protected function isRegularImage(string $extension): bool
     {
         return in_array(
             strtolower($extension),
-            ['jpg', 'gif', 'png'],
+            ['jpg', 'gif', 'png', 'webp', 'jpeg', 'bmp', 'tiff', 'svg'],
             true
         );
     }
 
-    protected function isImage(string $filename): bool
+    protected function isImage(string $absolutePath): bool
     {
         try {
-            $outcome = (bool) @exif_imagetype($filename);
+            $outcome = (bool) @exif_imagetype($absolutePath);
         } catch (Exception $exception) {
             $outcome = false;
         }
@@ -131,7 +145,7 @@ class OneFileInfo implements FileInfo
         //get path parts
         $this->parthParts = [];
         if ($this->fileExists) {
-            $this->parthParts = pathinfo($this->path);
+            $this->parthParts = pathinfo($this->absoletePath);
         }
 
         $this->parthParts['extension'] = $this->parthParts['extension'] ?? '';
@@ -142,24 +156,25 @@ class OneFileInfo implements FileInfo
         $this->intel['Path'] = $this->path;
         $this->intel['PathFolderPath'] = $this->parthParts['dirname'] ?: dirname($this->intel['Path']);
         //file name
-        $this->intel['PathFileName'] = $this->parthParts['filename'] ?: basename($this->path);
+        $this->intel['PathFileName'] = $this->parthParts['filename'] ?: basename($this->absoletePath);
         $this->intel['PathFileNameFirstLetter'] = strtoupper(substr((string) $this->intel['PathFileName'], 0, 1));
 
         //defaults
         $this->intel['ErrorIsInFileSystem'] = true;
         $this->intel['PathFileSize'] = 0;
-        $this->intel['IsDir'] = is_dir($this->path);
+        $this->intel['IsDir'] = is_dir($this->absoletePath);
 
         //in file details
         if ($this->fileExists) {
             $this->intel['ErrorIsInFileSystem'] = false;
-            $this->intel['PathFileSize'] = filesize($this->path);
+            $this->intel['PathFileSize'] = filesize($this->absoletePath);
         }
 
         //path
-        $this->intel['PathFromPublicRoot'] = trim(str_replace($this->getPublicBaseFolder(), '', (string) $this->path), DIRECTORY_SEPARATOR);
-        $this->intel['PathFromAssetsFolder'] = trim(str_replace($this->getAssetsBaseFolder(), '', (string) $this->path), DIRECTORY_SEPARATOR);
-        $this->intel['PathFolderFromAssets'] = dirname($this->intel['PathFromAssetsFolder']);
+        $this->intel['PathFromPublicRoot'] = trim(str_replace($this->getPublicBaseFolder(), '', (string) $this->absoletePath), DIRECTORY_SEPARATOR);
+        $this->intel['Path'] = trim($this->path, '/');
+        $this->intel['AbsoletePath'] = Controller::join_links(ASSETS_PATH, $this->intel['Path']);
+        $this->intel['PathFolderFromAssets'] = dirname($this->path);
         if ('.' === $this->intel['PathFolderFromAssets']) {
             $this->intel['PathFolderFromAssets'] = '--in-root-folder--';
         }
@@ -202,10 +217,10 @@ class OneFileInfo implements FileInfo
 
         if ($this->fileExists) {
             $this->intel['ImageIsRegularImage'] = $this->isRegularImage($this->intel['PathExtension']);
-            $this->intel['ImageIsImage'] = $this->intel['ImageIsRegularImage'] ? true : $this->isImage($this->path);
+            $this->intel['ImageIsImage'] = $this->intel['ImageIsRegularImage'] ? true : $this->isImage($this->absoletePath);
             if ($this->intel['ImageIsImage']) {
                 try {
-                    list($width, $height, $type, $attr) = getimagesize($this->path);
+                    list($width, $height, $type, $attr) = getimagesize($this->absoletePath);
                 } catch (Exception $exception) {
                     $width = 0;
                     $height = 0;
@@ -273,17 +288,18 @@ class OneFileInfo implements FileInfo
             $this->intel['ErrorInFilename'] = false;
             $this->intel['ErrorInSs3Ss4Comparison'] = false;
             if ($this->fileExists) {
-                $time = filemtime($this->path);
+                $time = filemtime($this->absoletePath);
             }
         } else {
+            $obj = AllFilesInfo::inst();
             $dbFileData['Filename'] = $dbFileData['Filename'] ?? '';
             $this->intel['DBID'] = $dbFileData['ID'];
             $this->intel['DBClassName'] = $dbFileData['ClassName'];
             $this->intel['DBParentID'] = $dbFileData['ParentID'];
             $this->intel['DBPath'] = $dbFileData['FileFilename'] ?? $dbFileData['Filename'] ?? '';
             $this->intel['DBFilename'] = $dbFileData['Name'] ?: basename($this->intel['DBPath']);
-            $existsOnStaging = AllFilesInfo::existsOnStaging($this->intel['DBID']);
-            $existsOnLive = AllFilesInfo::existsOnLive($this->intel['DBID']);
+            $existsOnStaging = $obj->existsOnStaging($this->intel['DBID']);
+            $existsOnLive = $obj->existsOnLive($this->intel['DBID']);
             $this->intel['ErrorDBNotPresentStaging'] = ! $existsOnStaging;
             $this->intel['ErrorDBNotPresentLive'] = ! $existsOnLive;
             $this->intel['ErrorInDraftOnly'] = $existsOnStaging && ! $existsOnLive;
@@ -292,7 +308,7 @@ class OneFileInfo implements FileInfo
             $this->intel['DBTitle'] = $dbFileData['Title'];
             $this->intel['DBFilenameSS4'] = $dbFileData['FileFilename'];
             $this->intel['DBFilenameSS3'] = $dbFileData['Filename'];
-            $this->intel['ErrorInFilename'] = $this->intel['PathFromAssetsFolder'] !== $this->intel['DBPath'];
+            $this->intel['ErrorInFilename'] = $this->intel['Path'] !== $this->intel['DBPath'];
             $ss3FileName = $dbFileData['Filename'] ?? '';
             if ('assets/' === substr((string) $ss3FileName, 0, strlen('assets/'))) {
                 $ss3FileName = substr((string) $ss3FileName, strlen('assets/'));
@@ -352,7 +368,7 @@ class OneFileInfo implements FileInfo
 
     // protected function getBackupDataObject()
     // {
-    //     $file = DataObject::get_one(File::class, ['FileFilename' => $this->intel['PathFromAssetsFolder']]);
+    //     $file = DataObject::get_one(File::class, ['FileFilename' => $this->intel['Path']]);
     //     //backup for file ...
     //     if (! $file) {
     //         if ($folder) {

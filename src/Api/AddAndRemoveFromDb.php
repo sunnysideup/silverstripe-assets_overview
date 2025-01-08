@@ -23,12 +23,12 @@ class AddAndRemoveFromDb
         if ($mode !== 'add' && $mode !== 'remove' && $mode !== null) {
             user_error('Mode must be either "add" or "remove" or not set at all', E_USER_ERROR);
         }
-        $pathFromAssetsFolder = $oneFileInfoArray['PathFromAssetsFolder'];
-        $localPath = $oneFileInfoArray['Path'];
+        $pathFromAssetsFolder = $oneFileInfoArray['Path'];
+        $absoletePath = $oneFileInfoArray['AbsolutePath'];
         if ($oneFileInfoArray['IsDir']) {
             DB::alteration_message('Skipping ' . $pathFromAssetsFolder . ' as this is a folder', '');
         } elseif (! empty($oneFileInfoArray['IsResizedImage'])) {
-            if (file_exists($localPath)) {
+            if (file_exists($absoletePath)) {
                 DB::alteration_message('Deleting ' . $pathFromAssetsFolder, 'deleted');
                 //unlink($localPath);
             }
@@ -52,13 +52,14 @@ class AddAndRemoveFromDb
 
     public function addFileToDb(array $oneFileInfoArray)
     {
-        $localPath = $oneFileInfoArray['Path'];
-        $pathFromAssetsFolder = $oneFileInfoArray['PathFromAssetsFolder'];
-        $extension = File::get_file_extension($localPath);
+        $location = $oneFileInfoArray['Path'];
+        $absolutePath = $oneFileInfoArray['AbsolutePath'];
+        $pathFromAssetsFolder = $oneFileInfoArray['Path'];
+        $extension = File::get_file_extension($absolutePath);
         $newClass = File::get_class_for_file_extension($extension);
         $newFile = Injector::inst()->create($newClass);
-        if (file_exists($localPath)) {
-            $newFile->setFromLocalFile($localPath, $pathFromAssetsFolder);
+        if (file_exists($absolutePath)) {
+            $newFile->setFromLocalFile($absolutePath, $pathFromAssetsFolder);
             try {
                 $newFile->write();
             } catch (\Exception $e) {
@@ -78,5 +79,6 @@ class AddAndRemoveFromDb
         if ($this->Config()->publish_recursive) {
             $newFile->publishRecursive();
         }
+        $newFile->publishSingle();
     }
 }
