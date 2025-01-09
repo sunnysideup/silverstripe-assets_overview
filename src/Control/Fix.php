@@ -133,8 +133,20 @@ class Fix extends ContentController
 
     protected function fixErrorInSs3Ss4Comparison()
     {
-        DB::query('UPDATE "File" SET "Filename" = "FileFileName" WHERE ID =' . $this->intel['DBID']);
-        DB::query('UPDATE "File_Live" SET "Filename" = "FileFileName" WHERE ID =' . $this->intel['DBID']);
+        foreach (['', '_Live'] as $stage) {
+            DB::query(
+                '
+                UPDATE "File"' . $stage . '
+                SET "Filename" = "FileFileName"
+                WHERE ID =' . $this->intel['DBID'] . ' AND "Filename" <> "FileFileName" AND "FileFileName" IS NOT NULL AND "FileFileName" <> \'\''
+            );
+            DB::query(
+                '
+                UPDATE "File"' . $stage . '
+                SET "FileFileName" = "Filename"
+                WHERE ID =' . $this->intel['DBID'] . ' AND "Filename" <> "FileFileName" AND "Filename" IS NOT NULL AND "Filename" <> \'\''
+            );
+        }
 
         return true;
     }

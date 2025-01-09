@@ -24,11 +24,11 @@ class AddAndRemoveFromDb
             user_error('Mode must be either "add" or "remove" or not set at all', E_USER_ERROR);
         }
         $pathFromAssetsFolder = $oneFileInfoArray['Path'];
-        $absoletePath = $oneFileInfoArray['AbsolutePath'];
+        $absolutePath = $oneFileInfoArray['AbsolutePath'];
         if ($oneFileInfoArray['IsDir']) {
             DB::alteration_message('Skipping ' . $pathFromAssetsFolder . ' as this is a folder', '');
         } elseif (! empty($oneFileInfoArray['IsResizedImage'])) {
-            if (file_exists($absoletePath)) {
+            if (file_exists($absolutePath)) {
                 DB::alteration_message('Deleting ' . $pathFromAssetsFolder, 'deleted');
                 //unlink($localPath);
             }

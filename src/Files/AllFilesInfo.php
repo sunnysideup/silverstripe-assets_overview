@@ -208,7 +208,6 @@ class AllFilesInfo implements FileInfo
     public function getStagingData(string $pathFromAssets, ?int $id = 0): array
     {
         if (! $id) {
-            echo "Searching for " . $pathFromAssets . ' in ' . print_r($this->databaseLookupListStaging, 1);
             $id = $this->databaseLookupListStaging[$pathFromAssets] ?? 0;
         }
 
@@ -254,9 +253,9 @@ class AllFilesInfo implements FileInfo
     public function getTotalFileSizesRaw()
     {
         $bytestotal = 0;
-        $absoleteAssetPath = realpath(ASSETS_PATH);
-        if (false !== $absoleteAssetPath && '' !== $absoleteAssetPath && file_exists($absoleteAssetPath)) {
-            foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($absoleteAssetPath, FilesystemIterator::SKIP_DOTS)) as $object) {
+        $absoluteAssetPath = realpath(ASSETS_PATH);
+        if (false !== $absoluteAssetPath && '' !== $absoluteAssetPath && file_exists($absoluteAssetPath)) {
+            foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($absoluteAssetPath, FilesystemIterator::SKIP_DOTS)) as $object) {
                 $bytestotal += $object->getSize();
             }
         }
@@ -285,7 +284,7 @@ class AllFilesInfo implements FileInfo
                 //database
                 $databaseArray = $this->getArrayOfFilesInDatabase();
                 foreach ($databaseArray as $path) {
-                    $location = trim(str_repeat(ASSETS_PATH, $path), '/');
+                    $location = trim(str_replace(ASSETS_PATH, '', $path), '/');
                     $this->registerFile($location, false);
                 }
 
@@ -436,15 +435,6 @@ class AllFilesInfo implements FileInfo
         }
     }
 
-    protected function findIdFromFileName(array $data, string $filename): int
-    {
-        $id = self::findInData($data, 'FileFilename', $filename);
-        if (! $id) {
-            $id = self::findInData($data, 'Filename', $filename);
-        }
-
-        return $id;
-    }
 
     /**
      * @param mixed $value
@@ -472,8 +462,8 @@ class AllFilesInfo implements FileInfo
         }
 
         $fileName = basename($absolutePath);
-
-        return ! ('error' === substr((string) $fileName, 0, 5) && '.html' === substr((string) $fileName, -5));
+        $isErrorPage = ('error' === substr((string) $fileName, 0, 5) && '.html' === substr((string) $fileName, -5));
+        return ! $isErrorPage;
     }
 
     protected function getArrayOfFilesOnDisk(): array
@@ -525,6 +515,7 @@ class AllFilesInfo implements FileInfo
                 $finalArray[$location] = $location;
             }
         }
+        Versioned::set_stage('Stage');
         return $finalArray;
     }
 
