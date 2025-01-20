@@ -18,6 +18,21 @@ class AddAndRemoveFromDb
 
     private static $publish_recursive = true;
 
+    protected $dryRun = true;
+
+    public function __construct(?bool $dryRun = true)
+    {
+        $this->dryRun = $dryRun;
+    }
+
+    public function setIsDryRun(bool $b): static
+    {
+        $this->dryRun = $b;
+        return $this;
+    }
+
+
+
     public function run(array $oneFileInfoArray, ?string $mode = null)
     {
         if ($mode !== 'add' && $mode !== 'remove' && $mode !== null) {
@@ -25,21 +40,46 @@ class AddAndRemoveFromDb
         }
         $pathFromAssetsFolder = $oneFileInfoArray['Path'];
         $absolutePath = $oneFileInfoArray['AbsolutePath'];
+
+        $reasonPadding = 15; // Adjust padding as needed for alignment
+
+
+        // Usage
         if ($oneFileInfoArray['IsDir']) {
-            DB::alteration_message('Skipping ' . $pathFromAssetsFolder . ' as this is a folder', '');
-        } elseif (! empty($oneFileInfoArray['IsResizedImage'])) {
+            $this->logMessage('Skipping [FOLDER]', $pathFromAssetsFolder);
+        } elseif (!empty($oneFileInfoArray['IsResizedImage'])) {
             if (file_exists($absolutePath)) {
-                DB::alteration_message('Deleting ' . $pathFromAssetsFolder, 'deleted');
-                //unlink($localPath);
+                $this->logMessage('Deleting', $pathFromAssetsFolder, 'deleted');
+                if ($this->dryRun === false) {
+                    unlink($absolutePath);
+                }
             }
+            $this->logMessage('Skipping [RESIZED IMAGE]', $pathFromAssetsFolder);
         } elseif ($oneFileInfoArray['ErrorDBNotPresent'] && $mode !== 'remove') {
-            DB::alteration_message('Adding file to database ' . $pathFromAssetsFolder, 'created');
-            $this->addFileToDb($oneFileInfoArray);
+            $this->logMessage('+++ Adding to DB', $pathFromAssetsFolder, 'created');
+            if ($this->dryRun === false) {
+                $this->addFileToDb($oneFileInfoArray);
+            }
         } elseif ($oneFileInfoArray['ErrorIsInFileSystem'] && $mode !== 'add') {
-            DB::alteration_message('Removing from database ' . $pathFromAssetsFolder, 'deleted');
-            $this->removeFileFromDb($oneFileInfoArray);
+            $this->logMessage('--- Removing from DB', $pathFromAssetsFolder, 'deleted');
+            if ($this->dryRun === false) {
+                $this->removeFileFromDb($oneFileInfoArray);
+            }
+        } else {
+            $this->logMessage('Skipping [ALL OK]', $pathFromAssetsFolder);
         }
     }
+
+    private function logMessage(string $action, string $path, string $type = ''): void
+    {
+
+        $action = strtoupper($action);
+        $reasonPadding = 15; // Adjust padding as needed for alignment
+        $formattedAction = str_pad($action, $reasonPadding);
+        $path .= ($this->dryRun ? ' (DRY RUN)' : ' (FOR REAL)');
+        DB::alteration_message($formattedAction . ': ' . $path, $type);
+    }
+
 
     public function removeFileFromDb(array $oneFileInfoArray)
     {

@@ -6,13 +6,11 @@ use FilesystemIterator;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use SilverStripe\Assets\File;
-use SilverStripe\Assets\Folder;
 use SilverStripe\Core\Config\Config;
 use SilverStripe\Core\Config\Configurable;
 use SilverStripe\Core\Injector\Injectable;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\ORM\ArrayList;
-use SilverStripe\ORM\DB;
 use SilverStripe\Versioned\Versioned;
 use SilverStripe\View\ArrayData;
 use Sunnysideup\AssetsOverview\Interfaces\FileInfo;
@@ -34,6 +32,12 @@ class AllFilesInfo implements FileInfo
             ->get(AllFilesInfo::class, true, [ASSETS_PATH]);
     }
 
+    public function setVerbose(bool $b): static
+    {
+        $this->verbose = $b;
+        return $this;
+    }
+
     private static array $not_real_file_substrings = [
         DIRECTORY_SEPARATOR . '_resampled',
         DIRECTORY_SEPARATOR . '__',
@@ -46,7 +50,7 @@ class AllFilesInfo implements FileInfo
         '__ResizedImage',
     ];
 
-    protected $debug = false;
+    protected bool $verbose = false;
 
     /**
      * @var string
@@ -160,7 +164,7 @@ class AllFilesInfo implements FileInfo
     protected array $allowedExtensions = [];
 
 
-    public function __construct($path)
+    public function __construct(?string $path = ASSETS_PATH)
     {
         $this->path = $path;
     }
@@ -380,6 +384,97 @@ class AllFilesInfo implements FileInfo
         return $this->filesAsSortedArrayList;
     }
 
+
+    public function getAvailableExtensions(): array
+    {
+        return $this->availableExtensions;
+    }
+
+
+    public function getTotalFileCountRaw(): int
+    {
+        return $this->totalFileCountRaw;
+    }
+
+
+    public function getTotalFileCountFiltered(): int
+    {
+        return $this->totalFileCountFiltered;
+    }
+
+
+    public function getTotalFileSizeFiltered(): int
+    {
+        return $this->totalFileSizeFiltered;
+    }
+
+    public function setAvailableExtensions(array $availableExtensions): static
+    {
+        $this->availableExtensions = $availableExtensions;
+        return $this;
+    }
+
+    public function setFilters(array $filters): static
+    {
+        $this->filters = $filters;
+        return $this;
+    }
+
+    public function setSorters(array $sorters): static
+    {
+        $this->sorters = $sorters;
+        return $this;
+    }
+
+    public function setLimit(int $limit): static
+    {
+        $this->limit = $limit;
+        return $this;
+    }
+
+    public function setStartLimit(int $startLimit): static
+    {
+        $this->startLimit = $startLimit;
+        return $this;
+    }
+
+    public function setEndLimit(int $endLimit): static
+    {
+        $this->endLimit = $endLimit;
+        return $this;
+    }
+
+    public function setPageNumber(int $pageNumber): static
+    {
+        $this->pageNumber = $pageNumber;
+        return $this;
+    }
+
+    public function setSorter(string $sorter): static
+    {
+        $this->sorter = $sorter;
+        return $this;
+    }
+
+    public function setFilter(string $filter): static
+    {
+        $this->filter = $filter;
+        return $this;
+    }
+
+    public function setDisplayer(string $displayer): static
+    {
+        $this->displayer = $displayer;
+        return $this;
+    }
+
+    public function setAllowedExtensions(array $allowedExtensions): static
+    {
+        $this->allowedExtensions = $allowedExtensions;
+        return $this;
+    }
+
+
     protected function addTofilesAsSortedArrayList(string $header, ArrayList $arrayList)
     {
         if ($arrayList->exists()) {
@@ -425,7 +520,7 @@ class AllFilesInfo implements FileInfo
         if ($path) {
             if (! isset($this->listOfFiles[$path])) {
                 $this->listOfFiles[$path] = $inFileSystem;
-                if ($this->debug) {
+                if ($this->verbose) {
                     echo $inFileSystem ? '✓ ' : 'x ';
                 }
 
@@ -526,95 +621,5 @@ class AllFilesInfo implements FileInfo
     protected function getCacheKey(): string
     {
         return 'allfiles';
-    }
-
-
-    public function getAvailableExtensions(): array
-    {
-        return $this->availableExtensions;
-    }
-
-
-    public function getTotalFileCountRaw(): int
-    {
-        return $this->totalFileCountRaw;
-    }
-
-
-    public function getTotalFileCountFiltered(): int
-    {
-        return $this->totalFileCountFiltered;
-    }
-
-
-    public function getTotalFileSizeFiltered(): int
-    {
-        return $this->totalFileSizeFiltered;
-    }
-
-    public function setAvailableExtensions(array $availableExtensions): static
-    {
-        $this->availableExtensions = $availableExtensions;
-        return $this;
-    }
-
-    public function setFilters(array $filters): static
-    {
-        $this->filters = $filters;
-        return $this;
-    }
-
-    public function setSorters(array $sorters): static
-    {
-        $this->sorters = $sorters;
-        return $this;
-    }
-
-    public function setLimit(int $limit): static
-    {
-        $this->limit = $limit;
-        return $this;
-    }
-
-    public function setStartLimit(int $startLimit): static
-    {
-        $this->startLimit = $startLimit;
-        return $this;
-    }
-
-    public function setEndLimit(int $endLimit): static
-    {
-        $this->endLimit = $endLimit;
-        return $this;
-    }
-
-    public function setPageNumber(int $pageNumber): static
-    {
-        $this->pageNumber = $pageNumber;
-        return $this;
-    }
-
-    public function setSorter(string $sorter): static
-    {
-        $this->sorter = $sorter;
-        return $this;
-    }
-
-    public function setFilter(string $filter): static
-    {
-        $this->filter = $filter;
-        return $this;
-    }
-
-    public function setDisplayer(string $displayer): static
-    {
-        $this->displayer = $displayer;
-        return $this;
-    }
-
-    public function setAllowedExtensions(array $allowedExtensions): static
-    {
-        $this->allowedExtensions = $allowedExtensions;
-        return $this;
     }
 }
