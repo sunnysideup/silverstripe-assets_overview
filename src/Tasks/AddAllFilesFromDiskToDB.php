@@ -24,12 +24,15 @@ class AddAllFilesFromDiskToDB extends BuildTask
         $this->dryRun = $request->getVar('forreal') ? false : true;
         $this->dryRunMessage();
         $allFilesInfoObj = AllFilesInfo::inst();
+        $allFilesInfoObj->setLimit(99999999999);
         $allFilesInfoObj->setVerbose(true);
+        $allFilesInfoObj->setNoCache(true);
         $files = $allFilesInfoObj->getFilesAsArrayList()->toArray();
         $obj = Injector::inst()->get(AddAndRemoveFromDb::class);
         $obj->setIsDryRun($this->dryRun);
         foreach ($files as $file) {
-            $obj->run($file->toMap(), 'add');
+            $array = $file->toMap();
+            $obj->run($array, 'add');
         }
         $this->dryRunMessage();
         DB::alteration_message('=== DONE ===', '');

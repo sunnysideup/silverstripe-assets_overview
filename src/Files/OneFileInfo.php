@@ -30,15 +30,28 @@ class OneFileInfo implements FileInfo
 
     protected static array $cached_inst = [];
 
-    public static function inst(string $path, ?bool $exists = null): OneFileInfo
+    public static function inst(string $path): OneFileInfo
     {
         if (!isset(self::$cached_inst[$path])) {
-            self::$cached_inst[$path] = new OneFileInfo($path, $exists);
+            self::$cached_inst[$path] = new OneFileInfo($path);
         }
         return self::$cached_inst[$path];
     }
 
     protected bool $debug = false;
+    protected bool $noCache = false;
+
+    public function setDebug(bool $b): static
+    {
+        $this->debug = $b;
+        return $this;
+    }
+
+    public function setNoCache(bool $b): static
+    {
+        $this->noCache = $b;
+        return $this;
+    }
 
     protected array $errorFields = [
         'ErrorDBNotPresent',
@@ -56,7 +69,7 @@ class OneFileInfo implements FileInfo
     /**
      * @var string
      */
-    protected string $hash = '';
+    protected string $pathHash = '';
 
     /**
      * @var string
@@ -81,21 +94,25 @@ class OneFileInfo implements FileInfo
 
     protected array $folderCache = [];
 
-    public function __construct(string $location, ?bool $physicalFileExists = null)
+    public function __construct(string $location)
     {
         $this->path = $location;
         $this->absolutePath = ASSETS_PATH . DIRECTORY_SEPARATOR . $this->path;
-        $this->hash = md5($this->path);
-        $this->physicalFileExists = $physicalFileExists || file_exists($this->absolutePath);
+        $this->pathHash = md5($this->path);
+        $this->physicalFileExists = file_exists($this->absolutePath);
     }
 
-    public function toArray(?bool $recalc = false): array
+    public function toArray(): array
     {
         $cachekey = $this->getCacheKey();
-        if (! $this->hasCacheKey($cachekey) || $recalc) {
-            $this->getUncachedIntel();
+        if (! $this->hasCacheKey($cachekey) || $this->noCache) {
+            $this->collateIntel();
             if ($this->debug) {
-                echo $this->intel['ErrorHasAnyError'] ? 'x ' : '✓ ';
+                if ($this->intel['ErrorHasAnyError']) {
+                    echo PHP_EOL . 'x ' . $this->path . ' ' . PHP_EOL;
+                } else {
+                    echo '✓ ';
+                }
             }
             $this->setCacheValue($cachekey, $this->intel);
         } else {
@@ -105,7 +122,7 @@ class OneFileInfo implements FileInfo
         return $this->intel;
     }
 
-    protected function getUncachedIntel(): void
+    protected function collateIntel(): void
     {
 
         $this->addFileSystemDetails();
@@ -393,6 +410,6 @@ class OneFileInfo implements FileInfo
 
     protected function getCacheKey(): string
     {
-        return $this->hash;
+        return $this->pathHash;
     }
 }

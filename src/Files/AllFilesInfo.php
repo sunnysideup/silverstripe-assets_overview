@@ -6,6 +6,7 @@ use FilesystemIterator;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use SilverStripe\Assets\File;
+use SilverStripe\Assets\Folder;
 use SilverStripe\Core\Config\Config;
 use SilverStripe\Core\Config\Configurable;
 use SilverStripe\Core\Injector\Injectable;
@@ -38,6 +39,12 @@ class AllFilesInfo implements FileInfo
         return $this;
     }
 
+    public function setNoCache(bool $b): static
+    {
+        $this->noCache = $b;
+        return $this;
+    }
+
     private static array $not_real_file_substrings = [
         DIRECTORY_SEPARATOR . '_resampled',
         DIRECTORY_SEPARATOR . '__',
@@ -50,6 +57,7 @@ class AllFilesInfo implements FileInfo
         '__ResizedImage',
     ];
 
+    protected bool $noCache = false;
     protected bool $verbose = false;
 
     /**
@@ -271,7 +279,7 @@ class AllFilesInfo implements FileInfo
     {
         if ([] === $this->listOfFiles) {
             $cachekey = $this->getCacheKey();
-            if ($this->hasCacheKey($cachekey)) {
+            if ($this->hasCacheKey($cachekey) && $this->noCache === false) {
                 $this->listOfFiles = $this->getCacheValue($cachekey);
                 $this->availableExtensions = $this->getCacheValue($cachekey . 'availableExtensions');
                 $this->dataStaging = $this->getCacheValue($cachekey . 'dataStaging');
@@ -493,8 +501,9 @@ class AllFilesInfo implements FileInfo
 
     protected function getDataAboutOneFile(string $location, ?bool $fileExists): array
     {
-        return OneFileInfo::inst($location, $fileExists)
-            ->toArray();
+        $obj = OneFileInfo::inst($location);
+        $obj->setNoCache($this->noCache);
+        return $obj->toArray();
     }
 
     /**
@@ -521,7 +530,11 @@ class AllFilesInfo implements FileInfo
             if (! isset($this->listOfFiles[$path])) {
                 $this->listOfFiles[$path] = $inFileSystem;
                 if ($this->verbose) {
-                    echo $inFileSystem ? '✓ ' : 'x ';
+                    if ($inFileSystem) {
+                        echo '✓ ';
+                    } else {
+                        echo PHP_EOL . 'x NOT IN FILE SYSTEM: ' . $path . ' ' . PHP_EOL;
+                    }
                 }
 
                 $extension = strtolower($this->getExtension($path));
@@ -573,6 +586,9 @@ class AllFilesInfo implements FileInfo
             if (false === $this->isRealFile($absolutePath)) {
                 continue;
             }
+            if ($src->isDir()) {
+                continue;
+            }
             $location = trim(str_replace(ASSETS_PATH, '', $absolutePath), '/');
             $finalArray[$location] = $location;
         }
@@ -590,7 +606,7 @@ class AllFilesInfo implements FileInfo
         $finalArray = [];
         foreach (['Stage', 'Live'] as $stage) {
             Versioned::set_stage($stage);
-            $files = File::get();
+            $files = File::get()->exclude(['ClassName' => Folder::class]);
             foreach ($files as $file) {
                 $row = $file->toMap();
                 $location = trim($file->getFilename(), '/');

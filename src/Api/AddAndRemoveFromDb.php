@@ -41,13 +41,10 @@ class AddAndRemoveFromDb
         $pathFromAssetsFolder = $oneFileInfoArray['Path'];
         $absolutePath = $oneFileInfoArray['AbsolutePath'];
 
-        $reasonPadding = 15; // Adjust padding as needed for alignment
-
-
         // Usage
         if ($oneFileInfoArray['IsDir']) {
             $this->logMessage('Skipping [FOLDER]', $pathFromAssetsFolder);
-        } elseif (!empty($oneFileInfoArray['IsResizedImage'])) {
+        } elseif (isset($oneFileInfoArray['IsResizedImage']) && $oneFileInfoArray['IsResizedImage'] === true) {
             if (file_exists($absolutePath)) {
                 $this->logMessage('Deleting', $pathFromAssetsFolder, 'deleted');
                 if ($this->dryRun === false) {
@@ -55,12 +52,16 @@ class AddAndRemoveFromDb
                 }
             }
             $this->logMessage('Skipping [RESIZED IMAGE]', $pathFromAssetsFolder);
-        } elseif ($oneFileInfoArray['ErrorDBNotPresent'] && $mode !== 'remove') {
+        } elseif ($oneFileInfoArray['ErrorDBNotPresent'] === true && $mode !== 'remove') {
+            print_r($oneFileInfoArray);
+
             $this->logMessage('+++ Adding to DB', $pathFromAssetsFolder, 'created');
             if ($this->dryRun === false) {
                 $this->addFileToDb($oneFileInfoArray);
             }
-        } elseif ($oneFileInfoArray['ErrorIsInFileSystem'] && $mode !== 'add') {
+        } elseif ($oneFileInfoArray['ErrorIsInFileSystem'] === true && $mode !== 'add') {
+            print_r($oneFileInfoArray);
+
             $this->logMessage('--- Removing from DB', $pathFromAssetsFolder, 'deleted');
             if ($this->dryRun === false) {
                 $this->removeFileFromDb($oneFileInfoArray);
@@ -92,7 +93,6 @@ class AddAndRemoveFromDb
 
     public function addFileToDb(array $oneFileInfoArray)
     {
-        $location = $oneFileInfoArray['Path'];
         $absolutePath = $oneFileInfoArray['AbsolutePath'];
         $pathFromAssetsFolder = $oneFileInfoArray['Path'];
         $extension = File::get_file_extension($absolutePath);

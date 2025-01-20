@@ -90,7 +90,7 @@ class View extends ContentController implements Flushable
     /**
      * @var bool
      */
-    protected bool $dryRun = true;
+    protected bool $dryRun = false;
 
     /**
      * @var string
@@ -215,6 +215,11 @@ class View extends ContentController implements Flushable
         return $this->getAllFilesInfoProvider()->getFilesAsArrayList();
     }
 
+    public function getFilesAsArray(): array
+    {
+        return $this->getFilesAsArrayList()->toArray();
+    }
+
     public function getFilesAsSortedArrayList(): ArrayList
     {
         return $this->getAllFilesInfoProvider()->getFilesAsSortedArrayList();
@@ -225,7 +230,7 @@ class View extends ContentController implements Flushable
         return (string) number_format($this->getAllFilesInfoProvider()->getTotalFileCountRaw());
     }
 
-    public function getTotalFileCountFiltered(): string
+    public function getTotalFileCountFilteredAndFormatted(): string
     {
         return (string) number_format($this->getAllFilesInfoProvider()->getTotalFileCountFiltered());
     }
@@ -267,8 +272,21 @@ class View extends ContentController implements Flushable
     {
         $array = [];
 
-        foreach ($this->getFilesAsArrayList()->toArray() as $item) {
+        foreach ($this->getFilesAsArray() as $item) {
             $array[] = $item->toMap();
+        }
+
+        return $this->sendJSON($array);
+    }
+
+    public function jsonone($request)
+    {
+        $array = [];
+        $getVar = $this->request->getVar('path');
+        foreach ($this->getFilesAsArray() as $item) {
+            if ($item->Path === $getVar) {
+                $array[] = $item->toMap();
+            }
         }
 
         return $this->sendJSON($array);
@@ -277,7 +295,7 @@ class View extends ContentController implements Flushable
     public function sync()
     {
         $obj = $this->getAddAndRemoveFromDbClass();
-        foreach ($this->getFilesAsArrayList()->toArray() as $item) {
+        foreach ($this->getFilesAsArray() as $item) {
             $obj->run($item->toMap());
         }
     }
@@ -285,7 +303,7 @@ class View extends ContentController implements Flushable
     public function addtodb()
     {
         $obj = $this->getAddAndRemoveFromDbClass();
-        foreach ($this->getFilesAsArrayList()->toArray() as $item) {
+        foreach ($this->getFilesAsArray() as $item) {
             $obj->run($item->toMap(), 'add');
         }
     }
@@ -397,7 +415,6 @@ class View extends ContentController implements Flushable
         }
 
         $this->pageNumber = ($this->request->getVar('page') ?: 1);
-        $this->dryRun = $this->request->getVar('dryrun') ? true : false;
         $this->startLimit = $this->limit * ($this->pageNumber - 1);
         $this->endLimit = $this->limit * ($this->pageNumber + 0);
         $this->getAllFilesInfoProvider();
@@ -429,7 +446,6 @@ class View extends ContentController implements Flushable
     {
         $fieldList = FieldList::create(
             [
-                $this->createFormField('dryrun', 'Dry Run (not for real)', $this->dryrun, $this->getSorterList()),
                 $this->createFormField('sorter', 'Sort by', $this->sorter, $this->getSorterList()),
                 $this->createFormField('filter', 'Filter for errors', $this->filter, $this->getFilterList()),
                 $this->createFormField('extensions', 'Filter by extensions', $this->allowedExtensions, $this->getExtensionList()),
@@ -455,9 +471,7 @@ class View extends ContentController implements Flushable
     protected function createFormField(string $name, string $title, $value, ?array $list = [])
     {
         $listCount = count($list);
-        if ($name === 'dryrun') {
-            $type = CheckboxField::class;
-        } elseif (0 === $listCount) {
+        if (0 === $listCount) {
             $type = HiddenField::class;
         } elseif ('limit' === $name || 'page' === $name) {
             $type = DropdownField::class;
@@ -534,8 +548,10 @@ class View extends ContentController implements Flushable
         $step = 100;
         $array = [];
         $i = 0;
-        if ($this->getAllFilesInfoProvider()->getTotalFileCountRaw() > $step) {
-            for ($i = $step; ($i - $step) < $this->totalFileCountFiltered; $i += $step) {
+        $totalRaw = (int)  $this->getAllFilesInfoProvider()->getTotalFileCountRaw();
+        $totalFiltered = (int)  $this->getAllFilesInfoProvider()->getTotalFileCountFiltered();
+        if ($totalRaw > $step) {
+            for ($i = $step; ($i - $step) < $totalFiltered; $i += $step) {
                 if ($i > $this->limit && ! isset($array[$this->limit])) {
                     $array[$this->limit] = $this->limit;
                 }

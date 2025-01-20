@@ -81,15 +81,15 @@ class Fix extends ContentController
     protected function getRawData(): array
     {
         //get data
-        return Injector::inst()->get(AllFilesInfo::class, true, [$this->getAssetsBaseFolder()])
+        return Injector::inst()->get(AllFilesInfo::class)
             ->toArray();
     }
 
     protected function getDataAboutOneFile(string $absoluteLocation): array
     {
         $obj = OneFileInfo::inst($absoluteLocation);
-
-        return $this->toArray($absoluteLocation);
+        $obj->setNoCache(true);
+        return $obj->toArray(true);
     }
 
     protected function fixErrorDBNotPresent()
