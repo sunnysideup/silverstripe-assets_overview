@@ -1,8 +1,8 @@
 <div class="one-image">
-    <a href="$PathFromPublicRoot" target="_blank" class="main-link">view</a>
+    <a href="$PathFromPublicRoot" target="_blank" class="main-link">view<% if $IsProtected %> ... [PROTECTED]<% end_if %></a>
     <% if $IsImage %>
         <% if $IsProtected %>
-            [PROTECTED]
+            <div>[PROTECTED]</div>
         <% else %>
         <img src="$PathFromPublicRoot" height="250" alt="$DBTitle" />
         <% end_if %>
@@ -11,9 +11,7 @@
         <br />
         <span class="sub-title">[$PathExtension]</span>
         <br />
-        <% if $IsProtected %>
-            <span class="sub-title">[PROTECTED]</span>
-        <% end_if %>
+
     <% end_if %>
 
     <% if $DBErrorDBNotPresent %>
@@ -21,7 +19,6 @@
     <% else %>
     <a href="$DBCMSEditLink" class="edit-icon" target="_blank">✎</a>
     <% end_if %>
-    <br /><a href="$InfoLink" class="info-icon" target="_blank">ℹ</a>
     <div class="one-image-info">
         <p>
             <u>$DBTitle</u>
@@ -46,5 +43,6 @@
         <% end_if %>
 
         <p><strong>DB:</strong> $HumanErrorDBNotPresent</p>
+        <p><a href="$InfoLink" class="info-icon" target="_blank">ℹ</a></p>
     </div>
 </div>
