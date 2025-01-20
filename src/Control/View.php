@@ -2,6 +2,7 @@
 
 namespace Sunnysideup\AssetsOverview\Control;
 
+use phpDocumentor\Reflection\Types\True_;
 use SilverStripe\CMS\Controllers\ContentController;
 use SilverStripe\Control\Director;
 use SilverStripe\Control\HTTPRequest;
@@ -121,6 +122,7 @@ class View extends ContentController implements Flushable
         'index' => 'ADMIN',
         'json' => 'ADMIN',
         'jsonfull' => 'ADMIN',
+        'jsonone' => 'ADMIN',
         'sync' => 'ADMIN',
         'addtodb' => 'ADMIN',
         'removefromdb' => 'ADMIN',
@@ -131,9 +133,11 @@ class View extends ContentController implements Flushable
         AllFilesInfo::flushCache();
     }
 
+    private static $url_segment = 'admin/assets-overview';
+
     public function Link($action = null)
     {
-        $str = Director::absoluteURL(DIRECTORY_SEPARATOR . 'admin/assets-overview');
+        $str = Director::absoluteURL(DIRECTORY_SEPARATOR . $this->config()->get('url_segment'));
         if ($action) {
             $str .= DIRECTORY_SEPARATOR . $action;
         }
@@ -282,14 +286,11 @@ class View extends ContentController implements Flushable
     public function jsonone($request)
     {
         $array = [];
-        $getVar = $this->request->getVar('path');
-        foreach ($this->getFilesAsArray() as $item) {
-            if ($item->Path === $getVar) {
-                $array[] = $item->toMap();
-            }
-        }
+        $location = $this->request->getVar('path');
+        $obj = OneFileInfo::inst($location);
+        $obj->setNoCache(true);
 
-        return $this->sendJSON($array);
+        return $this->sendJSON($obj->toArray());
     }
 
     public function sync()
@@ -630,7 +631,7 @@ class View extends ContentController implements Flushable
         ],
         'byisimage' => [
             'Title' => 'Image vs Other Files',
-            'Sort' => 'ImageIsImage',
+            'Sort' => 'IsImage',
             'Group' => 'HumanImageIsImage',
         ],
         'byclassname' => [

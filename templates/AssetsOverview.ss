@@ -386,7 +386,7 @@
                         <div id="section-$Number" class="break">
                             <h3>$SubTitle</h3>
                             <% loop $Items %>
-                                <% include OneImage %>
+                                <% include OneFile %>
                             <% end_loop %>
                         </div>
                     <% end_loop %>

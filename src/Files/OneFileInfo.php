@@ -7,6 +7,7 @@ use SilverStripe\Assets\File;
 use SilverStripe\Assets\Folder;
 use SilverStripe\Assets\Storage\DBFile;
 use SilverStripe\Control\Controller;
+use SilverStripe\Core\Config\Config;
 use SilverStripe\Core\Config\Configurable;
 use SilverStripe\Core\Injector\Injectable;
 use SilverStripe\Core\Injector\Injector;
@@ -15,6 +16,7 @@ use SilverStripe\ORM\DB;
 use SilverStripe\ORM\FieldType\DBDate;
 use SilverStripe\ORM\FieldType\DBDatetime;
 use SilverStripe\ORM\ValidationResult;
+use Sunnysideup\AssetsOverview\Control\View;
 use Sunnysideup\AssetsOverview\Interfaces\FileInfo;
 use Sunnysideup\AssetsOverview\Traits\Cacher;
 use Sunnysideup\AssetsOverview\Traits\FilesystemRelatedTraits;
@@ -55,14 +57,12 @@ class OneFileInfo implements FileInfo
 
     protected array $errorFields = [
         'ErrorDBNotPresent',
-        'ErrorDBNotPresentLive',
         'ErrorDBNotPresentStaging',
         'ErrorExtensionMisMatch',
         'ErrorFindingFolder',
         'ErrorInFilename',
         'ErrorInSs3Ss4Comparison',
         'ErrorParentID',
-        'ErrorInDraftOnly',
         'ErrorNotInDraft',
     ];
 
@@ -75,6 +75,7 @@ class OneFileInfo implements FileInfo
      * @var string
      */
     protected string $path = '';
+
     protected string $absolutePath = '';
 
     /**
@@ -91,8 +92,10 @@ class OneFileInfo implements FileInfo
      * @var bool
      */
     protected bool $physicalFileExists = false;
+    protected bool $isProtected = false;
 
     protected array $folderCache = [];
+    protected ?File $file;
 
     public function __construct(string $location)
     {
@@ -100,6 +103,13 @@ class OneFileInfo implements FileInfo
         $this->absolutePath = ASSETS_PATH . DIRECTORY_SEPARATOR . $this->path;
         $this->pathHash = md5($this->path);
         $this->physicalFileExists = file_exists($this->absolutePath);
+        $this->file = DataObject::get_one(File::class, ['FileFilename' => $this->path]);
+        if (!$this->physicalFileExists) {
+            if ($this->file && $this->file->exists()) {
+                $this->physicalFileExists = true;
+                $this->isProtected = true;
+            }
+        }
     }
 
     public function toArray(): array
@@ -171,6 +181,8 @@ class OneFileInfo implements FileInfo
 
         //basics!
         $this->intel['Path'] = $this->path;
+        $this->intel['InfoLink'] = Config::inst()->get(View::class, 'url_segment') . '/jsonone/?path=' . $this->path;
+        $this->intel['IsProtected'] = $this->isProtected;
         $this->intel['PathFolderPath'] = $this->parthParts['dirname'] ?: dirname($this->intel['Path']);
         //file name
         $this->intel['PathFileName'] = $this->parthParts['filename'] ?: basename($this->absolutePath);
@@ -184,7 +196,7 @@ class OneFileInfo implements FileInfo
         //in file details
         if ($this->physicalFileExists) {
             $this->intel['ErrorIsInFileSystem'] = false;
-            $this->intel['PathFileSize'] = filesize($this->absolutePath);
+            $this->intel['PathFileSize'] = $this->file?->getAbsoluteSize() ?: 0;
         }
 
         //path
@@ -225,7 +237,7 @@ class OneFileInfo implements FileInfo
     {
         $this->intel['ImageRatio'] = '0';
         $this->intel['ImagePixels'] = 'n/a';
-        $this->intel['ImageIsImage'] = $this->isRegularImage($this->intel['PathExtension']);
+        $this->intel['IsImage'] = $this->isRegularImage($this->intel['PathExtension']);
         $this->intel['ImageIsRegularImage'] = false;
         $this->intel['ImageWidth'] = 0;
         $this->intel['ImageHeight'] = 0;
@@ -234,26 +246,16 @@ class OneFileInfo implements FileInfo
 
         if ($this->physicalFileExists) {
             $this->intel['ImageIsRegularImage'] = $this->isRegularImage($this->intel['PathExtension']);
-            $this->intel['ImageIsImage'] = $this->intel['ImageIsRegularImage'] ? true : $this->isImage($this->absolutePath);
-            if ($this->intel['ImageIsImage']) {
-                try {
-                    list($width, $height, $type, $attr) = getimagesize($this->absolutePath);
-                } catch (Exception $exception) {
-                    $width = 0;
-                    $height = 0;
-                    $type = 0;
-                    $attr = [];
-                }
-                $this->intel['ImageAttribute'] = print_r($attr, 1);
-                $this->intel['ImageWidth'] = $width;
-                $this->intel['ImageHeight'] = $height;
-                if ($height > 0) {
-                    $this->intel['ImageRatio'] = round($width / $height, 3);
+            $this->intel['IsImage'] = $this->intel['ImageIsRegularImage'] ? true : $this->isImage($this->absolutePath);
+            if ($this->intel['IsImage']) {
+                $this->intel['ImageWidth'] = $this->file?->getWidth() ?: 0;
+                $this->intel['ImageHeight'] = $this->file?->getHeight() ?: 0;
+                if ($this->intel['ImageHeight'] > 0) {
+                    $this->intel['ImageRatio'] = round($this->intel['ImageHeight'] / $this->intel['ImageWidth'], 3);
                 } else {
                     $this->intel['ImageRatio'] = 0;
                 }
-                $this->intel['ImagePixels'] = $width * $height;
-                $this->intel['ImageType'] = $type;
+                $this->intel['ImagePixels'] =  $this->intel['ImageHeight'] * $this->intel['ImageWidth'];
                 $this->intel['IsResizedImage'] = (bool) strpos($this->intel['PathFileName'], '__');
             }
         }
@@ -355,7 +357,7 @@ class OneFileInfo implements FileInfo
     protected function addHumanValues()
     {
         $this->intel['HumanImageDimensions'] = $this->intel['ImageWidth'] . 'px wide by ' . $this->intel['ImageHeight'] . 'px high';
-        $this->intel['HumanImageIsImage'] = $this->intel['ImageIsImage'] ? 'Is image' : 'Is not an image';
+        $this->intel['HumanImageIsImage'] = $this->intel['IsImage'] ? 'Is image' : 'Is not an image';
         $this->intel['HumanErrorExtensionMisMatch'] = $this->intel['ErrorExtensionMisMatch'] ?
             'irregular extension' : 'normal extension';
 
