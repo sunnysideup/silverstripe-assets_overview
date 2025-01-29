@@ -247,6 +247,7 @@ class OneFileInfo implements FileInfo
     protected function addFolderDetails($dbFileData)
     {
         $folder = [];
+        $hasFolder = false;
         if (! empty($dbFileData['ParentID'])) {
             $sql = 'SELECT ID FROM "File" WHERE "ID" = ' . $dbFileData['ParentID'] . ' LIMIT 1';
             $rows = DB::query($sql);
