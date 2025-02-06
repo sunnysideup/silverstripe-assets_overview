@@ -18,8 +18,8 @@ class AssetAdminExtension extends Extension
             LiteralField::create(
                 'AssetsOverviewLink',
                 '
-                    <h2>Quick Overview of Images</h2>
-                    <p>Here is a <a href="/admin/assets-overview/">quick overview tool</a> for all CMS Images.</p>
+                    <h2>Quick Overview of Files and Images</h2>
+                    <p>Here is a <a href="/admin/assets-overview/">quick overview tool</a> for all CMS Files and Images.</p>
                 '
             )
         );

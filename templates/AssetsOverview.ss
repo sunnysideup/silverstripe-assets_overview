@@ -84,6 +84,8 @@
       border-bottom: 1px solid #eee;
       margin: 0;
       padding: 2px;
+      padding-top: 10px;
+      line-height: 1.5em;
   }
   .toc li a {
       display: block;
@@ -246,7 +248,9 @@
         box-sizing: border-box;
         border: 1px solid #B0BEC7;
     }
-
+    label {
+        vertical-align: top;
+    }
     .form form fieldset .field > label {
         font-weight: bold;
         display: block;
@@ -345,8 +349,8 @@
                 <li>
                     <strong>Sync:</strong>
                     <a href="$Link(sync)" onclick="return confirm('Danger - Danger - Have you made a backup of files and database?')">update DB based on files on disk</a>
-                    <a href="$Link(addtodb)" onclick="return confirm('Danger - Danger - Have you made a backup of files and database?')">add to DB</a>
-                    <a href="$Link(removefromdb)" onclick="return confirm('Danger - Danger - Have you made a backup of files and database?')">add to DB</a>
+                    <a href="$Link(addtodb)" onclick="return confirm('Danger - Danger - Have you made a backup of files and database?')">add to DB only</a>
+                    <a href="$Link(removefromdb)" onclick="return confirm('Danger - Danger - Have you made a backup of files and database?')">remove from DB only</a>
                 </li>
             </ul>
 
@@ -382,7 +386,7 @@
                         <div id="section-$Number" class="break">
                             <h3>$SubTitle</h3>
                             <% loop $Items %>
-                                <% include OneImage %>
+                                <% include OneFile %>
                             <% end_loop %>
                         </div>
                     <% end_loop %>
@@ -393,7 +397,7 @@
                         <ul id="section-$Number" class="break">
                         <% loop $Items %>
                             <li>
-                                <h5><a href="$PathFromPublicRoot">$PathFromAssetsFolder</a></h5>
+                                <h5><a href="$PathFromPublicRoot">$Path</a></h5>
                             </li>
                         <% end_loop %>
                         </ul>
@@ -405,7 +409,7 @@
                         <ul id="section-$Number" class="break">
                         <% loop $Items %>
                             <li>
-                                <h5><a href="$PathFromPublicRoot">$PathFromAssetsFolder</a></h5>
+                                <h5><a href="$PathFromPublicRoot">$Path</a></h5>
                                 <ul>
                                 <% loop $FullFields %>
                                     <li><strong>$Key:</strong> $Value</li>

@@ -2,6 +2,7 @@
 
 namespace Sunnysideup\AssetsOverview\Control;
 
+use phpDocumentor\Reflection\Types\True_;
 use SilverStripe\CMS\Controllers\ContentController;
 use SilverStripe\Control\Director;
 use SilverStripe\Control\HTTPRequest;
@@ -10,6 +11,7 @@ use SilverStripe\Control\Middleware\HTTPCacheControlMiddleware;
 use SilverStripe\Core\Environment;
 use SilverStripe\Core\Flushable;
 use SilverStripe\Core\Injector\Injector;
+use SilverStripe\Forms\CheckboxField;
 use SilverStripe\Forms\CheckboxSetField;
 use SilverStripe\Forms\DropdownField;
 use SilverStripe\Forms\FieldList;
@@ -42,15 +44,559 @@ class View extends ContentController implements Flushable
 {
     use FilesystemRelatedTraits;
 
-    /**
-     * @var string
-     */
-    private const ALL_FILES_INFO_CLASS = AllFilesInfo::class;
+    public static function get_sorters()
+    {
+        return self::SORTERS;
+    }
+
+    public static function get_filters()
+    {
+        return self::FILTERS;
+    }
+
+    public static function get_displayers()
+    {
+        return self::DISPLAYERS;
+    }
+
+
+    protected static $allFilesProvider = null;
 
     /**
      * @var string
      */
-    private const ONE_FILE_INFO_CLASS = OneFileInfo::class;
+    protected string $title = '';
+
+
+    /**
+     * @var int
+     */
+    protected int $limit = 1000;
+
+    /**
+     * @var int
+     */
+    protected int $startLimit = 0;
+
+    /**
+     * @var int
+     */
+    protected int $endLimit = 0;
+
+    /**
+     * @var int
+     */
+    protected int $pageNumber = 1;
+
+    /**
+     * @var bool
+     */
+    protected bool $dryRun = false;
+
+    /**
+     * @var string
+     */
+    protected string $sorter = 'byfolder';
+
+    /**
+     * @var string
+     */
+    protected string $filter = '';
+
+    /**
+     * @var string
+     */
+    protected string $displayer = 'thumbs';
+
+    /**
+     * @var array
+     */
+    protected array $allowedExtensions = [];
+
+    /**
+     * Defines methods that can be called directly.
+     *
+     * @var array
+     */
+    private static $allowed_actions = [
+        'index' => 'ADMIN',
+        'json' => 'ADMIN',
+        'jsonfull' => 'ADMIN',
+        'jsonone' => 'ADMIN',
+        'sync' => 'ADMIN',
+        'addtodb' => 'ADMIN',
+        'removefromdb' => 'ADMIN',
+    ];
+
+    public static function flush()
+    {
+        AllFilesInfo::flushCache();
+    }
+
+    private static $url_segment = 'admin/assets-overview';
+
+    public function Link($action = null)
+    {
+        $str = Director::absoluteURL(DIRECTORY_SEPARATOR . $this->config()->get('url_segment'));
+        if ($action) {
+            $str .= DIRECTORY_SEPARATOR . $action;
+        }
+
+        return $str;
+    }
+
+    public function getTitle(): string
+    {
+        $this->getSortStatement();
+        $this->getFilterStatement();
+        $this->getPageStatement();
+
+        if ($this->hasFilter()) {
+            $filterStatement = '' .
+                $this->getTotalFileCountFiltered() . ' files / ' .
+                $this->getTotalFileSizeFiltered();
+        } else {
+            $filterStatement =
+                $this->getTotalFileCountRaw() . ' / ' .
+                $this->getTotalFileSizeRaw();
+        }
+
+        return DBField::create_field(
+            'HTMLText',
+            'Found ' . $filterStatement
+        );
+    }
+
+    public function getSubTitle(): string
+    {
+        $array = array_filter(
+            [
+                $this->getSortStatement(),
+                $this->getFilterStatement(),
+                $this->getPageStatement(),
+                $this->getTotalsStatement(),
+            ]
+        );
+
+        return DBField::create_field(
+            'HTMLText',
+            '- ' . implode('<br /> - ', $array)
+        );
+    }
+
+    public function getSortStatement(): string
+    {
+        return '<strong>sorted by</strong>: ' . self::SORTERS[$this->sorter]['Title'] ?? 'ERROR IN SORTER';
+    }
+
+    public function getFilterStatement(): string
+    {
+        $filterArray = array_filter(
+            [
+                self::FILTERS[$this->filter]['Title'] ?? '',
+                implode(', ', $this->allowedExtensions),
+            ]
+        );
+
+        return count($filterArray) ? '<strong>filtered for</strong>: ' . implode(', ', $filterArray) : '';
+    }
+
+    public function getPageStatement(): string
+    {
+        return $this->getNumberOfPages() > 1 ?
+            '<strong>page</strong>: ' . $this->pageNumber . ' of ' . $this->getNumberOfPages() . ', showing file ' . ($this->startLimit + 1) . ' to ' . $this->endLimit
+            :
+            '';
+    }
+
+    public function getDisplayer(): string
+    {
+        return $this->displayer;
+    }
+
+    public function getFilesAsArrayList(): ArrayList
+    {
+        return $this->getAllFilesInfoProvider()->getFilesAsArrayList();
+    }
+
+    public function getFilesAsArray(): array
+    {
+        return $this->getFilesAsArrayList()->toArray();
+    }
+
+    public function getFilesAsSortedArrayList(): ArrayList
+    {
+        return $this->getAllFilesInfoProvider()->getFilesAsSortedArrayList();
+    }
+
+    public function getTotalFileCountRaw(): string
+    {
+        return (string) number_format($this->getAllFilesInfoProvider()->getTotalFileCountRaw());
+    }
+
+    public function getTotalFileCountFilteredAndFormatted(): string
+    {
+        return (string) number_format($this->getAllFilesInfoProvider()->getTotalFileCountFiltered());
+    }
+
+    public function getTotalFileSizeFiltered(): string
+    {
+        return (string) $this->humanFileSize($this->getAllFilesInfoProvider()->getTotalFileSizeFiltered());
+    }
+
+    public function getTotalFileSizeRaw(): string
+    {
+        return (string) $this->humanFileSize($this->getAllFilesInfoProvider()->getTotalFileSizesRaw());
+    }
+
+    public function index($request)
+    {
+        if ('rawlistfull' === $this->displayer) {
+            $this->addMapToItems();
+        }
+
+        // if (false === AllFilesInfo::loadedFromCache()) {
+        //     $url = $_SERVER['REQUEST_URI'];
+        //     $url = str_replace('flush=', 'previousflush=', $url);
+
+        //     $js = '<script>window.location.href = \'' . $url . '\';</script>';
+        //     return 'go to <a href="' . $url . '">' . $url . '</a> if this page does not autoload';
+        // }
+
+
+        return $this->renderWith('AssetsOverview');
+    }
+
+    public function json($request)
+    {
+        return $this->sendJSON($this->getRawData());
+    }
+
+    public function jsonfull($request)
+    {
+        $array = [];
+
+        foreach ($this->getFilesAsArray() as $item) {
+            $array[] = $item->toMap();
+        }
+
+        return $this->sendJSON($array);
+    }
+
+    public function jsonone($request)
+    {
+        $array = [];
+        $location = $this->request->getVar('path');
+        $obj = OneFileInfo::inst($location);
+        $obj->setNoCache(true);
+
+        return $this->sendJSON($obj->toArray());
+    }
+
+    public function sync()
+    {
+        $obj = $this->getAddAndRemoveFromDbClass();
+        foreach ($this->getFilesAsArray() as $item) {
+            $obj->run($item->toMap());
+        }
+    }
+
+    public function addtodb()
+    {
+        $obj = $this->getAddAndRemoveFromDbClass();
+        foreach ($this->getFilesAsArray() as $item) {
+            $obj->run($item->toMap(), 'add');
+        }
+    }
+
+    public function removefromdb()
+    {
+        $obj = $this->getAddAndRemoveFromDbClass();
+        foreach ($this->filesAsArrayList->toArray() as $item) {
+            $obj->run($item->toMap(), 'remove');
+        }
+    }
+
+    protected function getAddAndRemoveFromDbClass(): AddAndRemoveFromDb
+    {
+        $obj = Injector::inst()->get(AddAndRemoveFromDb::class);
+        return $obj->setIsDryRun($this->dryRun);
+    }
+
+    public function addMapToItems()
+    {
+        $this->isThumbList = false;
+        foreach ($this->getFilesAsSortedArrayList() as $group) {
+            foreach ($group->Items as $item) {
+                $map = $item->toMap();
+                $item->FullFields = ArrayList::create();
+                foreach ($map as $key => $value) {
+                    if (false === $value) {
+                        $value = 'no';
+                    }
+
+                    if (true === $value) {
+                        $value = 'yes';
+                    }
+
+                    $item->FullFields->push(ArrayData::create(['Key' => $key, 'Value' => $value]));
+                }
+            }
+        }
+    }
+
+    //#############################################
+    // FORM
+    //#############################################
+    public function Form()
+    {
+        return $this->getForm();
+    }
+
+    protected function init()
+    {
+        parent::init();
+        if (! Permission::check('ADMIN')) {
+            return Security::permissionFailure($this);
+        }
+
+        Requirements::clear();
+        ini_set('memory_limit', '1024M');
+        Environment::increaseMemoryLimitTo();
+        Environment::increaseTimeLimitTo(7200);
+        SSViewer::config()->set('theme_enabled', false);
+        Versioned::set_stage(Versioned::DRAFT);
+        $this->getGetVariables();
+        $this->getAllFilesInfoProvider();
+    }
+
+    protected function getTotalsStatement()
+    {
+        return $this->hasFilter() ? '<strong>Totals</strong>: ' .
+            $this->getTotalFileCountRaw() . ' files / ' . $this->getTotalFileSizeRaw()
+            : '';
+    }
+
+    protected function hasFilter(): bool
+    {
+        return $this->filter || count($this->allowedExtensions);
+    }
+
+    protected function getGetVariables()
+    {
+        $filter = $this->request->getVar('filter');
+        if ($filter) {
+            $this->filter = $filter;
+        }
+
+        $sorter = $this->request->getVar('sorter');
+        if ($sorter) {
+            $this->sorter = $sorter;
+        }
+
+        $displayer = $this->request->getVar('displayer');
+        if ($displayer) {
+            $this->displayer = $displayer;
+        }
+
+        $extensions = $this->request->getVar('extensions');
+        if ($extensions) {
+            if (! is_array($extensions)) {
+                $extensions = [$extensions];
+            }
+
+            $this->allowedExtensions = $extensions;
+            //make sure all are valid!
+            $this->allowedExtensions = array_filter($this->allowedExtensions);
+        }
+
+        $limit = $this->request->getVar('limit');
+        if ($limit) {
+            $this->limit = $limit;
+        }
+
+        $this->pageNumber = ($this->request->getVar('page') ?: 1);
+        $this->startLimit = $this->limit * ($this->pageNumber - 1);
+        $this->endLimit = $this->limit * ($this->pageNumber + 0);
+        $this->getAllFilesInfoProvider();
+    }
+
+    protected function sendJSON($data)
+    {
+        $json = json_encode($data, JSON_PRETTY_PRINT);
+        if ($this->request->getVar('download')) {
+            return HTTPRequest::send_file($json, 'files.json', 'text/json');
+        }
+        $response = (new HTTPResponse($json));
+        $response->addHeader('Content-Type', 'application/json; charset="utf-8"');
+        $response->addHeader('Pragma', 'no-cache');
+        $response->addHeader('cache-control', 'no-cache, no-store, must-revalidate');
+        $response->addHeader('Access-Control-Allow-Origin', '*');
+        $response->addHeader('Expires', 0);
+        HTTPCacheControlMiddleware::singleton()
+            ->disableCache()
+        ;
+        $response->output();
+        die();
+    }
+
+
+
+
+    protected function getForm(): Form
+    {
+        $fieldList = FieldList::create(
+            [
+                $this->createFormField('sorter', 'Sort by', $this->sorter, $this->getSorterList()),
+                $this->createFormField('filter', 'Filter for errors', $this->filter, $this->getFilterList()),
+                $this->createFormField('extensions', 'Filter by extensions', $this->allowedExtensions, $this->getExtensionList()),
+                $this->createFormField('displayer', 'Displayed by', $this->displayer, $this->getDisplayerList()),
+                $this->createFormField('limit', 'Items per page', $this->limit, $this->getLimitList()),
+                $this->createFormField('page', 'Page number', $this->pageNumber, $this->getPageNumberList()),
+                // TextField::create('compare', 'Compare With')->setDescription('add a link to a comparison file - e.g. http://oldsite.com/admin/assets-overview/test.json'),
+            ]
+        );
+        $actionList = FieldList::create(
+            [
+                FormAction::create('index', 'Update File List'),
+            ]
+        );
+
+        $form = Form::create($this, 'index', $fieldList, $actionList);
+        $form->setFormMethod('GET', true);
+        $form->disableSecurityToken();
+
+        return $form;
+    }
+
+    protected function createFormField(string $name, string $title, $value, ?array $list = [])
+    {
+        $listCount = count($list);
+        if (0 === $listCount) {
+            $type = HiddenField::class;
+        } elseif ('limit' === $name || 'page' === $name) {
+            $type = DropdownField::class;
+        } elseif ('extensions' === $name) {
+            $type = CheckboxSetField::class;
+        } elseif ($listCount < 20) {
+            $type = OptionsetField::class;
+        } else {
+            $type = DropdownField::class;
+        }
+
+        $field = $type::create($name, $title)
+            ->setValue($value);
+        if ($listCount) {
+            $field->setSource($list);
+        }
+
+        // $field->setAttribute('onchange', 'this.form.submit()');
+
+        return $field;
+    }
+
+    protected function getSorterList(): array
+    {
+        $array = [];
+        foreach (self::SORTERS as $key => $data) {
+            $array[$key] = $data['Title'];
+        }
+
+        return $array;
+    }
+
+    protected function getFilterList(): array
+    {
+        $array = ['' => '-- no filter --'];
+        foreach (self::FILTERS as $key => $data) {
+            $array[$key] = $data['Title'];
+        }
+
+        return $array;
+    }
+
+    protected function getDisplayerList(): array
+    {
+        return self::DISPLAYERS;
+    }
+
+    protected function getExtensionList(): array
+    {
+        $list = array_filter($this->getAllFilesInfoProvider()->getAvailableExtensions());
+        $list = ['n/a' => 'n/a'] + $list;
+        return $list;
+    }
+
+    protected function getPageNumberList(): array
+    {
+        $list = range(1, $this->getNumberOfPages());
+        $list = array_combine($list, $list);
+        $list[(string) $this->pageNumber] = (string) $this->pageNumber;
+        if (count($list) < 2) {
+            return [];
+        }
+
+        return $list;
+    }
+
+    protected function getNumberOfPages(): int
+    {
+        return ceil($this->getAllFilesInfoProvider()->getTotalFileCountFiltered() / $this->limit);
+    }
+
+    protected function getLimitList(): array
+    {
+        $step = 100;
+        $array = [];
+        $i = 0;
+        $totalRaw = (int)  $this->getAllFilesInfoProvider()->getTotalFileCountRaw();
+        $totalFiltered = (int)  $this->getAllFilesInfoProvider()->getTotalFileCountFiltered();
+        if ($totalRaw > $step) {
+            for ($i = $step; ($i - $step) < $totalFiltered; $i += $step) {
+                if ($i > $this->limit && ! isset($array[$this->limit])) {
+                    $array[$this->limit] = $this->limit;
+                }
+
+                $array[$i] = $i;
+            }
+        }
+
+        return $array;
+    }
+
+
+
+    protected function getRawData(): array
+    {
+        return $this->getAllFilesInfoProvider()->toArray();
+    }
+
+    protected function getAllFilesInfoProvider(): AllFilesInfo
+    {
+        if (!self::$allFilesProvider) {
+            /** @var AllFilesInfo self::$allFilesProvider */
+            self::$allFilesProvider = AllFilesInfo::inst();
+            self::$allFilesProvider
+                ->setFilters(self::get_filters())
+                ->setSorters(self::get_sorters())
+                ->setFilter($this->filter)
+                ->setAllowedExtensions($this->allowedExtensions)
+                ->setSorter($this->sorter)
+                ->setLimit($this->limit)
+                ->setPageNumber($this->pageNumber)
+                ->setStartLimit($this->startLimit)
+                ->setEndLimit($this->endLimit)
+                ->setDisplayer($this->displayer)
+                ->getFilesAsArrayList();
+            while ($this->startLimit > $this->filesAsArrayList->count()) {
+                $this->pageNumber--;
+                $this->startLimit = $this->limit * ($this->pageNumber - 1);
+                $this->endLimit = $this->limit * ($this->pageNumber + 0);
+            }
+        }
+        return self::$allFilesProvider;
+    }
+
 
     private const SORTERS = [
         'byfolder' => [
@@ -85,7 +631,7 @@ class View extends ContentController implements Flushable
         ],
         'byisimage' => [
             'Title' => 'Image vs Other Files',
-            'Sort' => 'ImageIsImage',
+            'Sort' => 'IsImage',
             'Group' => 'HumanImageIsImage',
         ],
         'byclassname' => [
@@ -167,7 +713,6 @@ class View extends ContentController implements Flushable
             'Values' => [1, true],
         ],
     ];
-
     /**
      * @var array<string, string>
      */
@@ -176,602 +721,4 @@ class View extends ContentController implements Flushable
         'rawlist' => 'File List',
         'rawlistfull' => 'Raw Data',
     ];
-
-    /**
-     * @var ArrayList
-     */
-    protected $filesAsArrayList;
-
-    /**
-     * @var ArrayList
-     */
-    protected $filesAsSortedArrayList;
-
-    /**
-     * @var string
-     */
-    protected $title = '';
-
-    /**
-     * @var int
-     */
-    protected $totalFileCountRaw = 0;
-
-    /**
-     * @var int
-     */
-    protected $totalFileCountFiltered = 0;
-
-    /**
-     * @var int
-     */
-    protected $totalFileSizeFiltered = 0;
-
-    /**
-     * @var int
-     */
-    protected $limit = 1000;
-
-    /**
-     * @var int
-     */
-    protected $startLimit = 0;
-
-    /**
-     * @var int
-     */
-    protected $endLimit = 0;
-
-    /**
-     * @var int
-     */
-    protected $pageNumber = 1;
-
-    /**
-     * @var string
-     */
-    protected $sorter = 'byfolder';
-
-    /**
-     * @var string
-     */
-    protected $filter = '';
-
-    /**
-     * @var string
-     */
-    protected $displayer = 'thumbs';
-
-    /**
-     * @var array
-     */
-    protected $allowedExtensions = [];
-
-    /**
-     * Defines methods that can be called directly.
-     *
-     * @var array
-     */
-    private static $allowed_actions = [
-        'index' => 'ADMIN',
-        'json' => 'ADMIN',
-        'jsonfull' => 'ADMIN',
-        'sync' => 'ADMIN',
-    ];
-
-    public static function flush()
-    {
-        AllFilesInfo::flushCache();
-    }
-
-    public function Link($action = null)
-    {
-        $str = Director::absoluteURL(DIRECTORY_SEPARATOR . 'admin/assets-overview' . DIRECTORY_SEPARATOR);
-        if ($action) {
-            $str .= $action . DIRECTORY_SEPARATOR;
-        }
-
-        return $str;
-    }
-
-    public function getTitle(): string
-    {
-        $this->getSortStatement();
-        $this->getFilterStatement();
-        $this->getPageStatement();
-
-        if ($this->hasFilter()) {
-            $filterStatement = '' .
-                $this->getTotalFileCountFiltered() . ' files / ' .
-                $this->getTotalFileSizeFiltered();
-        } else {
-            $filterStatement =
-                $this->getTotalFileCountRaw() . ' / ' .
-                $this->getTotalFileSizeRaw();
-        }
-
-        return DBField::create_field(
-            'HTMLText',
-            'Found ' . $filterStatement
-        );
-    }
-
-    public function getSubTitle(): string
-    {
-        $array = array_filter(
-            [
-                $this->getSortStatement(),
-                $this->getFilterStatement(),
-                $this->getPageStatement(),
-                $this->getTotalsStatement(),
-            ]
-        );
-
-        return DBField::create_field(
-            'HTMLText',
-            '- ' . implode('<br /> - ', $array)
-        );
-    }
-
-    public function getSortStatement(): string
-    {
-        return '<strong>sorted by</strong>: ' . self::SORTERS[$this->sorter]['Title'] ?? 'ERROR IN SORTER';
-    }
-
-    public function getFilterStatement(): string
-    {
-        $filterArray = array_filter(
-            [
-                self::FILTERS[$this->filter]['Title'] ?? '',
-                implode(', ', $this->allowedExtensions),
-            ]
-        );
-
-        return count($filterArray) ? '<strong>filtered for</strong>: ' . implode(', ', $filterArray) : '';
-    }
-
-    public function getPageStatement(): string
-    {
-        return $this->getNumberOfPages() > 1 ?
-            '<strong>page</strong>: ' . $this->pageNumber . ' of ' . $this->getNumberOfPages() . ', showing file ' . ($this->startLimit + 1) . ' to ' . $this->endLimit
-            :
-            '';
-    }
-
-    public function getDisplayer(): string
-    {
-        return $this->displayer;
-    }
-
-    public function getfilesAsArrayList(): ArrayList
-    {
-        return $this->filesAsArrayList;
-    }
-
-    public function getfilesAsSortedArrayList(): ArrayList
-    {
-        return $this->filesAsSortedArrayList;
-    }
-
-    public function getTotalFileCountRaw(): string
-    {
-        return (string) number_format($this->totalFileCountRaw);
-    }
-
-    public function getTotalFileCountFiltered(): string
-    {
-        return (string) number_format($this->totalFileCountFiltered);
-    }
-
-    public function getTotalFileSizeFiltered(): string
-    {
-        return (string) $this->humanFileSize($this->totalFileSizeFiltered);
-    }
-
-    public function getTotalFileSizeRaw(): string
-    {
-        return (string) $this->humanFileSize(AllFilesInfo::getTotalFileSizesRaw());
-    }
-
-    public function index($request)
-    {
-        $this->setFilesAsSortedArrayList();
-        if ('rawlistfull' === $this->displayer) {
-            $this->addMapToItems();
-        }
-
-        if (false === AllFilesInfo::loadedFromCache()) {
-            $url = $_SERVER['REQUEST_URI'];
-            $url = str_replace('flush=', 'previousflush=', $url);
-            die('go to <a href="' . $url . '">' . $url . '</a> if this page does not autoload');
-        }
-
-        return $this->renderWith('AssetsOverview');
-    }
-
-    public function json($request)
-    {
-        return $this->sendJSON($this->getRawData());
-    }
-
-    public function jsonfull($request)
-    {
-        $array = [];
-        $this->setFilesAsArrayList();
-        foreach ($this->filesAsArrayList->toArray() as $item) {
-            $array[] = $item->toMap();
-        }
-
-        return $this->sendJSON($array);
-    }
-
-    public function sync()
-    {
-        $array = [];
-        $this->setFilesAsArrayList();
-        foreach ($this->filesAsArrayList->toArray() as $item) {
-            $obj = Injector::inst()->get(AddAndRemoveFromDb::class);
-            $obj->run($item->toMap());
-        }
-    }
-
-    public function addMapToItems()
-    {
-        $this->isThumbList = false;
-        foreach ($this->filesAsSortedArrayList as $group) {
-            foreach ($group->Items as $item) {
-                $map = $item->toMap();
-                $item->FullFields = ArrayList::create();
-                foreach ($map as $key => $value) {
-                    if (false === $value) {
-                        $value = 'no';
-                    }
-
-                    if (true === $value) {
-                        $value = 'yes';
-                    }
-
-                    $item->FullFields->push(ArrayData::create(['Key' => $key, 'Value' => $value]));
-                }
-            }
-        }
-    }
-
-    //#############################################
-    // FORM
-    //#############################################
-    public function Form()
-    {
-        return $this->getForm();
-    }
-
-    protected function init()
-    {
-        parent::init();
-        if (! Permission::check('ADMIN')) {
-            return Security::permissionFailure($this);
-        }
-
-        Requirements::clear();
-        ini_set('memory_limit', '1024M');
-        Environment::increaseMemoryLimitTo();
-        Environment::increaseTimeLimitTo(7200);
-        SSViewer::config()->merge('theme_enabled', false);
-        Versioned::set_stage(Versioned::DRAFT);
-        $this->getGetVariables();
-    }
-
-    protected function getTotalsStatement()
-    {
-        return $this->hasFilter() ? '<strong>Totals</strong>: ' .
-            $this->getTotalFileCountRaw() . ' files / ' . $this->getTotalFileSizeRaw()
-            : '';
-    }
-
-    protected function hasFilter(): bool
-    {
-        return $this->filter || count($this->allowedExtensions);
-    }
-
-    protected function getGetVariables()
-    {
-        $filter = $this->request->getVar('filter');
-        if ($filter) {
-            $this->filter = $filter;
-        }
-
-        $sorter = $this->request->getVar('sorter');
-        if ($sorter) {
-            $this->sorter = $sorter;
-        }
-
-        $displayer = $this->request->getVar('displayer');
-        if ($displayer) {
-            $this->displayer = $displayer;
-        }
-
-        $extensions = $this->request->getVar('extensions');
-        if ($extensions) {
-            if (! is_array($extensions)) {
-                $extensions = [$extensions];
-            }
-
-            $this->allowedExtensions = $extensions;
-            //make sure all are valid!
-            $this->allowedExtensions = array_filter($this->allowedExtensions);
-        }
-
-        $limit = $this->request->getVar('limit');
-        if ($limit) {
-            $this->limit = $limit;
-        }
-
-        $pageNumber = $this->request->getVar('page') ?: 0;
-        $this->startLimit = $this->limit * ($this->pageNumber - 1);
-        $this->endLimit = $this->limit * $this->pageNumber;
-    }
-
-    protected function sendJSON($data)
-    {
-        $json = json_encode($data, JSON_PRETTY_PRINT);
-        if ($this->request->getVar('download')) {
-            return HTTPRequest::send_file($json, 'files.json', 'text/json');
-        }
-        $response = (new HTTPResponse($json));
-        $response->addHeader('Content-Type', 'application/json; charset="utf-8"');
-        $response->addHeader('Pragma', 'no-cache');
-        $response->addHeader('cache-control', 'no-cache, no-store, must-revalidate');
-        $response->addHeader('Access-Control-Allow-Origin', '*');
-        $response->addHeader('Expires', 0);
-        HTTPCacheControlMiddleware::singleton()
-            ->disableCache()
-        ;
-        $response->output();
-        die();
-    }
-
-    protected function setfilesAsSortedArrayList()
-    {
-        if (null === $this->filesAsSortedArrayList) {
-            $sortField = self::SORTERS[$this->sorter]['Sort'];
-            $headerField = self::SORTERS[$this->sorter]['Group'];
-            //done only if not already done ...
-            $this->setFilesAsArrayList();
-            $this->filesAsSortedArrayList = ArrayList::create();
-            $this->filesAsArrayList = $this->filesAsArrayList->Sort($sortField);
-
-            $count = 0;
-
-            $innerArray = ArrayList::create();
-            $prevHeader = 'nothing here....';
-            $newHeader = '';
-            foreach ($this->filesAsArrayList as $file) {
-                $newHeader = $file->{$headerField};
-                if ($newHeader !== $prevHeader) {
-                    $this->addTofilesAsSortedArrayList(
-                        $prevHeader, //correct! important ...
-                        $innerArray
-                    );
-                    $prevHeader = $newHeader;
-                    unset($innerArray);
-                    $innerArray = ArrayList::create();
-                }
-
-                if ($count >= $this->startLimit && $count < $this->endLimit) {
-                    $innerArray->push($file);
-                } elseif ($count >= $this->endLimit) {
-                    break;
-                }
-
-                ++$count;
-            }
-
-            //last one!
-            $this->addTofilesAsSortedArrayList(
-                $newHeader,
-                $innerArray
-            );
-        }
-
-        return $this->filesAsSortedArrayList;
-    }
-
-    protected function addTofilesAsSortedArrayList(string $header, ArrayList $arrayList)
-    {
-        if ($arrayList->exists()) {
-            $count = $this->filesAsSortedArrayList->count();
-            $this->filesAsSortedArrayList->push(
-                ArrayData::create(
-                    [
-                        'Number' => $count,
-                        'SubTitle' => $header,
-                        'Items' => $arrayList,
-                    ]
-                )
-            );
-        }
-    }
-
-    protected function setFilesAsArrayList(): ArrayList
-    {
-        if (null === $this->filesAsArrayList) {
-            $rawArray = $this->getRawData();
-            //prepare loop
-            $this->totalFileCountRaw = AllFilesInfo::getTotalFilesCount();
-            $this->filesAsArrayList = ArrayList::create();
-            $filterFree = true;
-            $filterField = null;
-            $filterValues = null;
-            if (isset(self::FILTERS[$this->filter])) {
-                $filterFree = false;
-                $filterField = self::FILTERS[$this->filter]['Field'];
-                $filterValues = self::FILTERS[$this->filter]['Values'];
-            }
-
-            foreach ($rawArray as $absoluteLocation => $fileExists) {
-                if ($this->isPathWithAllowedExtension($absoluteLocation)) {
-                    $intel = $this->getDataAboutOneFile($absoluteLocation, $fileExists);
-                    if ($filterFree || in_array($intel[$filterField], $filterValues, 1)) {
-                        ++$this->totalFileCountFiltered;
-                        $this->totalFileSizeFiltered += $intel['PathFileSize'];
-                        $this->filesAsArrayList->push(
-                            ArrayData::create($intel)
-                        );
-                    }
-                }
-            }
-        }
-
-        return $this->filesAsArrayList;
-    }
-
-    protected function getRawData(): array
-    {
-        //get data
-        $class = self::ALL_FILES_INFO_CLASS;
-        $obj = new $class($this->getAssetsBaseFolder());
-
-        return $obj->toArray();
-    }
-
-    protected function getDataAboutOneFile(string $absoluteLocation, ?bool $fileExists): array
-    {
-        $class = self::ONE_FILE_INFO_CLASS;
-        $obj = new $class($absoluteLocation, $fileExists);
-
-        return $obj->toArray();
-    }
-
-    /**
-     * @param string $path - does not have to be full path
-     */
-    protected function isPathWithAllowedExtension(string $path): bool
-    {
-        $count = count($this->allowedExtensions);
-        if (0 === $count) {
-            return true;
-        }
-
-        $extension = strtolower($this->getExtension($path));
-
-        return in_array($extension, $this->allowedExtensions, true);
-    }
-
-    protected function getForm(): Form
-    {
-        $fieldList = FieldList::create(
-            [
-                $this->createFormField('sorter', 'Sort by', $this->sorter, $this->getSorterList()),
-                $this->createFormField('filter', 'Filter for errors', $this->filter, $this->getFilterList()),
-                $this->createFormField('extensions', 'Filter by extensions', $this->allowedExtensions, $this->getExtensionList()),
-                $this->createFormField('displayer', 'Displayed by', $this->displayer, $this->getDisplayerList()),
-                $this->createFormField('limit', 'Items per page', $this->limit, $this->getLimitList()),
-                $this->createFormField('page', 'Page number', $this->pageNumber, $this->getPageNumberList()),
-                // TextField::create('compare', 'Compare With')->setDescription('add a link to a comparison file - e.g. http://oldsite.com/admin/assets-overview/test.json'),
-            ]
-        );
-        $actionList = FieldList::create(
-            [
-                FormAction::create('index', 'Update File List'),
-            ]
-        );
-
-        $form = Form::create($this, 'index', $fieldList, $actionList);
-        $form->setFormMethod('GET', true);
-        $form->disableSecurityToken();
-
-        return $form;
-    }
-
-    protected function createFormField(string $name, string $title, $value, ?array $list = [])
-    {
-        $listCount = count($list);
-        if (0 === $listCount) {
-            $type = HiddenField::class;
-        } elseif ('limit' === $name || 'page' === $name) {
-            $type = DropdownField::class;
-        } elseif ('extensions' === $name) {
-            $type = CheckboxSetField::class;
-        } elseif ($listCount < 20) {
-            $type = OptionsetField::class;
-        } else {
-            $type = DropdownField::class;
-        }
-
-        $field = $type::create($name, $title)
-            ->setValue($value)
-        ;
-        if ($listCount) {
-            $field->setSource($list);
-        }
-
-        // $field->setAttribute('onchange', 'this.form.submit()');
-
-        return $field;
-    }
-
-    protected function getSorterList(): array
-    {
-        $array = [];
-        foreach (self::SORTERS as $key => $data) {
-            $array[$key] = $data['Title'];
-        }
-
-        return $array;
-    }
-
-    protected function getFilterList(): array
-    {
-        $array = ['' => '-- no filter --'];
-        foreach (self::FILTERS as $key => $data) {
-            $array[$key] = $data['Title'];
-        }
-
-        return $array;
-    }
-
-    protected function getDisplayerList(): array
-    {
-        return self::DISPLAYERS;
-    }
-
-    protected function getExtensionList(): array
-    {
-        return AllFilesInfo::getAvailableExtensions();
-    }
-
-    protected function getPageNumberList(): array
-    {
-        $list = range(1, $this->getNumberOfPages());
-        $list = array_combine($list, $list);
-        $list[(string) $this->pageNumber] = (string) $this->pageNumber;
-        if (count($list) < 2) {
-            return [];
-        }
-
-        return $list;
-    }
-
-    protected function getNumberOfPages(): int
-    {
-        return ceil($this->totalFileCountFiltered / $this->limit);
-    }
-
-    protected function getLimitList(): array
-    {
-        $step = 100;
-        $array = [];
-        $i = 0;
-        if ($this->totalFileCountRaw > $step) {
-            for ($i = $step; ($i - $step) < $this->totalFileCountFiltered; $i += $step) {
-                if ($i > $this->limit && ! isset($array[$this->limit])) {
-                    $array[$this->limit] = $this->limit;
-                }
-
-                $array[$i] = $i;
-            }
-        }
-
-        return $array;
-    }
 }

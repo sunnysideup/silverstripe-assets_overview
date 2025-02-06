@@ -5,6 +5,7 @@ namespace Sunnysideup\AssetsOverview\Control;
 use SilverStripe\Assets\File;
 use SilverStripe\CMS\Controllers\ContentController;
 use SilverStripe\Core\Environment;
+use SilverStripe\Core\Injector\Injector;
 use SilverStripe\ORM\DB;
 use SilverStripe\Security\Permission;
 use SilverStripe\Security\Security;
@@ -25,16 +26,6 @@ use Sunnysideup\AssetsOverview\Traits\FilesystemRelatedTraits;
 class Fix extends ContentController
 {
     use FilesystemRelatedTraits;
-
-    /**
-     * @var string
-     */
-    private const ALL_FILES_INFO_CLASS = AllFilesInfo::class;
-
-    /**
-     * @var string
-     */
-    private const ONE_FILE_INFO_CLASS = OneFileInfo::class;
 
     protected $intel = [];
 
@@ -90,19 +81,15 @@ class Fix extends ContentController
     protected function getRawData(): array
     {
         //get data
-        $class = self::ALL_FILES_INFO_CLASS;
-        $obj = new $class($this->getAssetsBaseFolder());
-
-        return $obj->toArray();
+        return Injector::inst()->get(AllFilesInfo::class)
+            ->toArray();
     }
 
     protected function getDataAboutOneFile(string $absoluteLocation): array
     {
-        $class = self::ONE_FILE_INFO_CLASS;
-        $obj = new $class($absoluteLocation);
-        print_r($obj);
-
-        return $this->getUncachedIntel($absoluteLocation);
+        $obj = OneFileInfo::inst($absoluteLocation);
+        $obj->setNoCache(true);
+        return $obj->toArray(true);
     }
 
     protected function fixErrorDBNotPresent()
@@ -117,13 +104,9 @@ class Fix extends ContentController
         }
     }
 
-    protected function fixErrorDBNotPresentLive()
-    {
-    }
+    protected function fixErrorDBNotPresentLive() {}
 
-    protected function fixErrorDBNotPresentStaging()
-    {
-    }
+    protected function fixErrorDBNotPresentStaging() {}
 
     protected function fixErrorExtensionMisMatch()
     {
@@ -150,15 +133,25 @@ class Fix extends ContentController
 
     protected function fixErrorInSs3Ss4Comparison()
     {
-        DB::query('UPDATE "File" SET "Filename" = "FileFileName" WHERE ID =' . $this->intel['DBID']);
-        DB::query('UPDATE "File_Live" SET "Filename" = "FileFileName" WHERE ID =' . $this->intel['DBID']);
+        foreach (['', '_Live'] as $stage) {
+            DB::query(
+                '
+                UPDATE "File"' . $stage . '
+                SET "Filename" = "FileFileName"
+                WHERE ID =' . $this->intel['DBID'] . ' AND "Filename" <> "FileFileName" AND "FileFileName" IS NOT NULL AND "FileFileName" <> \'\''
+            );
+            DB::query(
+                '
+                UPDATE "File"' . $stage . '
+                SET "FileFileName" = "Filename"
+                WHERE ID =' . $this->intel['DBID'] . ' AND "Filename" <> "FileFileName" AND "Filename" IS NOT NULL AND "Filename" <> \'\''
+            );
+        }
 
         return true;
     }
 
-    protected function fixErrorParentID()
-    {
-    }
+    protected function fixErrorParentID() {}
 
     protected function fixFileInDB()
     {

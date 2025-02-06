@@ -2,6 +2,7 @@
 
 namespace Sunnysideup\AssetsOverview\Api;
 
+use SilverStripe\Assets\File;
 use SilverStripe\Assets\Image;
 use SilverStripe\Core\ClassInfo;
 use SilverStripe\Core\Config\Config;
@@ -24,7 +25,7 @@ class ImageFieldFinder
                     $rels = Config::inst()->get($className, $type, Config::UNINHERITED);
                     if (is_array($rels) && ! empty($rels)) {
                         foreach ($rels as $relName => $relType) {
-                            if (Image::class === $relType) {
+                            if (is_a($relType, File::class, true)) {
                                 $title = $obj->i18n_singular_name() . ' - ' . ($fieldLabels[$relName] ?? $relName);
                                 $key = $className . ',' . $relName . ',' . $type;
                                 self::$myCache[$key] = $title;
