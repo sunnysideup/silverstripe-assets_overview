@@ -2,7 +2,7 @@
     <a href="$PathFromPublicRoot" target="_blank" class="main-link">
     </a>
     <% if $ImageIsImage %>
-        <img src="$PathFromPublicRoot" height="250" alt="$DBTitle" />
+        <img loading="lazy" src="$PathFromPublicRoot" height="250" alt="$DBTitle" />
     <% else %>
         <span class="main-title">[$DBTitle]</span>
         <br />
