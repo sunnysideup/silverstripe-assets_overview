@@ -2,7 +2,6 @@
 
 namespace Sunnysideup\AssetsOverview\Control;
 
-use phpDocumentor\Reflection\Types\True_;
 use SilverStripe\CMS\Controllers\ContentController;
 use SilverStripe\Control\Director;
 use SilverStripe\Control\HTTPRequest;
@@ -153,7 +152,7 @@ class View extends ContentController implements Flushable
 
         if ($this->hasFilter()) {
             $filterStatement = '' .
-                $this->getTotalFileCountFiltered() . ' files / ' .
+                $this->getAllFilesInfoProvider()->getTotalFileCountFiltered() . ' files / ' .
                 $this->getTotalFileSizeFiltered();
         } else {
             $filterStatement =
@@ -312,7 +311,7 @@ class View extends ContentController implements Flushable
     public function removefromdb()
     {
         $obj = $this->getAddAndRemoveFromDbClass();
-        foreach ($this->filesAsArrayList->toArray() as $item) {
+        foreach ($this->getFilesAsArrayList()->toArray() as $item) {
             $obj->run($item->toMap(), 'remove');
         }
     }

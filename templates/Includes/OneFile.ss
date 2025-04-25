@@ -5,6 +5,7 @@
             <div>[PROTECTED]</div>
         <% else %>
         <img src="$PathFromPublicRoot" height="250" alt="$DBTitle" />
+        <% end_if %>
     <% else %>
         <span class="main-title">[$DBTitle]</span>
         <br />

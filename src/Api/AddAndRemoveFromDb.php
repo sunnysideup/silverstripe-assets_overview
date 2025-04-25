@@ -53,14 +53,12 @@ class AddAndRemoveFromDb
             }
             $this->logMessage('Skipping [RESIZED IMAGE]', $pathFromAssetsFolder);
         } elseif ($oneFileInfoArray['ErrorDBNotPresent'] === true && $mode !== 'remove') {
-            print_r($oneFileInfoArray);
 
             $this->logMessage('+++ Adding to DB', $pathFromAssetsFolder, 'created');
             if ($this->dryRun === false) {
                 $this->addFileToDb($oneFileInfoArray);
             }
         } elseif ($oneFileInfoArray['ErrorIsInFileSystem'] === true && $mode !== 'add') {
-            print_r($oneFileInfoArray);
 
             $this->logMessage('--- Removing from DB', $pathFromAssetsFolder, 'deleted');
             if ($this->dryRun === false) {

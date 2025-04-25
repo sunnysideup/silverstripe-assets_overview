@@ -57,6 +57,14 @@ class AllFilesInfo implements FileInfo
         '__ResizedImage',
     ];
 
+    public function getAllFiles(?bool $verbose = true, ?bool $noCache = true): array
+    {
+        $this->setLimit(99999999999);
+        $this->setVerbose($verbose);
+        $this->setNoCache($noCache);
+        return $this->getFilesAsArrayList()->toArray();
+    }
+
     protected bool $noCache = false;
     protected bool $verbose = false;
 
