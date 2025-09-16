@@ -3,6 +3,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <meta name="robots" content="noindex, nofollow">
  <% base_tag %>
   <title>Assets Overview</title>
   <style>
