@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Sunnysideup\AssetsOverview\Files;
 
 use FilesystemIterator;
@@ -341,7 +343,7 @@ class AllFilesInfo implements FileInfo
             foreach ($rawArray as $location => $fileExists) {
                 if ($this->isPathWithAllowedExtension($this->allowedExtensions, $location)) {
                     $intel = $this->getDataAboutOneFile($location, $fileExists);
-                    if ($filterFree || in_array($intel[$filterField], $filterValues, 1)) {
+                    if ($filterFree || in_array($intel[$filterField], $filterValues, true)) {
                         ++$this->totalFileCountFiltered;
                         $this->totalFileSizeFiltered += $intel['PathFileSize'];
                         $this->filesAsArrayList->push(

@@ -18,7 +18,7 @@ class AddAndRemoveFromDb
 
     private static $publish_recursive = true;
 
-    protected $dryRun = true;
+    protected bool $dryRun = true;
 
     public function __construct(?bool $dryRun = true)
     {
