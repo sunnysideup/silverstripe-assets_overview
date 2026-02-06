@@ -35,7 +35,7 @@ class AddAndRemoveFromDb
 
     public function run(array $oneFileInfoArray, ?string $mode = null)
     {
-        if ($mode !== 'add' && $mode !== 'remove' && $mode !== null) {
+        if (!in_array($mode, ['add', 'remove', null], true)) {
             user_error('Mode must be either "add" or "remove" or not set at all', E_USER_ERROR);
         }
         $pathFromAssetsFolder = $oneFileInfoArray['Path'];

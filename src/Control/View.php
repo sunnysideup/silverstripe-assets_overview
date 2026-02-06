@@ -59,57 +59,27 @@ class View extends ContentController implements Flushable
     }
 
 
-    protected static $allFilesProvider = null;
+    protected static $allFilesProvider;
 
-    /**
-     * @var string
-     */
     protected string $title = '';
 
 
-    /**
-     * @var int
-     */
     protected int $limit = 1000;
 
-    /**
-     * @var int
-     */
     protected int $startLimit = 0;
 
-    /**
-     * @var int
-     */
     protected int $endLimit = 0;
 
-    /**
-     * @var int
-     */
     protected int $pageNumber = 1;
 
-    /**
-     * @var bool
-     */
     protected bool $dryRun = false;
 
-    /**
-     * @var string
-     */
     protected string $sorter = 'byfolder';
 
-    /**
-     * @var string
-     */
     protected string $filter = '';
 
-    /**
-     * @var string
-     */
     protected string $displayer = 'thumbs';
 
-    /**
-     * @var array
-     */
     protected array $allowedExtensions = [];
 
     /**
@@ -230,22 +200,22 @@ class View extends ContentController implements Flushable
 
     public function getTotalFileCountRaw(): string
     {
-        return (string) number_format($this->getAllFilesInfoProvider()->getTotalFileCountRaw());
+        return number_format($this->getAllFilesInfoProvider()->getTotalFileCountRaw());
     }
 
     public function getTotalFileCountFilteredAndFormatted(): string
     {
-        return (string) number_format($this->getAllFilesInfoProvider()->getTotalFileCountFiltered());
+        return number_format($this->getAllFilesInfoProvider()->getTotalFileCountFiltered());
     }
 
     public function getTotalFileSizeFiltered(): string
     {
-        return (string) $this->humanFileSize($this->getAllFilesInfoProvider()->getTotalFileSizeFiltered());
+        return $this->humanFileSize($this->getAllFilesInfoProvider()->getTotalFileSizeFiltered());
     }
 
     public function getTotalFileSizeRaw(): string
     {
-        return (string) $this->humanFileSize($this->getAllFilesInfoProvider()->getTotalFileSizesRaw());
+        return $this->humanFileSize($this->getAllFilesInfoProvider()->getTotalFileSizesRaw());
     }
 
     public function index($request)
@@ -284,7 +254,6 @@ class View extends ContentController implements Flushable
 
     public function jsonone($request)
     {
-        $array = [];
         $location = $this->request->getVar('path');
         $obj = OneFileInfo::inst($location);
         $obj->setNoCache(true);
@@ -367,6 +336,7 @@ class View extends ContentController implements Flushable
         Versioned::set_stage(Versioned::DRAFT);
         $this->getGetVariables();
         $this->getAllFilesInfoProvider();
+        return null;
     }
 
     protected function getTotalsStatement()
@@ -416,7 +386,7 @@ class View extends ContentController implements Flushable
 
         $this->pageNumber = ($this->request->getVar('page') ?: 1);
         $this->startLimit = $this->limit * ($this->pageNumber - 1);
-        $this->endLimit = $this->limit * ($this->pageNumber + 0);
+        $this->endLimit = $this->limit * ($this->pageNumber);
         $this->getAllFilesInfoProvider();
     }
 
@@ -522,8 +492,7 @@ class View extends ContentController implements Flushable
     protected function getExtensionList(): array
     {
         $list = array_filter($this->getAllFilesInfoProvider()->getAvailableExtensions());
-        $list = ['n/a' => 'n/a'] + $list;
-        return $list;
+        return ['n/a' => 'n/a'] + $list;
     }
 
     protected function getPageNumberList(): array
@@ -548,8 +517,8 @@ class View extends ContentController implements Flushable
         $step = 100;
         $array = [];
         $i = 0;
-        $totalRaw = (int)  $this->getAllFilesInfoProvider()->getTotalFileCountRaw();
-        $totalFiltered = (int)  $this->getAllFilesInfoProvider()->getTotalFileCountFiltered();
+        $totalRaw = $this->getAllFilesInfoProvider()->getTotalFileCountRaw();
+        $totalFiltered = $this->getAllFilesInfoProvider()->getTotalFileCountFiltered();
         if ($totalRaw > $step) {
             for ($i = $step; ($i - $step) < $totalFiltered; $i += $step) {
                 if ($i > $this->limit && ! isset($array[$this->limit])) {
@@ -573,7 +542,6 @@ class View extends ContentController implements Flushable
     protected function getAllFilesInfoProvider(): AllFilesInfo
     {
         if (!self::$allFilesProvider) {
-            /** @var AllFilesInfo self::$allFilesProvider */
             self::$allFilesProvider = AllFilesInfo::inst();
             self::$allFilesProvider
                 ->setFilters(self::get_filters())
@@ -590,7 +558,7 @@ class View extends ContentController implements Flushable
             while ($this->startLimit > $this->filesAsArrayList->count()) {
                 $this->pageNumber--;
                 $this->startLimit = $this->limit * ($this->pageNumber - 1);
-                $this->endLimit = $this->limit * ($this->pageNumber + 0);
+                $this->endLimit = $this->limit * ($this->pageNumber);
             }
         }
         return self::$allFilesProvider;

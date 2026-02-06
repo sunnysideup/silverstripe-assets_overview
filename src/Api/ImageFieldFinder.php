@@ -23,7 +23,7 @@ class ImageFieldFinder
                 $fieldLabels = $obj->fieldLabels(true);
                 foreach ($types as $type) {
                     $rels = Config::inst()->get($className, $type, Config::UNINHERITED);
-                    if (is_array($rels) && ! empty($rels)) {
+                    if (is_array($rels) && $rels !== []) {
                         foreach ($rels as $relName => $relType) {
                             if (is_a($relType, File::class, true)) {
                                 $title = $obj->i18n_singular_name() . ' - ' . ($fieldLabels[$relName] ?? $relName);

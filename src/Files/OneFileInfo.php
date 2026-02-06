@@ -67,24 +67,12 @@ class OneFileInfo implements FileInfo
         'ErrorNotInDraft',
     ];
 
-    /**
-     * @var string
-     */
     protected string $pathHash = '';
 
-    /**
-     * @var string
-     */
     protected string $path = '';
 
-    /**
-     * @var array
-     */
     protected array $intel = [];
 
-    /**
-     * @var bool
-     */
     protected bool $physicalFileExists = false;
     protected ?File $file;
 
@@ -97,11 +85,9 @@ class OneFileInfo implements FileInfo
         $this->pathHash = md5($this->path);
         $this->physicalFileExists = file_exists($this->intel['AbsolutePath']);
         $this->file = DataObject::get_one(File::class, ['FileFilename' => $this->path]);
-        if (!$this->physicalFileExists) {
-            if ($this->file && $this->file->exists()) {
-                $this->physicalFileExists = true;
-                $this->intel['IsProtected'] = true;
-            }
+        if (!$this->physicalFileExists && ($this->file && $this->file->exists())) {
+            $this->physicalFileExists = true;
+            $this->intel['IsProtected'] = true;
         }
     }
 
@@ -172,7 +158,7 @@ class OneFileInfo implements FileInfo
         $this->intel['PathFolderPath'] = $pathParts['dirname'] ?: dirname($this->intel['Path']);
         //file name
         $this->intel['PathFileName'] = $pathParts['filename'] ?: basename($this->intel['AbsolutePath']);
-        $this->intel['PathFileNameFirstLetter'] = strtoupper(substr((string) $this->intel['PathFileName'], 0, 1));
+        $this->intel['PathFileNameFirstLetter'] = strtoupper(substr($this->intel['PathFileName'], 0, 1));
 
         //defaults
         $this->intel['ErrorIsInFileSystem'] = true;
@@ -201,14 +187,14 @@ class OneFileInfo implements FileInfo
         $this->intel['PathExtensionAsLower'] = (string) strtolower($this->intel['PathExtension']);
         $this->intel['ErrorExtensionMisMatch'] = $this->intel['PathExtension'] !== $this->intel['PathExtensionAsLower'];
         $pathExtensionWithDot = '.' . $this->intel['PathExtension'];
-        $extensionLength = strlen((string) $pathExtensionWithDot);
-        $pathLength = strlen((string) $this->intel['PathFileName']);
-        if (substr((string) $this->intel['PathFileName'], (-1 * $extensionLength)) === $pathExtensionWithDot) {
-            $this->intel['PathFileName'] = substr((string) $this->intel['PathFileName'], 0, ($pathLength - $extensionLength));
+        $extensionLength = strlen($pathExtensionWithDot);
+        $pathLength = strlen($this->intel['PathFileName']);
+        if (substr($this->intel['PathFileName'], (-1 * $extensionLength)) === $pathExtensionWithDot) {
+            $this->intel['PathFileName'] = substr($this->intel['PathFileName'], 0, ($pathLength - $extensionLength));
         }
 
         $this->intel['ErrorInvalidExtension'] = false;
-        if (false !== $this->intel['IsDir']) {
+        if ($this->intel['IsDir']) {
             $test = Injector::inst()->get(DBFile::class);
             $validationResult = Injector::inst()->get(ValidationResult::class);
             $this->intel['ErrorInvalidExtension'] = (bool) $test->validate(
@@ -229,18 +215,16 @@ class OneFileInfo implements FileInfo
         $this->intel['ImageType'] = $this->intel['PathExtension'];
         $this->intel['ImageAttribute'] = 'n/a';
 
-        if ($this->physicalFileExists) {
-            if ($this->intel['IsImage']) {
-                $this->intel['ImageWidth'] = $this->file?->getWidth() ?: 0;
-                $this->intel['ImageHeight'] = $this->file?->getHeight() ?: 0;
-                if ($this->intel['ImageHeight'] > 0) {
-                    $this->intel['ImageRatio'] = round($this->intel['ImageHeight'] / $this->intel['ImageWidth'], 3);
-                } else {
-                    $this->intel['ImageRatio'] = 0;
-                }
-                $this->intel['ImagePixels'] =  $this->intel['ImageHeight'] * $this->intel['ImageWidth'];
-                $this->intel['IsResizedImage'] = (bool) strpos($this->intel['PathFileName'], '__');
+        if ($this->physicalFileExists && $this->intel['IsImage']) {
+            $this->intel['ImageWidth'] = $this->file?->getWidth() ?: 0;
+            $this->intel['ImageHeight'] = $this->file?->getHeight() ?: 0;
+            if ($this->intel['ImageHeight'] > 0) {
+                $this->intel['ImageRatio'] = round($this->intel['ImageHeight'] / $this->intel['ImageWidth'], 3);
+            } else {
+                $this->intel['ImageRatio'] = 0;
             }
+            $this->intel['ImagePixels'] =  $this->intel['ImageHeight'] * $this->intel['ImageWidth'];
+            $this->intel['IsResizedImage'] = (bool) strpos($this->intel['PathFileName'], '__');
         }
     }
 
@@ -288,10 +272,8 @@ class OneFileInfo implements FileInfo
             $this->intel['ErrorInFilename'] = false;
             $this->intel['ErrorInSs3Ss4Comparison'] = false;
             $time = time();
-            if ($this->physicalFileExists && !$this->intel['IsProtected'] && $this->intel['AbsolutePath']) {
-                if (file_exists($this->intel['AbsolutePath'])) {
-                    $time = filemtime($this->intel['AbsolutePath']);
-                }
+            if ($this->physicalFileExists && !$this->intel['IsProtected'] && $this->intel['AbsolutePath'] && file_exists($this->intel['AbsolutePath'])) {
+                $time = filemtime($this->intel['AbsolutePath']);
             }
         } else {
             $obj = AllFilesInfo::inst();

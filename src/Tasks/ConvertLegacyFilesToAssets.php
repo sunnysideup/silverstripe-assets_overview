@@ -111,7 +111,7 @@ class ConvertLegacyFilesToAssets extends BuildTask
                                 } else {
                                     DB::alteration_message("Dry run: Updated content for {$className} ID {$id}", 'good');
                                 }
-                                if ($isModifiedOnDraft !== true && $isPublished) {
+                                if (!$isModifiedOnDraft && $isPublished) {
                                     if ($this->forreal) {
                                         DB::alteration_message("Publishing object with ID {$id} in class {$className}");
                                         $obj->publishSingle();
@@ -209,7 +209,7 @@ class ConvertLegacyFilesToAssets extends BuildTask
             // Try searching by FileFilename as fallback
             $file = $this->getFromDatabaseOrLocalFile($filename, true);
 
-            if ($file) {
+            if ($file instanceof \SilverStripe\Assets\File) {
                 // Get attributes from img tag
                 $style = $img->getAttribute('style');
                 $alt = $img->getAttribute('alt');
@@ -253,10 +253,10 @@ class ConvertLegacyFilesToAssets extends BuildTask
                 // Create the shortcode
                 $shortcode = '[image src="' . $file->getSourceURL() . '" id="' . $file->ID . '"';
 
-                if ($width) {
+                if ($width !== 0.0) {
                     $shortcode .= ' width="' . $width . '"';
                 }
-                if ($height) {
+                if ($height !== 0.0) {
                     $shortcode .= ' height="' . $height . '"';
                 }
                 if ($class) {
@@ -312,7 +312,6 @@ class ConvertLegacyFilesToAssets extends BuildTask
                 echo "Updated content for {$className} ID {$id}\n";
                 $this->conversions[$warningKey][] = "OK.\n";
             }
-            $updatedContent;
         }
         return $updatedContent ?: $content;
     }
@@ -370,7 +369,7 @@ class ConvertLegacyFilesToAssets extends BuildTask
             // Find corresponding File object
             $file = $this->getFromDatabaseOrLocalFile($filename, false);
 
-            if ($file) {
+            if ($file instanceof \SilverStripe\Assets\File) {
                 // Get the link text
                 $linkText = $link->textContent;
 
@@ -461,11 +460,7 @@ class ConvertLegacyFilesToAssets extends BuildTask
         $folder = Folder::find_or_make('Legacy');
 
         // Create the appropriate file object
-        if ($isImage) {
-            $file = Image::create();
-        } else {
-            $file = File::create();
-        }
+        $file = $isImage ? Image::create() : File::create();
 
         // Set the file contents from the found path
         $file->setFromLocalFile($foundPath, $filename);
@@ -520,7 +515,7 @@ class ConvertLegacyFilesToAssets extends BuildTask
 
 
     protected static $_cacheFieldExists = [];
-    protected static $_schema = null;
+    protected static $_schema;
 
     protected function fieldExists(string $tableName, string $fieldName): bool
     {
@@ -553,9 +548,7 @@ class ConvertLegacyFilesToAssets extends BuildTask
             );
         }
 
-        $contentClasses = array_filter($contentClasses);
-
-        return $contentClasses;
+        return array_filter($contentClasses);
     }
 
     protected array $siteTreeClasses = [];
@@ -566,7 +559,7 @@ class ConvertLegacyFilesToAssets extends BuildTask
      */
     protected function getSiteTreeClasses()
     {
-        if (empty($this->siteTreeClasses)) {
+        if ($this->siteTreeClasses === []) {
             $this->siteTreeClasses = $this->getManifest()->getDescendantsOf(SiteTree::class);
         }
 
@@ -581,7 +574,7 @@ class ConvertLegacyFilesToAssets extends BuildTask
      */
     protected function getDataClasses()
     {
-        if (empty($this->dataClasses)) {
+        if ($this->dataClasses === []) {
             $this->dataClasses = $this->getManifest()->getDescendantsOf(DataObject::class);
         }
 
@@ -605,7 +598,6 @@ class ConvertLegacyFilesToAssets extends BuildTask
      * Build a set of queries to get content of all HTMLText fields
      *
      * @param array $contentClasses Classes and their HTMLText fields
-     * @return array
      */
     protected function getContentQuery($contentClasses): array
     {
@@ -636,7 +628,7 @@ class ConvertLegacyFilesToAssets extends BuildTask
         foreach ($queries as $className => $queryies) {
             foreach ($queryies as $field => $query) {
                 $outcome = array_unique(DB::query($query)->column());
-                if (empty($outcome)) {
+                if ($outcome === []) {
                     continue;
                 }
                 if (isset($allIds[$className][$field])) {
@@ -650,8 +642,6 @@ class ConvertLegacyFilesToAssets extends BuildTask
 
     /**
      * Get all the candidate classes to check for File or Image references.
-     *
-     * @return array
      */
     protected function getClassesToCheck(): array
     {
@@ -669,7 +659,7 @@ class ConvertLegacyFilesToAssets extends BuildTask
     }
 
 
-    protected $manifest = null;
+    protected $manifest;
     /**
      * @return ClassManifest
      */
@@ -683,19 +673,23 @@ class ConvertLegacyFilesToAssets extends BuildTask
 
     protected function showErrorsAndWarnings($propertyName, $warningKey)
     {
-        if (!empty($this->$propertyName[$warningKey]) && count($this->$propertyName[$warningKey]) > 0) {
-            foreach ($this->$propertyName[$warningKey] as $message) {
+        $list = $this->$propertyName;
+        $var = $warningKey;
+        if (!empty($list[$var])) {
+            foreach ($list[$var] as $message) {
                 echo strtoupper($propertyName) . ": $message";
             }
-        } elseif (isset($this->$propertyName[$warningKey])) {
-            unset($this->$propertyName[$warningKey]);
+        } elseif (isset($list[$var])) {
+            unset($list[$var]);
         }
     }
 
     protected function printErrorsAndWarnings($propertyName)
     {
         foreach ($this->$propertyName as $warningKey => $messages) {
-            if (!empty($this->$propertyName[$warningKey]) && count($this->$propertyName[$warningKey]) > 0) {
+            $list = $this->$propertyName;
+            $var = $warningKey;
+            if (!empty($list[$var])) {
                 $vars = explode(',', $warningKey);
                 $className = $vars[0];
                 $id = $vars[1];

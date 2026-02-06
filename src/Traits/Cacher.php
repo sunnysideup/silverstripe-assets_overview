@@ -9,7 +9,7 @@ trait Cacher
 {
     private static $loadedFromCache = true;
 
-    private static $cacheCache = null;
+    private static $cacheCache;
 
     /**
      * return false if the cache has been set or a cache key was not found.

@@ -14,8 +14,8 @@ class CompareImages
             return false;
         }
 
-        $i1 = $this->resizeImage($i1, $a);
-        $i2 = $this->resizeImage($i2, $b);
+        $i1 = $this->resizeImage($a);
+        $i2 = $this->resizeImage($b);
 
         imagefilter($i1, IMG_FILTER_GRAYSCALE);
         imagefilter($i2, IMG_FILTER_GRAYSCALE);
@@ -73,7 +73,7 @@ class CompareImages
         return false;
     }
 
-    private function resizeImage($i, $source)
+    private function resizeImage($source)
     {
         // resizes the image to a 8x8 squere and returns as image resource
         $mime = $this->mimeType($source);

@@ -68,12 +68,13 @@ class Fix extends ContentController
         Environment::increaseTimeLimitTo(7200);
         SSViewer::config()->merge('theme_enabled', false);
         Versioned::set_stage(Versioned::DRAFT);
+        return null;
     }
 
     protected function runMethod($method)
     {
         $method = 'fix' . $method;
-        if ('Error' === substr((string) $method, 0, 5) && $this->hasMethod($method)) {
+        if ('Error' === substr($method, 0, 5) && $this->hasMethod($method)) {
             $this->{$method}();
         }
     }
@@ -89,7 +90,7 @@ class Fix extends ContentController
     {
         $obj = OneFileInfo::inst($absoluteLocation);
         $obj->setNoCache(true);
-        return $obj->toArray(true);
+        return $obj->toArray();
     }
 
     protected function fixErrorDBNotPresent()
@@ -111,11 +112,11 @@ class Fix extends ContentController
     protected function fixErrorExtensionMisMatch()
     {
         $file = $this->getFileObject();
-        if ($file) {
+        if ($file instanceof \SilverStripe\Assets\File) {
             $newFileName = $this->intel['PathFolderFromAssets'] . DIRECTORY_SEPARATOR .
                 $this->intel['PathFileName'] . '.' . $this->intel['PathExtensionAsLower'];
             $file = $this->getFileObject();
-            if ($file) {
+            if ($file instanceof \SilverStripe\Assets\File) {
                 $file->renameFile($newFileName);
             }
         }
@@ -156,7 +157,7 @@ class Fix extends ContentController
     protected function fixFileInDB()
     {
         $file = $this->getFileObject();
-        if ($file) {
+        if ($file instanceof \SilverStripe\Assets\File) {
             $this->updateFilesystem();
         } else {
             user_error('Can not find file ID');

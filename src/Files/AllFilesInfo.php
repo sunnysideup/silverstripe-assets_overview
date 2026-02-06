@@ -70,100 +70,46 @@ class AllFilesInfo implements FileInfo
     protected bool $noCache = false;
     protected bool $verbose = false;
 
-    /**
-     * @var string
-     */
     protected string $path = '';
 
-    /**
-     * @var array
-     */
     protected array $dataStaging = [];
 
-    /**
-     * @var array
-     */
     protected array $dataLive = [];
 
-    /**
-     * @var array
-     */
     protected array $listOfFiles = [];
 
-    /**
-     * @var array
-     */
     protected array $databaseLookupListStaging = [];
 
 
-    /**
-     * @var array
-     */
     protected array $databaseLookupListLive = [];
 
 
-    /**
-     * @var ArrayList
-     */
     protected ArrayList $filesAsArrayList;
 
-    /**
-     * @var ArrayList
-     */
     protected ArrayList $filesAsSortedArrayList;
 
-    /**
-     * @var array
-     */
     protected array $availableExtensions = [];
 
 
 
-    /**
-     * @var int
-     */
     protected int $totalFileCountRaw = 0;
 
 
-    /**
-     * @var int
-     */
     protected int $totalFileCountFiltered = 0;
 
-    /**
-     * @var int
-     */
     protected int $totalFileSizeFiltered = 0;
 
-    /**
-     * @var int
-     */
     protected int $limit = 1000;
 
-    /**
-     * @var int
-     */
     protected int $startLimit = 0;
 
-    /**
-     * @var int
-     */
     protected int $endLimit = 0;
 
-    /**
-     * @var int
-     */
     protected int $pageNumber = 1;
 
-    /**
-     * @var string
-     */
     protected string $sorter = 'byfolder';
     protected array $sorters = [];
 
-    /**
-     * @var string
-     */
     protected string $filter = '';
 
     /**
@@ -171,14 +117,8 @@ class AllFilesInfo implements FileInfo
      */
     protected array $filters = [];
 
-    /**
-     * @var string
-     */
     protected string $displayer = 'thumbs';
 
-    /**
-     * @var array
-     */
     protected array $allowedExtensions = [];
 
 
@@ -189,7 +129,7 @@ class AllFilesInfo implements FileInfo
 
     public function getTotalFilesCount(): int
     {
-        return (int) count($this->listOfFiles);
+        return count($this->listOfFiles);
     }
 
     /**
@@ -214,7 +154,7 @@ class AllFilesInfo implements FileInfo
     public function getAnyData(string $pathFromAssets, ?int $id = 0): array
     {
         $data = self::getStagingData($pathFromAssets, $id);
-        if (empty($data)) {
+        if ($data === []) {
             $data = self::getLiveData($pathFromAssets, $id);
         }
 
@@ -536,20 +476,17 @@ class AllFilesInfo implements FileInfo
 
     protected function registerFile($path, ?bool $inFileSystem = true)
     {
-        if ($path) {
-            if (! isset($this->listOfFiles[$path])) {
-                $this->listOfFiles[$path] = $inFileSystem;
-                if ($this->verbose) {
-                    if ($inFileSystem) {
-                        echo '✓ ';
-                    } else {
-                        echo PHP_EOL . 'x NOT IN FILE SYSTEM: ' . $path . ' ' . PHP_EOL;
-                    }
+        if ($path && ! isset($this->listOfFiles[$path])) {
+            $this->listOfFiles[$path] = $inFileSystem;
+            if ($this->verbose) {
+                if ($inFileSystem) {
+                    echo '✓ ';
+                } else {
+                    echo PHP_EOL . 'x NOT IN FILE SYSTEM: ' . $path . ' ' . PHP_EOL;
                 }
-
-                $extension = strtolower($this->getExtension($path));
-                $this->availableExtensions[$extension] = $extension;
             }
+            $extension = strtolower($this->getExtension($path));
+            $this->availableExtensions[$extension] = $extension;
         }
     }
 
@@ -560,10 +497,8 @@ class AllFilesInfo implements FileInfo
     protected function findInData(array $data, string $fieldName, $value): int
     {
         foreach ($data as $id => $row) {
-            if (isset($row[$fieldName])) {
-                if ($row[$fieldName] === $value) {
-                    return (int) $id;
-                }
+            if (isset($row[$fieldName]) && $row[$fieldName] === $value) {
+                return (int) $id;
             }
         }
 
@@ -580,7 +515,7 @@ class AllFilesInfo implements FileInfo
         }
 
         $fileName = basename($absolutePath);
-        $isErrorPage = ('error' === substr((string) $fileName, 0, 5) && '.html' === substr((string) $fileName, -5));
+        $isErrorPage = ('error' === substr($fileName, 0, 5) && '.html' === substr($fileName, -5));
         return ! $isErrorPage;
     }
 
@@ -609,7 +544,6 @@ class AllFilesInfo implements FileInfo
     /**
      *
      * returns all the files in the database except for folders.
-     * @return array
      */
     protected function getArrayOfFilesInDatabase(): array
     {
@@ -620,7 +554,7 @@ class AllFilesInfo implements FileInfo
             foreach ($files as $file) {
                 $row = $file->toMap();
                 $location = trim($file->getFilename(), '/');
-                if (!$location) {
+                if ($location === '' || $location === '0') {
                     $location = $file->generateFilename();
                 }
                 if ('Stage' === $stage) {

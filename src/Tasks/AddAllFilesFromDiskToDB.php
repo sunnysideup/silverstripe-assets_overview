@@ -21,7 +21,7 @@ class AddAllFilesFromDiskToDB extends BuildTask
 
     public function run($request)
     {
-        $this->dryRun = $request->getVar('forreal') ? false : true;
+        $this->dryRun = !(bool) $request->getVar('forreal');
         $this->dryRunMessage();
 
         $files = AllFilesInfo::inst()->getAllFiles();
