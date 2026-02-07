@@ -10,7 +10,6 @@ use Sunnysideup\AssetsOverview\Files\AllFilesInfo;
 
 class AddAllFilesFromDiskToDB extends BuildTask
 {
-
     protected $title = 'Add all files from disk to database';
 
     protected $description = 'This task will add all files from the disk to the database.';
@@ -21,7 +20,7 @@ class AddAllFilesFromDiskToDB extends BuildTask
 
     public function run($request)
     {
-        $this->dryRun = !(bool) $request->getVar('forreal');
+        $this->dryRun = ! (bool) $request->getVar('forreal');
         $this->dryRunMessage();
 
         $files = AllFilesInfo::inst()->getAllFiles();
@@ -34,7 +33,6 @@ class AddAllFilesFromDiskToDB extends BuildTask
         $this->dryRunMessage();
         DB::alteration_message('=== DONE ===', '');
     }
-
 
     protected function dryRunMessage()
     {

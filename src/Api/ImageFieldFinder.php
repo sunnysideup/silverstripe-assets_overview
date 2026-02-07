@@ -3,7 +3,6 @@
 namespace Sunnysideup\AssetsOverview\Api;
 
 use SilverStripe\Assets\File;
-use SilverStripe\Assets\Image;
 use SilverStripe\Core\ClassInfo;
 use SilverStripe\Core\Config\Config;
 use SilverStripe\Core\Injector\Injector;

@@ -10,7 +10,6 @@ use SilverStripe\Control\Middleware\HTTPCacheControlMiddleware;
 use SilverStripe\Core\Environment;
 use SilverStripe\Core\Flushable;
 use SilverStripe\Core\Injector\Injector;
-use SilverStripe\Forms\CheckboxField;
 use SilverStripe\Forms\CheckboxSetField;
 use SilverStripe\Forms\DropdownField;
 use SilverStripe\Forms\FieldList;
@@ -58,11 +57,9 @@ class View extends ContentController implements Flushable
         return self::DISPLAYERS;
     }
 
-
     protected static $allFilesProvider;
 
     protected string $title = '';
-
 
     protected int $limit = 1000;
 
@@ -231,7 +228,6 @@ class View extends ContentController implements Flushable
         //     $js = '<script>window.location.href = \'' . $url . '\';</script>';
         //     return 'go to <a href="' . $url . '">' . $url . '</a> if this page does not autoload';
         // }
-
 
         return $this->renderWith('AssetsOverview');
     }
@@ -409,9 +405,6 @@ class View extends ContentController implements Flushable
         die();
     }
 
-
-
-
     protected function getForm(): Form
     {
         $fieldList = FieldList::create(
@@ -532,8 +525,6 @@ class View extends ContentController implements Flushable
         return $array;
     }
 
-
-
     protected function getRawData(): array
     {
         return $this->getAllFilesInfoProvider()->toArray();
@@ -541,7 +532,7 @@ class View extends ContentController implements Flushable
 
     protected function getAllFilesInfoProvider(): AllFilesInfo
     {
-        if (!self::$allFilesProvider) {
+        if (! self::$allFilesProvider) {
             self::$allFilesProvider = AllFilesInfo::inst();
             self::$allFilesProvider
                 ->setFilters(self::get_filters())
@@ -563,7 +554,6 @@ class View extends ContentController implements Flushable
         }
         return self::$allFilesProvider;
     }
-
 
     private const SORTERS = [
         'byfolder' => [
@@ -680,6 +670,7 @@ class View extends ContentController implements Flushable
             'Values' => [1, true],
         ],
     ];
+
     /**
      * @var array<string, string>
      */

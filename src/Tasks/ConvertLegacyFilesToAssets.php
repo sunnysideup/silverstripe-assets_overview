@@ -2,26 +2,24 @@
 
 namespace Vendor\Sunnysideup\AssetsOverview\Tasks;
 
-
-use SilverStripe\Dev\BuildTask;
-use SilverStripe\ORM\DataObject;
-use SilverStripe\ORM\DB;
-use SilverStripe\Assets\File;
-use SilverStripe\Assets\Image;
 use DOMDocument;
 use DOMElement;
 use DOMXPath;
 use Exception;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
+use SilverStripe\Assets\File;
 use SilverStripe\Assets\Folder;
+use SilverStripe\Assets\Image;
 use SilverStripe\CMS\Model\SiteTree;
 use SilverStripe\Control\Director;
-use SilverStripe\Control\HTTPRequest;
 use SilverStripe\Core\Convert;
 use SilverStripe\Core\Manifest\ClassLoader;
 use SilverStripe\Core\Manifest\ClassManifest;
+use SilverStripe\Dev\BuildTask;
 use SilverStripe\ORM\Connect\DBSchemaManager;
+use SilverStripe\ORM\DataObject;
+use SilverStripe\ORM\DB;
 use SilverStripe\Versioned\Versioned;
 
 class ConvertLegacyFilesToAssets extends BuildTask
@@ -36,15 +34,21 @@ class ConvertLegacyFilesToAssets extends BuildTask
     protected $description = 'Updates HTML file references from a specific path (e.g. /my-legacy-images/) to SilverStripe shortcodes';
 
     private int $processedCount = 0;
+
     private int $updatedCount = 0;
+
     private int $errorCount = 0;
+
     private array $conversions = [];
+
     private array $warnings = [];
+
     private array $errors = [];
 
     private static string $old_path = '/my-legacy-images/';
 
     private bool $forreal = false;
+
     private bool $testonly = false;
 
     public function run($request)
@@ -111,7 +115,7 @@ class ConvertLegacyFilesToAssets extends BuildTask
                                 } else {
                                     DB::alteration_message("Dry run: Updated content for {$className} ID {$id}", 'good');
                                 }
-                                if (!$isModifiedOnDraft && $isPublished) {
+                                if (! $isModifiedOnDraft && $isPublished) {
                                     if ($this->forreal) {
                                         DB::alteration_message("Publishing object with ID {$id} in class {$className}");
                                         $obj->publishSingle();
@@ -137,24 +141,23 @@ class ConvertLegacyFilesToAssets extends BuildTask
         echo "Processed objects: {$this->processedCount}\n";
         echo "Updated references: {$this->updatedCount}\n";
         echo "Errors: {$this->errorCount}\n";
-        echo "---------------------------------" . PHP_EOL;
-        echo "---------------------------------" . PHP_EOL;
-        echo "---------------------------------" . PHP_EOL;
-        echo "Conversions: " . count($this->warnings) . "\n";
+        echo '---------------------------------' . PHP_EOL;
+        echo '---------------------------------' . PHP_EOL;
+        echo '---------------------------------' . PHP_EOL;
+        echo 'Conversions: ' . count($this->warnings) . "\n";
         $this->printErrorsAndWarnings('conversions');
-        echo "---------------------------------" . PHP_EOL;
-        echo "Warnings: " . count($this->warnings) . "\n";
+        echo '---------------------------------' . PHP_EOL;
+        echo 'Warnings: ' . count($this->warnings) . "\n";
         $this->printErrorsAndWarnings('warnings');
-        echo "---------------------------------" . PHP_EOL;
-        echo "---------------------------------" . PHP_EOL;
-        echo "---------------------------------" . PHP_EOL;
-        echo "Errors: " . count($this->errors) . "\n";
+        echo '---------------------------------' . PHP_EOL;
+        echo '---------------------------------' . PHP_EOL;
+        echo '---------------------------------' . PHP_EOL;
+        echo 'Errors: ' . count($this->errors) . "\n";
         $this->printErrorsAndWarnings('errors');
-        echo "---------------------------------" . PHP_EOL;
-        echo "---------------------------------" . PHP_EOL;
-        echo "---------------------------------" . PHP_EOL;
+        echo '---------------------------------' . PHP_EOL;
+        echo '---------------------------------' . PHP_EOL;
+        echo '---------------------------------' . PHP_EOL;
     }
-
 
     private function updateImageReferences($content, $className, $id, $fieldName)
     {
@@ -229,7 +232,7 @@ class ConvertLegacyFilesToAssets extends BuildTask
                 }
 
                 // If no width/height in query, try from inline style
-                if ((!$width || !$height) && $style) {
+                if ((! $width || ! $height) && $style) {
                     if (preg_match('/width: (\d+)px/', $style, $widthMatches)) {
                         $width = (float) $widthMatches[1];
                     }
@@ -239,10 +242,10 @@ class ConvertLegacyFilesToAssets extends BuildTask
                 }
 
                 // If still no width/height, try from attributes
-                if (!$width) {
+                if (! $width) {
                     $width = $img->getAttribute('width') ?: '';
                 }
-                if (!$height) {
+                if (! $height) {
                     $height = $img->getAttribute('height') ?: '';
                 }
                 $width = (float) $width;
@@ -278,7 +281,7 @@ class ConvertLegacyFilesToAssets extends BuildTask
                 // Store the node and its replacement for later processing
                 $replacements[] = [
                     'node' => $img,
-                    'shortcode' => $shortcode
+                    'shortcode' => $shortcode,
                 ];
 
                 $changed = true;
@@ -288,7 +291,7 @@ class ConvertLegacyFilesToAssets extends BuildTask
                 echo "Could not find matching file for {$filename}\n";
                 $this->errors[$warningKey][] = "Could not find matching file for {$filename}\n";
             }
-            echo "=" . PHP_EOL;
+            echo '=' . PHP_EOL;
         }
 
         // Replace nodes with shortcodes
@@ -316,13 +319,11 @@ class ConvertLegacyFilesToAssets extends BuildTask
         return $updatedContent ?: $content;
     }
 
-
     private function updatePDFReferences($content, $className, $id, $fieldName)
     {
         echo "=== PDF\n";
         $updatedContent = null;
         $warningKey = $this->warningKeyMaker($className, $id, $fieldName);
-
 
         // Load HTML content
         $dom = new DOMDocument();
@@ -382,7 +383,7 @@ class ConvertLegacyFilesToAssets extends BuildTask
                     'node' => $link,
                     'opening' => $openingTag,
                     'closing' => $closingTag,
-                    'text' => $linkText
+                    'text' => $linkText,
                 ];
 
                 $changed = true;
@@ -392,7 +393,7 @@ class ConvertLegacyFilesToAssets extends BuildTask
                 echo "Could not find matching file for {$filename}\n";
                 $this->errors[$warningKey][] = "Could not find matching file for {$filename}\n";
             }
-            echo "=" . PHP_EOL;
+            echo '=' . PHP_EOL;
         }
 
         // Replace nodes with shortcodes
@@ -428,9 +429,6 @@ class ConvertLegacyFilesToAssets extends BuildTask
         return $updatedContent ?: $content;
     }
 
-
-
-
     public function getFromDatabaseOrLocalFile($filename, $isImage = false): null|File|Image
     {
         // First try to find file in database
@@ -450,11 +448,10 @@ class ConvertLegacyFilesToAssets extends BuildTask
         // Try to find the file in the assets directory
         $foundPath = $this->findFileInDirectory($findDir, $filename);
 
-        if (!$foundPath) {
+        if (! $foundPath) {
             // File not found in assets
             return null;
         }
-
 
         // Create a "Legacy" folder to store the imported file
         $folder = Folder::find_or_make('Legacy');
@@ -484,7 +481,7 @@ class ConvertLegacyFilesToAssets extends BuildTask
         $directory = rtrim($directory, '/');
 
         // Check if this is a valid directory
-        if (!is_dir($directory)) {
+        if (! is_dir($directory)) {
             echo "ERROR!!! Directory does not exist: $directory\n";
             return null;
         }
@@ -505,22 +502,20 @@ class ConvertLegacyFilesToAssets extends BuildTask
             }
         } catch (Exception $e) {
             // Log error but continue
-            echo "ERROR!!! Error searching for file in directory: " . $e->getMessage() . "\n";
+            echo 'ERROR!!! Error searching for file in directory: ' . $e->getMessage() . "\n";
         }
 
         return null;
     }
 
-
-
-
     protected static $_cacheFieldExists = [];
+
     protected static $_schema;
 
     protected function fieldExists(string $tableName, string $fieldName): bool
     {
         $key = $tableName;
-        if (!isset($this->_cacheFieldExists[$key])) {
+        if (! isset($this->_cacheFieldExists[$key])) {
             $schema = $this->getSchema();
             $this->_cacheFieldExists[$key] = $schema->fieldList($tableName);
         }
@@ -581,7 +576,6 @@ class ConvertLegacyFilesToAssets extends BuildTask
         return $this->dataClasses;
     }
 
-
     protected function getVersionedtableName($className)
     {
         $table = DataObject::getSchema()->tableName($className);
@@ -592,7 +586,6 @@ class ConvertLegacyFilesToAssets extends BuildTask
             return $table;
         }
     }
-
 
     /**
      * Build a set of queries to get content of all HTMLText fields
@@ -658,8 +651,8 @@ class ConvertLegacyFilesToAssets extends BuildTask
         return $classes;
     }
 
-
     protected $manifest;
+
     /**
      * @return ClassManifest
      */
@@ -675,7 +668,7 @@ class ConvertLegacyFilesToAssets extends BuildTask
     {
         $list = $this->$propertyName;
         $var = $warningKey;
-        if (!empty($list[$var])) {
+        if (! empty($list[$var])) {
             foreach ($list[$var] as $message) {
                 echo strtoupper($propertyName) . ": $message";
             }
@@ -689,16 +682,16 @@ class ConvertLegacyFilesToAssets extends BuildTask
         foreach ($this->$propertyName as $warningKey => $messages) {
             $list = $this->$propertyName;
             $var = $warningKey;
-            if (!empty($list[$var])) {
+            if (! empty($list[$var])) {
                 $vars = explode(',', $warningKey);
                 $className = $vars[0];
                 $id = $vars[1];
                 $fieldName = $vars[2];
                 $obj = DataObject::get_by_id($className, $id);
                 if ($obj) {
-                    echo ($obj->getTitle() ?: '[NO TITLE]') . "|"
-                        . ($fieldName ?: '[NO FIELD NAME]') . "|"
-                        . ($obj->hasMethod('CMSEditLink') ? $obj->CMSEditLink() : '[NO CMS LINK]') . "|"
+                    echo ($obj->getTitle() ?: '[NO TITLE]') . '|'
+                        . ($fieldName ?: '[NO FIELD NAME]') . '|'
+                        . ($obj->hasMethod('CMSEditLink') ? $obj->CMSEditLink() : '[NO CMS LINK]') . '|'
                         . ($obj->hasMethod('Link') ? $obj->Link() : '[NO LINK]')
                         . "\n";
                 } else {

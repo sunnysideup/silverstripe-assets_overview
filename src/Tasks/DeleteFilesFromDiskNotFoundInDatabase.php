@@ -3,15 +3,12 @@
 namespace Vendor\Sunnysideup\AssetsOverview\Tasks;
 
 use Exception;
-use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Dev\BuildTask;
 use SilverStripe\ORM\DB;
-use Sunnysideup\AssetsOverview\Api\AddAndRemoveFromDb;
 use Sunnysideup\AssetsOverview\Files\AllFilesInfo;
 
 class DeleteFilesFromDiskNotFoundInDatabase extends BuildTask
 {
-
     protected $title = 'Delete files from disk not found in database';
 
     protected $description = 'This task will go through all files in assets and delete ones that are not in the database.';
@@ -28,7 +25,7 @@ class DeleteFilesFromDiskNotFoundInDatabase extends BuildTask
         DB::alteration_message('=== START ===');
         foreach ($files as $file) {
             $array = $file->toMap();
-            if (!empty($array['ErrorDBNotPresent'])) {
+            if (! empty($array['ErrorDBNotPresent'])) {
                 DB::alteration_message('--- Deleting from DB' . $array['Path'], 'deleted');
                 if ($this->dryRun) {
                     DB::alteration_message('--- --- DRY RUN ONLY ---', 'deleted');

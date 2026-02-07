@@ -105,9 +105,13 @@ class Fix extends ContentController
         }
     }
 
-    protected function fixErrorDBNotPresentLive() {}
+    protected function fixErrorDBNotPresentLive()
+    {
+    }
 
-    protected function fixErrorDBNotPresentStaging() {}
+    protected function fixErrorDBNotPresentStaging()
+    {
+    }
 
     protected function fixErrorExtensionMisMatch()
     {
@@ -152,7 +156,9 @@ class Fix extends ContentController
         return true;
     }
 
-    protected function fixErrorParentID() {}
+    protected function fixErrorParentID()
+    {
+    }
 
     protected function fixFileInDB()
     {

@@ -68,6 +68,7 @@ class AllFilesInfo implements FileInfo
     }
 
     protected bool $noCache = false;
+
     protected bool $verbose = false;
 
     protected string $path = '';
@@ -80,9 +81,7 @@ class AllFilesInfo implements FileInfo
 
     protected array $databaseLookupListStaging = [];
 
-
     protected array $databaseLookupListLive = [];
-
 
     protected ArrayList $filesAsArrayList;
 
@@ -90,10 +89,7 @@ class AllFilesInfo implements FileInfo
 
     protected array $availableExtensions = [];
 
-
-
     protected int $totalFileCountRaw = 0;
-
 
     protected int $totalFileCountFiltered = 0;
 
@@ -108,6 +104,7 @@ class AllFilesInfo implements FileInfo
     protected int $pageNumber = 1;
 
     protected string $sorter = 'byfolder';
+
     protected array $sorters = [];
 
     protected string $filter = '';
@@ -120,7 +117,6 @@ class AllFilesInfo implements FileInfo
     protected string $displayer = 'thumbs';
 
     protected array $allowedExtensions = [];
-
 
     public function __construct(?string $path = ASSETS_PATH)
     {
@@ -165,7 +161,6 @@ class AllFilesInfo implements FileInfo
      * get data from staging database row.
      *
      * @param string $pathFromAssets from the root of assets
-     * @param int    $id
      */
     public function getStagingData(string $pathFromAssets, ?int $id = 0): array
     {
@@ -266,7 +261,7 @@ class AllFilesInfo implements FileInfo
 
     public function getFilesAsArrayList(): ArrayList
     {
-        if (!isset($this->filesAsArrayList)) {
+        if (! isset($this->filesAsArrayList)) {
             $rawArray = $this->toArray();
             //prepare loop
             $this->totalFileCountRaw = self::getTotalFilesCount();
@@ -297,10 +292,9 @@ class AllFilesInfo implements FileInfo
         return $this->filesAsArrayList;
     }
 
-
     public function getFilesAsSortedArrayList(): ArrayList
     {
-        if (!isset($this->filesAsSortedArrayList)) {
+        if (! isset($this->filesAsSortedArrayList)) {
             $sortField = $this->sorters[$this->sorter]['Sort'];
             $headerField = $this->sorters[$this->sorter]['Group'];
             $this->filesAsSortedArrayList = ArrayList::create();
@@ -342,24 +336,20 @@ class AllFilesInfo implements FileInfo
         return $this->filesAsSortedArrayList;
     }
 
-
     public function getAvailableExtensions(): array
     {
         return $this->availableExtensions;
     }
-
 
     public function getTotalFileCountRaw(): int
     {
         return $this->totalFileCountRaw;
     }
 
-
     public function getTotalFileCountFiltered(): int
     {
         return $this->totalFileCountFiltered;
     }
-
 
     public function getTotalFileSizeFiltered(): int
     {
@@ -432,7 +422,6 @@ class AllFilesInfo implements FileInfo
         return $this;
     }
 
-
     protected function addTofilesAsSortedArrayList(string $header, ArrayList $arrayList)
     {
         if ($arrayList->exists()) {
@@ -490,7 +479,6 @@ class AllFilesInfo implements FileInfo
         }
     }
 
-
     /**
      * @param mixed $value
      */
@@ -542,7 +530,6 @@ class AllFilesInfo implements FileInfo
     }
 
     /**
-     *
      * returns all the files in the database except for folders.
      */
     protected function getArrayOfFilesInDatabase(): array

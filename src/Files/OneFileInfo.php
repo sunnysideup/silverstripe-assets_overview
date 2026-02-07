@@ -2,7 +2,6 @@
 
 namespace Sunnysideup\AssetsOverview\Files;
 
-use Exception;
 use SilverStripe\Assets\File;
 use SilverStripe\Assets\Folder;
 use SilverStripe\Assets\Image;
@@ -35,13 +34,14 @@ class OneFileInfo implements FileInfo
 
     public static function inst(string $path): OneFileInfo
     {
-        if (!isset(self::$cached_inst[$path])) {
+        if (! isset(self::$cached_inst[$path])) {
             self::$cached_inst[$path] = new OneFileInfo($path);
         }
         return self::$cached_inst[$path];
     }
 
     protected bool $debug = false;
+
     protected bool $noCache = false;
 
     public function setDebug(bool $b): static
@@ -74,6 +74,7 @@ class OneFileInfo implements FileInfo
     protected array $intel = [];
 
     protected bool $physicalFileExists = false;
+
     protected ?File $file;
 
     public function __construct(string $location)
@@ -85,7 +86,7 @@ class OneFileInfo implements FileInfo
         $this->pathHash = md5($this->path);
         $this->physicalFileExists = file_exists($this->intel['AbsolutePath']);
         $this->file = DataObject::get_one(File::class, ['FileFilename' => $this->path]);
-        if (!$this->physicalFileExists && ($this->file && $this->file->exists())) {
+        if (! $this->physicalFileExists && ($this->file && $this->file->exists())) {
             $this->physicalFileExists = true;
             $this->intel['IsProtected'] = true;
         }
@@ -223,7 +224,7 @@ class OneFileInfo implements FileInfo
             } else {
                 $this->intel['ImageRatio'] = 0;
             }
-            $this->intel['ImagePixels'] =  $this->intel['ImageHeight'] * $this->intel['ImageWidth'];
+            $this->intel['ImagePixels'] = $this->intel['ImageHeight'] * $this->intel['ImageWidth'];
             $this->intel['IsResizedImage'] = (bool) strpos($this->intel['PathFileName'], '__');
         }
     }
@@ -272,12 +273,12 @@ class OneFileInfo implements FileInfo
             $this->intel['ErrorInFilename'] = false;
             $this->intel['ErrorInSs3Ss4Comparison'] = false;
             $time = time();
-            if ($this->physicalFileExists && !$this->intel['IsProtected'] && $this->intel['AbsolutePath'] && file_exists($this->intel['AbsolutePath'])) {
+            if ($this->physicalFileExists && ! $this->intel['IsProtected'] && $this->intel['AbsolutePath'] && file_exists($this->intel['AbsolutePath'])) {
                 $time = filemtime($this->intel['AbsolutePath']);
             }
         } else {
             $obj = AllFilesInfo::inst();
-            if (!$this->intel['IsDir']) {
+            if (! $this->intel['IsDir']) {
                 $this->intel['IsDir'] = is_a($dbFileData['ClassName'], Folder::class, true);
             }
             $dbFileData['Filename'] = $dbFileData['Filename'] ?? '';
@@ -295,7 +296,8 @@ class OneFileInfo implements FileInfo
             $this->intel['DBCMSEditLink'] = '/admin/assets/EditForm/field/File/item/' . $this->intel['DBID'] . '/edit';
             $this->intel['DBTitle'] = $dbFileData['Title'];
             $this->intel['DBFilenameSS4'] = $dbFileData['FileFilename'] ?? 'none';
-            $this->intel['DBFilenameSS3'] = $dbFileData['Filename'] ?? 'none';;
+            $this->intel['DBFilenameSS3'] = $dbFileData['Filename'] ?? 'none';
+            ;
             $this->intel['ErrorInFilename'] = $this->intel['Path'] !== $this->intel['DBPath'];
             $ss3FileName = $dbFileData['Filename'] ?? '';
             if ('assets/' === substr((string) $ss3FileName, 0, strlen('assets/'))) {

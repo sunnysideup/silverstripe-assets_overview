@@ -31,11 +31,9 @@ class AddAndRemoveFromDb
         return $this;
     }
 
-
-
     public function run(array $oneFileInfoArray, ?string $mode = null)
     {
-        if (!in_array($mode, ['add', 'remove', null], true)) {
+        if (! in_array($mode, ['add', 'remove', null], true)) {
             user_error('Mode must be either "add" or "remove" or not set at all', E_USER_ERROR);
         }
         $pathFromAssetsFolder = $oneFileInfoArray['Path'];
@@ -78,7 +76,6 @@ class AddAndRemoveFromDb
         $path .= ($this->dryRun ? ' (DRY RUN)' : ' (FOR REAL)');
         DB::alteration_message($formattedAction . ': ' . $path, $type);
     }
-
 
     public function removeFileFromDb(array $oneFileInfoArray)
     {
