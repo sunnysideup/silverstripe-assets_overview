@@ -34,7 +34,7 @@ class OneFileInfo implements FileInfo
 
     public static function inst(string $path): OneFileInfo
     {
-        if (! isset(self::$cached_inst[$path])) {
+        if (! array_key_exists($path, self::$cached_inst)) {
             self::$cached_inst[$path] = new OneFileInfo($path);
         }
         return self::$cached_inst[$path];
@@ -296,8 +296,7 @@ class OneFileInfo implements FileInfo
             $this->intel['DBCMSEditLink'] = '/admin/assets/EditForm/field/File/item/' . $this->intel['DBID'] . '/edit';
             $this->intel['DBTitle'] = $dbFileData['Title'];
             $this->intel['DBFilenameSS4'] = $dbFileData['FileFilename'] ?? 'none';
-            $this->intel['DBFilenameSS3'] = $dbFileData['Filename'] ?? 'none';
-            ;
+            $this->intel['DBFilenameSS3'] = $dbFileData['Filename'] ?? 'none';;
             $this->intel['ErrorInFilename'] = $this->intel['Path'] !== $this->intel['DBPath'];
             $ss3FileName = $dbFileData['Filename'] ?? '';
             if ('assets/' === substr((string) $ss3FileName, 0, strlen('assets/'))) {
