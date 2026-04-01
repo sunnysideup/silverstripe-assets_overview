@@ -21,7 +21,7 @@
     ],
     "require": {
         "silverstripe/cms": "^4 || ^5",
-        "sunnysideup/flush": "dev-master"
+        "sunnysideup/flush": "5.x-dev"
     },
     "suggest": {
         "inceddy/image-compare": "compare image similarities",
