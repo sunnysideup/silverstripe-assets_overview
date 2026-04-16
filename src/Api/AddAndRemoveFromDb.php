@@ -2,6 +2,7 @@
 
 namespace Sunnysideup\AssetsOverview\Api;
 
+use Exception;
 use SilverStripe\AssetAdmin\Controller\AssetAdmin;
 use SilverStripe\Assets\File;
 use SilverStripe\Assets\Image;
@@ -18,11 +19,8 @@ class AddAndRemoveFromDb
 
     private static $publish_recursive = true;
 
-    protected bool $dryRun = true;
-
-    public function __construct(?bool $dryRun = true)
+    public function __construct(protected bool $dryRun = true)
     {
-        $this->dryRun = $dryRun;
     }
 
     public function setIsDryRun(bool $b): static
@@ -36,6 +34,7 @@ class AddAndRemoveFromDb
         if (! in_array($mode, ['add', 'remove', null], true)) {
             user_error('Mode must be either "add" or "remove" or not set at all', E_USER_ERROR);
         }
+
         $pathFromAssetsFolder = $oneFileInfoArray['Path'];
         $absolutePath = $oneFileInfoArray['AbsolutePath'];
 
@@ -49,6 +48,7 @@ class AddAndRemoveFromDb
                     unlink($absolutePath);
                 }
             }
+
             $this->logMessage('Skipping [RESIZED IMAGE]', $pathFromAssetsFolder);
         } elseif ($oneFileInfoArray['ErrorDBNotPresent'] === true && $mode !== 'remove') {
 
@@ -97,7 +97,7 @@ class AddAndRemoveFromDb
             $newFile->setFromLocalFile($absolutePath, $pathFromAssetsFolder);
             try {
                 $newFile->write();
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 DB::alteration_message('Could not write file ' . $pathFromAssetsFolder . ' because ' . $e->getMessage(), 'deleted');
                 return;
             }
@@ -114,6 +114,7 @@ class AddAndRemoveFromDb
         if ($this->Config()->publish_recursive) {
             $newFile->publishRecursive();
         }
+
         $newFile->publishSingle();
     }
 }

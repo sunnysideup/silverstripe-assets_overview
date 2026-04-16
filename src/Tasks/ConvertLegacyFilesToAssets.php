@@ -20,18 +20,22 @@ use SilverStripe\Dev\BuildTask;
 use SilverStripe\ORM\Connect\DBSchemaManager;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\DB;
+use SilverStripe\PolyExecution\PolyOutput;
 use SilverStripe\Versioned\Versioned;
+use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
 
 class ConvertLegacyFilesToAssets extends BuildTask
 {
-    private static $segment = 'update-html-references';
+    protected static string $commandName = 'update-html-references';
 
     //double %% is required for the query to work
-    private const CONTENT_QUERY_TEMPLATE = 'SELECT ID FROM "%s" WHERE "%s" IS NOT NULL AND "%s" != \'\' AND "%s" LIKE \'%%____PATH____%%\'';
+    private const string CONTENT_QUERY_TEMPLATE = 'SELECT ID FROM "%s" WHERE "%s" IS NOT NULL AND "%s" != \'\' AND "%s" LIKE \'%%____PATH____%%\'';
 
-    protected $title = 'HTML file Reference Updater';
+    protected string $title = 'HTML file Reference Updater';
 
-    protected $description = 'Updates HTML file references from a specific path (e.g. /my-legacy-images/) to SilverStripe shortcodes';
+    protected static string $description = 'Updates HTML file references from a specific path (e.g. /my-legacy-images/) to SilverStripe shortcodes';
 
     private int $processedCount = 0;
 
@@ -51,18 +55,42 @@ class ConvertLegacyFilesToAssets extends BuildTask
 
     private bool $testonly = false;
 
-    public function run($request)
+    private PolyOutput $output;
+
+    public function getOptions(): array
     {
-        if ($request->getVar('forreal')) {
+        return [
+            new InputOption(
+                'forreal',
+                'f',
+                InputOption::VALUE_NONE,
+                'Execute the task for real (not a dry run)'
+            ),
+            new InputOption(
+                'testonly',
+                't',
+                InputOption::VALUE_NONE,
+                'Run in test mode (only process 100 items)'
+            ),
+        ];
+    }
+
+    protected function execute(InputInterface $input, PolyOutput $output): int
+    {
+        $this->output = $output;
+
+        if ($input->getOption('forreal')) {
             $this->forreal = true;
-            DB::alteration_message('Running in "for real" mode. Changes will be saved to the database.', 'good');
+            $output->writeln('Running in "for real" mode. Changes will be saved to the database.');
         } else {
-            DB::alteration_message('Running in "dry run" mode. No changes will be saved to the database.', 'warning');
+            $output->writeln('Running in "dry run" mode. No changes will be saved to the database.');
         }
-        if ($request->getVar('testonly')) {
+
+        if ($input->getOption('testonly')) {
             $this->testonly = true;
-            DB::alteration_message('Running in "test only" mode. We will run only five updates.', 'warning');
+            $output->writeln('Running in "test only" mode. We will run only 100 updates.');
         }
+
         $classesToCheck = $this->getClassesToCheck();
         $classesWithContent = $this->getContentClasses($classesToCheck);
         unset($classesToCheck);
@@ -73,25 +101,27 @@ class ConvertLegacyFilesToAssets extends BuildTask
         $allIDs = $this->getContentIds($contentQuery);
         unset($contentQuery);
         if (empty($allIDs)) {
-            DB::alteration_message('No content found to update.', 'good');
-            return;
+            $output->writeln('No content found to update.');
+            return Command::SUCCESS;
         }
-        DB::alteration_message('Found ' . count($allIDs) . ' content items to update.', 'good');
-        echo '---------------------------------' . PHP_EOL;
+
+        $output->writeln('Found ' . count($allIDs) . ' content items to update.');
+        $output->writeln('---------------------------------');
 
         foreach ($allIDs as $className => $fieldNameAndIds) {
             foreach ($fieldNameAndIds as $fieldName => $idList) {
                 foreach ($idList as $id) {
                     if ($this->testonly && $this->processedCount >= 100) {
-                        DB::alteration_message('Test only mode: Stopping after 5 updates.', 'warning');
+                        $output->writeln('Test only mode: Stopping after 100 updates.');
                         break 3;
                     }
+
                     $this->processedCount++;
                     $obj = DataObject::get_by_id($className, $id);
                     if ($obj && $obj->$fieldName) {
                         $content = $obj->$fieldName;
                         if ($content) {
-                            echo "====================\n";
+                            $output->writeln("====================");
                             $updatedContent = $this->updateImageReferences($content, $className, $id, $fieldName);
                             $updatedContent = $this->updatePDFReferences($updatedContent, $className, $id, $fieldName);
                             $warningKey = $this->warningKeyMaker($className, $id, $fieldName);
@@ -106,62 +136,67 @@ class ConvertLegacyFilesToAssets extends BuildTask
                                 $obj->$fieldName = $updatedContent;
                                 if ($this->forreal) {
                                     if ($obj->hasMethod('writeToStage')) {
-                                        DB::alteration_message("Writing object with ID {$id} in class {$className} to stage");
+                                        $output->writeln(sprintf('Writing object with ID %s in class %s to stage', $id, $className));
                                         $obj->writeToStage(Versioned::DRAFT);
                                     } else {
-                                        DB::alteration_message("Writing object with ID {$id} in class {$className}");
+                                        $output->writeln(sprintf('Writing object with ID %s in class %s', $id, $className));
                                         $obj->write();
                                     }
                                 } else {
-                                    DB::alteration_message("Dry run: Updated content for {$className} ID {$id}", 'good');
+                                    $output->writeln(sprintf('Dry run: Updated content for %s ID %s', $className, $id));
                                 }
+
                                 if (! $isModifiedOnDraft && $isPublished) {
                                     if ($this->forreal) {
-                                        DB::alteration_message("Publishing object with ID {$id} in class {$className}");
+                                        $output->writeln(sprintf('Publishing object with ID %s in class %s', $id, $className));
                                         $obj->publishSingle();
                                     } else {
-                                        DB::alteration_message("Dry run: Published object with ID {$id} in class {$className}", 'good');
+                                        $output->writeln(sprintf('Dry run: Published object with ID %s in class %s', $id, $className));
                                     }
                                 }
+
                                 $obj->flushCache();
                                 $this->updatedCount++;
                             }
                         }
                     } else {
-                        echo "Error: Could not find object with ID {$id} in class {$className}\n";
+                        $output->writeln(sprintf('Error: Could not find object with ID %s in class %s', $id, $className));
                         $this->errorCount++;
                     }
                 }
             }
         }
-        echo '---------------------------------' . PHP_EOL;
-        echo '---------------------------------' . PHP_EOL;
-        echo '---------------------------------' . PHP_EOL;
-        echo "\nScan complete.\n";
-        echo "Processed objects: {$this->processedCount}\n";
-        echo "Updated references: {$this->updatedCount}\n";
-        echo "Errors: {$this->errorCount}\n";
-        echo '---------------------------------' . PHP_EOL;
-        echo '---------------------------------' . PHP_EOL;
-        echo '---------------------------------' . PHP_EOL;
-        echo 'Conversions: ' . count($this->warnings) . "\n";
+
+        $output->writeln('---------------------------------');
+        $output->writeln('---------------------------------');
+        $output->writeln('---------------------------------');
+        $output->writeln("\nScan complete.");
+        $output->writeln(sprintf('Processed objects: %d', $this->processedCount));
+        $output->writeln(sprintf('Updated references: %d', $this->updatedCount));
+        $output->writeln(sprintf('Errors: %d', $this->errorCount));
+        $output->writeln('---------------------------------');
+        $output->writeln('---------------------------------');
+        $output->writeln('---------------------------------');
+        $output->writeln('Conversions: ' . count($this->warnings));
         $this->printErrorsAndWarnings('conversions');
-        echo '---------------------------------' . PHP_EOL;
-        echo 'Warnings: ' . count($this->warnings) . "\n";
+        $output->writeln('---------------------------------');
+        $output->writeln('Warnings: ' . count($this->warnings));
         $this->printErrorsAndWarnings('warnings');
-        echo '---------------------------------' . PHP_EOL;
-        echo '---------------------------------' . PHP_EOL;
-        echo '---------------------------------' . PHP_EOL;
-        echo 'Errors: ' . count($this->errors) . "\n";
+        $output->writeln('---------------------------------');
+        $output->writeln('---------------------------------');
+        $output->writeln('---------------------------------');
+        $output->writeln('Errors: ' . count($this->errors));
         $this->printErrorsAndWarnings('errors');
-        echo '---------------------------------' . PHP_EOL;
-        echo '---------------------------------' . PHP_EOL;
-        echo '---------------------------------' . PHP_EOL;
+        $output->writeln('---------------------------------');
+        $output->writeln('---------------------------------');
+        $output->writeln('---------------------------------');
+
+        return Command::SUCCESS;
     }
 
     private function updateImageReferences($content, $className, $id, $fieldName)
     {
-        echo "=== IMG \n";
+        $this->output->writeln("=== IMG");
         $warningKey = $this->warningKeyMaker($className, $id, $fieldName);
         $updatedContent = null;
 
@@ -192,12 +227,12 @@ class ConvertLegacyFilesToAssets extends BuildTask
                 continue;
             }
 
-            if (strpos($src, '' . $path . '') !== 0 && strpos($src, $patWithURL) === false) {
-                echo "FALSE src ($src) does not contain $path \n";
+            if (!str_starts_with($src, '' . $path . '') && !str_contains($src, $patWithURL)) {
+                $this->output->writeln("FALSE src ({$src}) does not contain {$path}");
                 continue;
             }
 
-            echo "Found img tag with src: {$src}\n";
+            $this->output->writeln(sprintf('Found img tag with src: %s', $src));
 
             // Extract filename from path (handle query parameters)
             $pathParts = parse_url($src);
@@ -212,7 +247,7 @@ class ConvertLegacyFilesToAssets extends BuildTask
             // Try searching by FileFilename as fallback
             $file = $this->getFromDatabaseOrLocalFile($filename, true);
 
-            if ($file instanceof \SilverStripe\Assets\File) {
+            if ($file instanceof File) {
                 // Get attributes from img tag
                 $style = $img->getAttribute('style');
                 $alt = $img->getAttribute('alt');
@@ -226,6 +261,7 @@ class ConvertLegacyFilesToAssets extends BuildTask
                     if (isset($query['width'])) {
                         $width = (float) $query['width'];
                     }
+
                     if (isset($query['height'])) {
                         $height = (float) $query['height'];
                     }
@@ -236,6 +272,7 @@ class ConvertLegacyFilesToAssets extends BuildTask
                     if (preg_match('/width: (\d+)px/', $style, $widthMatches)) {
                         $width = (float) $widthMatches[1];
                     }
+
                     if (preg_match('/height: (\d+)px/', $style, $heightMatches)) {
                         $height = (float) $heightMatches[1];
                     }
@@ -245,9 +282,11 @@ class ConvertLegacyFilesToAssets extends BuildTask
                 if (! $width) {
                     $width = $img->getAttribute('width') ?: '';
                 }
+
                 if (! $height) {
                     $height = $img->getAttribute('height') ?: '';
                 }
+
                 $width = (float) $width;
                 $width = round($width);
                 $height = (float) $height;
@@ -259,23 +298,29 @@ class ConvertLegacyFilesToAssets extends BuildTask
                 if ($width !== 0.0) {
                     $shortcode .= ' width="' . $width . '"';
                 }
+
                 if ($height !== 0.0) {
                     $shortcode .= ' height="' . $height . '"';
                 }
+
                 if ($class) {
                     $shortcode .= ' class="' . $class . ' ss-htmleditorfield-file image"';
                 } else {
                     $shortcode .= ' class="leftAlone ss-htmleditorfield-file image"';
                 }
+
                 if ($style) {
                     $shortcode .= ' style="' . $style . '"';
                 }
+
                 if ($alt === 'undefined') {
                     $alt = Convert::raw2att($file->Title);
                 }
+
                 if ($alt) {
                     $shortcode .= ' alt="' . $alt . '"';
                 }
+
                 $shortcode .= ']';
 
                 // Store the node and its replacement for later processing
@@ -285,13 +330,14 @@ class ConvertLegacyFilesToAssets extends BuildTask
                 ];
 
                 $changed = true;
-                echo "Found image: {$filename} -> File ID: {$file->ID}\n";
-                echo "Replacing with shortcode: {$shortcode}\n";
+                $this->output->writeln(sprintf('Found image: %s -> File ID: %d', $filename, $file->ID));
+                $this->output->writeln(sprintf('Replacing with shortcode: %s', $shortcode));
             } else {
-                echo "Could not find matching file for {$filename}\n";
-                $this->errors[$warningKey][] = "Could not find matching file for {$filename}\n";
+                $this->output->writeln(sprintf('Could not find matching file for %s', $filename));
+                $this->errors[$warningKey][] = sprintf('Could not find matching file for %s', $filename);
             }
-            echo '=' . PHP_EOL;
+
+            $this->output->writeln('=');
         }
 
         // Replace nodes with shortcodes
@@ -309,19 +355,21 @@ class ConvertLegacyFilesToAssets extends BuildTask
                 // Replace in the content
                 $updatedContent = str_replace($imgHTML, $shortcode, $updatedContent);
             }
+
             if ($updatedContent === $content) {
                 $this->errors[$warningKey][] = "No changes made to content.\n";
             } else {
-                echo "Updated content for {$className} ID {$id}\n";
+                $this->output->writeln(sprintf('Updated content for %s ID %s', $className, $id));
                 $this->conversions[$warningKey][] = "OK.\n";
             }
         }
+
         return $updatedContent ?: $content;
     }
 
     private function updatePDFReferences($content, $className, $id, $fieldName)
     {
-        echo "=== PDF\n";
+        $this->output->writeln("=== PDF");
         $updatedContent = null;
         $warningKey = $this->warningKeyMaker($className, $id, $fieldName);
 
@@ -354,23 +402,23 @@ class ConvertLegacyFilesToAssets extends BuildTask
             // Skip if href does not contain "/my-legacy-images/"
             $path = $this->config()->get('old_path');
             $patWithURL = Director::absoluteURL($path);
-            if (strpos($href, $path) !== 0 && strpos($href, $patWithURL) === false) {
-                echo "FALSE href ($href) does not contain $path\n";
+            if (!str_starts_with($href, (string) $path) && !str_contains($href, $patWithURL)) {
+                $this->output->writeln(sprintf('FALSE href (%s) does not contain %s', $href, $path));
                 continue;
             }
 
-            echo "Found link tag with href: {$href}\n";
+            $this->output->writeln(sprintf('Found link tag with href: %s', $href));
 
             // Extract filename from path (handle query parameters)
             $pathParts = parse_url($href);
             $path = $pathParts['path'];
             $filename = basename($path);
-            echo "Found PDF: {$filename}\n";
+            $this->output->writeln(sprintf('Found PDF: %s', $filename));
 
             // Find corresponding File object
             $file = $this->getFromDatabaseOrLocalFile($filename, false);
 
-            if ($file instanceof \SilverStripe\Assets\File) {
+            if ($file instanceof File) {
                 // Get the link text
                 $linkText = $link->textContent;
 
@@ -387,13 +435,14 @@ class ConvertLegacyFilesToAssets extends BuildTask
                 ];
 
                 $changed = true;
-                echo "Found PDF: {$filename} -> File ID: {$file->ID}\n";
-                echo "Replacing with shortcode: {$openingTag}{$linkText}{$closingTag}\n";
+                $this->output->writeln(sprintf('Found PDF: %s -> File ID: %d', $filename, $file->ID));
+                $this->output->writeln(sprintf('Replacing with shortcode: %s%s%s', $openingTag, $linkText, $closingTag));
             } else {
-                echo "Could not find matching file for {$filename}\n";
-                $this->errors[$warningKey][] = "Could not find matching file for {$filename}\n";
+                $this->output->writeln(sprintf('Could not find matching file for %s', $filename));
+                $this->errors[$warningKey][] = sprintf('Could not find matching file for %s', $filename);
             }
-            echo '=' . PHP_EOL;
+
+            $this->output->writeln('=');
         }
 
         // Replace nodes with shortcodes
@@ -482,7 +531,7 @@ class ConvertLegacyFilesToAssets extends BuildTask
 
         // Check if this is a valid directory
         if (! is_dir($directory)) {
-            echo "ERROR!!! Directory does not exist: $directory\n";
+            $this->output->writeln(sprintf('ERROR!!! Directory does not exist: %s', $directory));
             return null;
         }
 
@@ -496,13 +545,13 @@ class ConvertLegacyFilesToAssets extends BuildTask
             // Look for our file
             foreach ($iterator as $file) {
                 // Skip directories and only check files
-                if ($file->isFile() && basename($file->getPathname()) === $filename) {
+                if ($file->isFile() && basename((string) $file->getPathname()) === $filename) {
                     return $file->getPathname();
                 }
             }
-        } catch (Exception $e) {
+        } catch (Exception $exception) {
             // Log error but continue
-            echo 'ERROR!!! Error searching for file in directory: ' . $e->getMessage() . "\n";
+            $this->output->writeln('ERROR!!! Error searching for file in directory: ' . $exception->getMessage());
         }
 
         return null;
@@ -581,7 +630,7 @@ class ConvertLegacyFilesToAssets extends BuildTask
         $table = DataObject::getSchema()->tableName($className);
 
         if ($className::has_extension('Versioned')) {
-            return "{$table}_Versions";
+            return $table . '_Versions';
         } else {
             return $table;
         }
@@ -607,6 +656,7 @@ class ConvertLegacyFilesToAssets extends BuildTask
                 );
             }
         }
+
         return $queries;
     }
 
@@ -624,12 +674,15 @@ class ConvertLegacyFilesToAssets extends BuildTask
                 if ($outcome === []) {
                     continue;
                 }
+
                 if (isset($allIds[$className][$field])) {
                     $allIds[$className] = [];
                 }
+
                 $allIds[$className][$field] = $outcome;
             }
         }
+
         return $allIds;
     }
 
@@ -661,6 +714,7 @@ class ConvertLegacyFilesToAssets extends BuildTask
         if (is_null($this->manifest)) {
             $this->manifest = ClassLoader::inst()->getManifest();
         }
+
         return $this->manifest;
     }
 
@@ -670,7 +724,7 @@ class ConvertLegacyFilesToAssets extends BuildTask
         $var = $warningKey;
         if (! empty($list[$var])) {
             foreach ($list[$var] as $message) {
-                echo strtoupper($propertyName) . ": $message";
+                $this->output->writeln(strtoupper((string) $propertyName) . ': ' . $message);
             }
         } elseif (isset($list[$var])) {
             unset($list[$var]);
@@ -683,25 +737,27 @@ class ConvertLegacyFilesToAssets extends BuildTask
             $list = $this->$propertyName;
             $var = $warningKey;
             if (! empty($list[$var])) {
-                $vars = explode(',', $warningKey);
+                $vars = explode(',', (string) $warningKey);
                 $className = $vars[0];
                 $id = $vars[1];
                 $fieldName = $vars[2];
                 $obj = DataObject::get_by_id($className, $id);
                 if ($obj) {
-                    echo ($obj->getTitle() ?: '[NO TITLE]') . '|'
+                    $this->output->writeForHtml(
+                        ($obj->getTitle() ?: '[NO TITLE]') . '|'
                         . ($fieldName ?: '[NO FIELD NAME]') . '|'
                         . ($obj->hasMethod('CMSEditLink') ? $obj->CMSEditLink() : '[NO CMS LINK]') . '|'
                         . ($obj->hasMethod('Link') ? $obj->Link() : '[NO LINK]')
-                        . "\n";
+                    );
                 } else {
-                    echo "Could not find object with ID {$id} in class {$className} and field: {$fieldName} \n";
+                    $this->output->writeln("Could not find object with ID {$id} in class {$className} and field: {$fieldName}");
                 }
+
                 foreach ($messages as $message) {
-                    echo ' --- ' . strtoupper($fieldName) . ": $message";
+                    $this->output->writeln(' --- ' . strtoupper($fieldName) . ': ' . $message);
                 }
             } else {
-                echo "ERROR: No values for $warningKey\n";
+                $this->output->writeln(sprintf('ERROR: No values for %s', $warningKey));
             }
         }
     }

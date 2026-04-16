@@ -2,20 +2,19 @@
 
 namespace Sunnysideup\AssetsOverview\Reports;
 
+use Override;
+use RuntimeException;
+use SilverStripe\Model\List\ArrayList;
 use SilverStripe\Control\HTTPRequest;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Forms\DropdownField;
 use SilverStripe\Forms\FieldList;
-use SilverStripe\Forms\FormField;
 use SilverStripe\Forms\OptionsetField;
-use SilverStripe\ORM\ArrayList;
 use SilverStripe\ORM\DataList;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\DataQuery;
-use SilverStripe\ORM\SS_List;
 use SilverStripe\Reports\Report;
 use SilverStripe\SiteConfig\SiteConfig;
-use SilverStripe\View\ArrayData;
 use Sunnysideup\AssetsOverview\Api\ImageFieldFinder;
 
 /**
@@ -86,6 +85,7 @@ class ImagesPerFieldReport extends Report
 
     protected $typeUsed = '';
 
+    #[Override]
     public function getCMSFields()
     {
         $fields = parent::getCMSFields();
@@ -98,7 +98,7 @@ class ImagesPerFieldReport extends Report
     {
         $classNameFieldComboString = $params['ClassNameFieldCombo'] ?? ',,';
         $situation = $params['Situation'] ?? '';
-        list($classNameUsed, $fieldUsed, $typeUsed) = explode(',', $classNameFieldComboString);
+        [$classNameUsed, $fieldUsed, $typeUsed] = explode(',', $classNameFieldComboString);
 
         if ($classNameUsed && $fieldUsed && class_exists($classNameUsed)) {
             $this->classNameUsed = $classNameUsed;
@@ -121,9 +121,7 @@ class ImagesPerFieldReport extends Report
                     $list = $list->{$filterMethod}([$field => 0]);
                 } else {
                     $list = $list->filterByCallBack(
-                        function ($item) use ($fieldUsed, $existsValue) {
-                            return (bool) $item->{$fieldUsed}()->exists() === $existsValue;
-                        }
+                        fn($item) => (bool) $item->{$fieldUsed}()->exists() === $existsValue
                     );
                 }
             }
@@ -141,10 +139,11 @@ class ImagesPerFieldReport extends Report
      *
      * @return DataQuery
      */
+    #[Override]
     public function sourceQuery($params)
     {
         if (! $this->hasMethod('sourceRecords')) {
-            throw new \RuntimeException(
+            throw new RuntimeException(
                 'Please override sourceQuery()/sourceRecords() and columns() or, if necessary, override getReportField()'
             );
         }
@@ -157,8 +156,9 @@ class ImagesPerFieldReport extends Report
      *
      * @param array $params
      *
-     * @return SS_List
+     * @return \SilverStripe\Model\List\SS_List
      */
+    #[Override]
     public function records($params)
     {
         if ($this->hasMethod('sourceRecords')) {
@@ -176,6 +176,7 @@ class ImagesPerFieldReport extends Report
         return $results;
     }
 
+    #[Override]
     public function columns()
     {
         return [
@@ -188,6 +189,7 @@ class ImagesPerFieldReport extends Report
     /**
      * Return the data class for this report.
      */
+    #[Override]
     public function dataClass()
     {
         return $this->dataClass;
@@ -201,6 +203,7 @@ class ImagesPerFieldReport extends Report
      *
      * @return int
      */
+    #[Override]
     public function getCount($params = [], $limit = null)
     {
         return count($this->getClassNameFieldCombos());
@@ -214,6 +217,7 @@ class ImagesPerFieldReport extends Report
      *
      * @return string
      */
+    #[Override]
     public function TreeTitle()
     {
         return $this->title();
@@ -222,8 +226,9 @@ class ImagesPerFieldReport extends Report
     /**
      * Return additional breadcrumbs for this report. Useful when this report is a child of another.
      *
-     * @return ArrayData[]
+     * @return \SilverStripe\Model\ArrayData[]
      */
+    #[Override]
     public function getBreadcrumbs()
     {
         return [];
@@ -234,6 +239,7 @@ class ImagesPerFieldReport extends Report
      *
      * @return array
      */
+    #[Override]
     protected function getSourceParams()
     {
         $params = [];
@@ -250,7 +256,7 @@ class ImagesPerFieldReport extends Report
 
     protected function parameterFields()
     {
-        $params = new FieldList();
+        $params = FieldList::create();
 
         $params->push(
             DropdownField::create(

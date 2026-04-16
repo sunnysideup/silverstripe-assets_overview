@@ -2,6 +2,7 @@
 
 namespace Sunnysideup\AssetsOverview\Files;
 
+use SilverStripe\Core\Validation\ValidationResult;
 use SilverStripe\Assets\File;
 use SilverStripe\Assets\Folder;
 use SilverStripe\Assets\Image;
@@ -15,7 +16,6 @@ use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\DB;
 use SilverStripe\ORM\FieldType\DBDate;
 use SilverStripe\ORM\FieldType\DBDatetime;
-use SilverStripe\ORM\ValidationResult;
 use Sunnysideup\AssetsOverview\Control\View;
 use Sunnysideup\AssetsOverview\Interfaces\FileInfo;
 use Sunnysideup\AssetsOverview\Traits\Cacher;
@@ -35,8 +35,9 @@ class OneFileInfo implements FileInfo
     public static function inst(string $path): OneFileInfo
     {
         if (! array_key_exists($path, self::$cached_inst)) {
-            self::$cached_inst[$path] = new OneFileInfo($path);
+            self::$cached_inst[$path] = OneFileInfo::create($path);
         }
+
         return self::$cached_inst[$path];
     }
 
@@ -69,17 +70,14 @@ class OneFileInfo implements FileInfo
 
     protected string $pathHash = '';
 
-    protected string $path = '';
-
     protected array $intel = [];
 
     protected bool $physicalFileExists = false;
 
     protected ?File $file;
 
-    public function __construct(string $location)
+    public function __construct(protected string $path)
     {
-        $this->path = $location;
         $this->intel['Path'] = $this->path;
         $this->intel['AbsolutePath'] = Controller::join_links(ASSETS_PATH, $this->intel['Path']);
         $this->intel['IsProtected'] = false;
@@ -104,6 +102,7 @@ class OneFileInfo implements FileInfo
                     echo '✓ ';
                 }
             }
+
             $this->setCacheValue($cachekey, $this->intel);
         } else {
             $this->intel = $this->getCacheValue($cachekey);
@@ -147,18 +146,18 @@ class OneFileInfo implements FileInfo
         //get path parts
         $pathParts = [];
         if ($this->physicalFileExists) {
-            $pathParts = pathinfo($this->intel['AbsolutePath']);
+            $pathParts = pathinfo((string) $this->intel['AbsolutePath']);
         }
 
-        $pathParts['extension'] = $pathParts['extension'] ?? '';
-        $pathParts['filename'] = $pathParts['filename'] ?? '';
-        $pathParts['dirname'] = $pathParts['dirname'] ?? '';
+        $pathParts['extension'] ??= '';
+        $pathParts['filename'] ??= '';
+        $pathParts['dirname'] ??= '';
 
         //basics!
         $this->intel['InfoLink'] = Config::inst()->get(View::class, 'url_segment') . '/jsonone/?path=' . $this->path;
-        $this->intel['PathFolderPath'] = $pathParts['dirname'] ?: dirname($this->intel['Path']);
+        $this->intel['PathFolderPath'] = $pathParts['dirname'] ?: dirname((string) $this->intel['Path']);
         //file name
-        $this->intel['PathFileName'] = $pathParts['filename'] ?: basename($this->intel['AbsolutePath']);
+        $this->intel['PathFileName'] = $pathParts['filename'] ?: basename((string) $this->intel['AbsolutePath']);
         $this->intel['PathFileNameFirstLetter'] = strtoupper(substr($this->intel['PathFileName'], 0, 1));
 
         //defaults
@@ -224,8 +223,9 @@ class OneFileInfo implements FileInfo
             } else {
                 $this->intel['ImageRatio'] = 0;
             }
+
             $this->intel['ImagePixels'] = $this->intel['ImageHeight'] * $this->intel['ImageWidth'];
-            $this->intel['IsResizedImage'] = (bool) strpos($this->intel['PathFileName'], '__');
+            $this->intel['IsResizedImage'] = (bool) strpos((string) $this->intel['PathFileName'], '__');
         }
     }
 
@@ -281,7 +281,8 @@ class OneFileInfo implements FileInfo
             if (! $this->intel['IsDir']) {
                 $this->intel['IsDir'] = is_a($dbFileData['ClassName'], Folder::class, true);
             }
-            $dbFileData['Filename'] = $dbFileData['Filename'] ?? '';
+
+            $dbFileData['Filename'] ??= '';
             $this->intel['DBID'] = $dbFileData['ID'];
             $this->intel['DBClassName'] = $dbFileData['ClassName'];
             $this->intel['DBParentID'] = $dbFileData['ParentID'];
@@ -299,7 +300,7 @@ class OneFileInfo implements FileInfo
             $this->intel['DBFilenameSS3'] = $dbFileData['Filename'] ?? 'none';;
             $this->intel['ErrorInFilename'] = $this->intel['Path'] !== $this->intel['DBPath'];
             $ss3FileName = $dbFileData['Filename'] ?? '';
-            if ('assets/' === substr((string) $ss3FileName, 0, strlen('assets/'))) {
+            if (str_starts_with((string) $ss3FileName, 'assets/')) {
                 $ss3FileName = substr((string) $ss3FileName, strlen('assets/'));
             }
 

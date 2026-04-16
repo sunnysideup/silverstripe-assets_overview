@@ -8,7 +8,7 @@ use SilverStripe\Forms\LiteralField;
 /**
  * Class \Sunnysideup\AssetsOverview\Control\AssetAdminExtension
  *
- * @property \SilverStripe\AssetAdmin\Controller\AssetAdmin|\Sunnysideup\AssetsOverview\Control\AssetAdminExtension $owner
+ * @property \SilverStripe\AssetAdmin\Controller\AssetAdmin|AssetAdminExtension $owner
  */
 class AssetAdminExtension extends Extension
 {

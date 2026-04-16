@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Sunnysideup\AssetsOverview\Files;
 
+use SilverStripe\Model\List\ArrayList;
+use SilverStripe\Model\ArrayData;
 use FilesystemIterator;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
@@ -13,9 +15,7 @@ use SilverStripe\Core\Config\Config;
 use SilverStripe\Core\Config\Configurable;
 use SilverStripe\Core\Injector\Injectable;
 use SilverStripe\Core\Injector\Injector;
-use SilverStripe\ORM\ArrayList;
 use SilverStripe\Versioned\Versioned;
-use SilverStripe\View\ArrayData;
 use Sunnysideup\AssetsOverview\Interfaces\FileInfo;
 use Sunnysideup\AssetsOverview\Traits\Cacher;
 use Sunnysideup\AssetsOverview\Traits\FilesystemRelatedTraits;
@@ -71,8 +71,6 @@ class AllFilesInfo implements FileInfo
 
     protected bool $verbose = false;
 
-    protected string $path = '';
-
     protected array $dataStaging = [];
 
     protected array $dataLive = [];
@@ -118,9 +116,8 @@ class AllFilesInfo implements FileInfo
 
     protected array $allowedExtensions = [];
 
-    public function __construct(?string $path = ASSETS_PATH)
+    public function __construct(protected string $path = ASSETS_PATH)
     {
-        $this->path = $path;
     }
 
     public function getTotalFilesCount(): int
@@ -474,6 +471,7 @@ class AllFilesInfo implements FileInfo
                     echo PHP_EOL . 'x NOT IN FILE SYSTEM: ' . $path . ' ' . PHP_EOL;
                 }
             }
+
             $extension = strtolower($this->getExtension($path));
             $this->availableExtensions[$extension] = $extension;
         }
@@ -497,13 +495,13 @@ class AllFilesInfo implements FileInfo
     {
         $listOfItemsToSearchFor = Config::inst()->get(self::class, 'not_real_file_substrings');
         foreach ($listOfItemsToSearchFor as $test) {
-            if (strpos($absolutePath, $test)) {
+            if (strpos($absolutePath, (string) $test)) {
                 return false;
             }
         }
 
         $fileName = basename($absolutePath);
-        $isErrorPage = ('error' === substr($fileName, 0, 5) && '.html' === substr($fileName, -5));
+        $isErrorPage = (str_starts_with($fileName, 'error') && str_ends_with($fileName, '.html'));
         return ! $isErrorPage;
     }
 
@@ -519,9 +517,11 @@ class AllFilesInfo implements FileInfo
             if (false === $this->isRealFile($absolutePath)) {
                 continue;
             }
+
             if ($src->isDir()) {
                 continue;
             }
+
             $location = trim(str_replace(ASSETS_PATH, '', $absolutePath), '/');
             $finalArray[$location] = $location;
         }
@@ -544,6 +544,7 @@ class AllFilesInfo implements FileInfo
                 if ($location === '' || $location === '0') {
                     $location = $file->generateFilename();
                 }
+
                 if ('Stage' === $stage) {
                     $this->dataStaging[$row['ID']] = $row;
                     $this->databaseLookupListStaging[$location] = $row['ID'];
@@ -557,6 +558,7 @@ class AllFilesInfo implements FileInfo
                 $finalArray[$location] = $location;
             }
         }
+
         Versioned::set_stage('Stage');
         return $finalArray;
     }

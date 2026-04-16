@@ -1,35 +1,41 @@
 {
-  "name": "sunnysideup/assets_overview",
-  "type": "silverstripe-vendormodule",
-  "description": "Quick overview of all your assets",
-  "keywords": [
-    "Silverstripe-CMS",
-    "CMS",
-    "Silverstripe",
-    "assets",
-    "overview",
-    "images",
-    "files"
-  ],
-  "license": "BSD-3-Clause",
-  "authors": [
-    {
-      "name": "Nicolaas Francken",
-      "email": "modules@sunnysideup.co.nz",
-      "role": "lead developer"
+    "name": "sunnysideup/assets_overview",
+    "type": "silverstripe-vendormodule",
+    "description": "Quick overview of all your assets",
+    "keywords": [
+        "Silverstripe-CMS",
+        "CMS",
+        "Silverstripe",
+        "assets",
+        "overview",
+        "images",
+        "files"
+    ],
+    "license": "BSD-3-Clause",
+    "authors": [
+        {
+            "name": "Nicolaas Francken",
+            "email": "modules@sunnysideup.co.nz",
+            "role": "lead developer"
+        }
+    ],
+    "require": {
+        "silverstripe/cms": "^6.0"
+    },
+    "suggest": {
+        "inceddy/image-compare": "compare image similarities",
+        "thenakos/compare-images": "compare image similarities (https://github.com/thenakos/compare-images)"
+    },
+    "autoload": {
+        "psr-4": {
+            "Sunnysideup\\AssetsOverview\\": "src/"
+        }
+    },
+    "yet-to-update": {
+        "sunnysideup/flush": {
+            "section": "require",
+            "current": "^5.0-dev",
+            "reason": "no-compatible-stable-release"
+        }
     }
-  ],
-  "require": {
-    "silverstripe/cms": "^4 || ^5",
-    "sunnysideup/flush": "5.x-dev"
-  },
-  "suggest": {
-    "inceddy/image-compare": "compare image similarities",
-    "thenakos/compare-images": "compare image similarities (https://github.com/thenakos/compare-images)"
-  },
-  "autoload": {
-    "psr-4": {
-      "Sunnysideup\\AssetsOverview\\": "src/"
-    }
-  }
 }
