@@ -20,7 +20,8 @@
         }
     ],
     "require": {
-        "silverstripe/cms": "^6.0"
+        "silverstripe/cms": "^6.0",
+        "sunnysideup/flush": "dev-main"
     },
     "suggest": {
         "inceddy/image-compare": "compare image similarities",
@@ -31,11 +32,4 @@
             "Sunnysideup\\AssetsOverview\\": "src/"
         }
     },
-    "yet-to-update": {
-        "sunnysideup/flush": {
-            "section": "require",
-            "current": "^5.0-dev",
-            "reason": "no-compatible-stable-release"
-        }
-    }
 }
