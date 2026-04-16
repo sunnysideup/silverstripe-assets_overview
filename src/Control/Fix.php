@@ -2,6 +2,7 @@
 
 namespace Sunnysideup\AssetsOverview\Control;
 
+use Override;
 use SilverStripe\Assets\File;
 use SilverStripe\CMS\Controllers\ContentController;
 use SilverStripe\Core\Environment;
@@ -19,9 +20,9 @@ use Sunnysideup\AssetsOverview\Traits\FilesystemRelatedTraits;
 /**
  * Class \Sunnysideup\AssetsOverview\Control\Fix
  *
- * @property \Sunnysideup\AssetsOverview\Control\Fix $dataRecord
- * @method \Sunnysideup\AssetsOverview\Control\Fix data()
- * @mixin \Sunnysideup\AssetsOverview\Control\Fix
+ * @property Fix $dataRecord
+ * @method Fix data()
+ * @mixin Fix
  */
 class Fix extends ContentController
 {
@@ -55,6 +56,7 @@ class Fix extends ContentController
         }
     }
 
+    #[Override]
     protected function init()
     {
         parent::init();
@@ -74,7 +76,7 @@ class Fix extends ContentController
     protected function runMethod($method)
     {
         $method = 'fix' . $method;
-        if ('Error' === substr($method, 0, 5) && $this->hasMethod($method)) {
+        if (str_starts_with($method, 'Error') && $this->hasMethod($method)) {
             $this->{$method}();
         }
     }
@@ -95,7 +97,7 @@ class Fix extends ContentController
 
     protected function fixErrorDBNotPresent()
     {
-        $pathArray = pathinfo($this->path);
+        $pathArray = pathinfo((string) $this->path);
         $ext = $pathArray['extension'];
         $className = File::get_class_for_file_extension($ext);
         if (class_exists($className)) {
@@ -116,11 +118,11 @@ class Fix extends ContentController
     protected function fixErrorExtensionMisMatch()
     {
         $file = $this->getFileObject();
-        if ($file instanceof \SilverStripe\Assets\File) {
+        if ($file instanceof File) {
             $newFileName = $this->intel['PathFolderFromAssets'] . DIRECTORY_SEPARATOR .
                 $this->intel['PathFileName'] . '.' . $this->intel['PathExtensionAsLower'];
             $file = $this->getFileObject();
-            if ($file instanceof \SilverStripe\Assets\File) {
+            if ($file instanceof File) {
                 $file->renameFile($newFileName);
             }
         }
@@ -163,7 +165,7 @@ class Fix extends ContentController
     protected function fixFileInDB()
     {
         $file = $this->getFileObject();
-        if ($file instanceof \SilverStripe\Assets\File) {
+        if ($file instanceof File) {
             $this->updateFilesystem();
         } else {
             user_error('Can not find file ID');

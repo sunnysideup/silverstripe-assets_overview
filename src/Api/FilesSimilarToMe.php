@@ -44,8 +44,7 @@ class FilesSimilarToMe
                 if (false === $easyFind) {
                     if ([] !== $sortArray) {
                         asort($sortArray);
-                        reset($sortArray);
-                        $mostSimilarKey = key($sortArray);
+                        $mostSimilarKey = array_key_first($sortArray);
                         foreach ($c as $findImage) {
                             if ($findImage->Path === $mostSimilarKey) {
                                 $alreadyDone[$nameOne] = $nameOneFromAssets;

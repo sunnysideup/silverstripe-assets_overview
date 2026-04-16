@@ -4,55 +4,72 @@ namespace Vendor\Sunnysideup\AssetsOverview\Tasks;
 
 use Exception;
 use SilverStripe\Dev\BuildTask;
-use SilverStripe\ORM\DB;
+use SilverStripe\PolyExecution\PolyOutput;
 use Sunnysideup\AssetsOverview\Files\AllFilesInfo;
+use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
 
 class DeleteFilesFromDiskNotFoundInDatabase extends BuildTask
 {
-    protected $title = 'Delete files from disk not found in database';
+    protected string $title = 'Delete files from disk not found in database';
 
-    protected $description = 'This task will go through all files in assets and delete ones that are not in the database.';
+    protected static string $description = 'This task will go through all files in assets and delete ones that are not in the database.';
 
-    private static $segment = 'delete-files-from-disk-not-found-in-database';
+    protected static string $commandName = 'delete-files-from-disk-not-found-in-database';
 
-    protected $dryRun = true;
+    protected bool $dryRun = true;
 
-    public function run($request)
+    public function getOptions(): array
     {
-        $this->dryRun = $request && $request->getVar('forreal') ? false : true;
-        $this->dryRunMessage();
+        return [
+            new InputOption(
+                'forreal',
+                'f',
+                InputOption::VALUE_NONE,
+                'Execute the task for real (not a dry run)'
+            ),
+        ];
+    }
+
+    protected function execute(InputInterface $input, PolyOutput $output): int
+    {
+        $this->dryRun = !$input->getOption('forreal');
+        $this->dryRunMessage($output);
         $files = AllFilesInfo::inst()->getAllFiles();
-        DB::alteration_message('=== START ===');
+        $output->writeln('=== START ===');
         foreach ($files as $file) {
             $array = $file->toMap();
             if (! empty($array['ErrorDBNotPresent'])) {
-                DB::alteration_message('--- Deleting from DB' . $array['Path'], 'deleted');
+                $output->writeln('--- Deleting from DB' . $array['Path']);
                 if ($this->dryRun) {
-                    DB::alteration_message('--- --- DRY RUN ONLY ---', 'deleted');
+                    $output->writeln('--- --- DRY RUN ONLY ---');
                 } else {
                     try {
                         unlink($array['AbsolutePath']);
                     } catch (Exception $e) {
-                        DB::alteration_message('Error: ' . $e->getMessage(), 'deleted');
+                        $output->writeln('Error: ' . $e->getMessage());
                     }
                 }
             } else {
-                echo '✓';
+                $output->write('✓');
             }
         }
-        echo PHP_EOL;
-        DB::alteration_message('=== END ===');
 
-        $this->dryRunMessage();
-        DB::alteration_message('=== DONE ===', '');
+        $output->writeln('');
+        $output->writeln('=== END ===');
+
+        $this->dryRunMessage($output);
+
+        return Command::SUCCESS;
     }
 
-    protected function dryRunMessage()
+    protected function dryRunMessage(PolyOutput $output): void
     {
         if ($this->dryRun) {
-            DB::alteration_message('Please set forreal=true to actually do this', 'created');
+            $output->writeln('Please set --forreal to actually do this');
         } else {
-            DB::alteration_message('Doing it for real!', 'created');
+            $output->writeln('Doing it for real!');
         }
     }
 }

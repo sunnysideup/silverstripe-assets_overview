@@ -2,6 +2,9 @@
 
 namespace Sunnysideup\AssetsOverview\Control;
 
+use Override;
+use SilverStripe\Model\List\ArrayList;
+use SilverStripe\Model\ArrayData;
 use SilverStripe\CMS\Controllers\ContentController;
 use SilverStripe\Control\Director;
 use SilverStripe\Control\HTTPRequest;
@@ -17,13 +20,10 @@ use SilverStripe\Forms\Form;
 use SilverStripe\Forms\FormAction;
 use SilverStripe\Forms\HiddenField;
 use SilverStripe\Forms\OptionsetField;
-use SilverStripe\Forms\TextField;
-use SilverStripe\ORM\ArrayList;
 use SilverStripe\ORM\FieldType\DBField;
 use SilverStripe\Security\Permission;
 use SilverStripe\Security\Security;
 use SilverStripe\Versioned\Versioned;
-use SilverStripe\View\ArrayData;
 use SilverStripe\View\Requirements;
 use SilverStripe\View\SSViewer;
 use Sunnysideup\AssetsOverview\Api\AddAndRemoveFromDb;
@@ -34,9 +34,9 @@ use Sunnysideup\AssetsOverview\Traits\FilesystemRelatedTraits;
 /**
  * Class \Sunnysideup\AssetsOverview\Control\View
  *
- * @property \Sunnysideup\AssetsOverview\Control\View $dataRecord
- * @method \Sunnysideup\AssetsOverview\Control\View data()
- * @mixin \Sunnysideup\AssetsOverview\Control\View
+ * @property View $dataRecord
+ * @method View data()
+ * @mixin View
  */
 class View extends ContentController implements Flushable
 {
@@ -101,6 +101,7 @@ class View extends ContentController implements Flushable
 
     private static $url_segment = 'admin/assets-overview';
 
+    #[Override]
     public function Link($action = null)
     {
         $str = Director::absoluteURL(DIRECTORY_SEPARATOR . $this->config()->get('url_segment'));
@@ -317,6 +318,7 @@ class View extends ContentController implements Flushable
         return $this->getForm();
     }
 
+    #[Override]
     protected function init()
     {
         parent::init();
@@ -392,7 +394,8 @@ class View extends ContentController implements Flushable
         if ($this->request->getVar('download')) {
             return HTTPRequest::send_file($json, 'files.json', 'text/json');
         }
-        $response = (new HTTPResponse($json));
+
+        $response = (HTTPResponse::create($json));
         $response->addHeader('Content-Type', 'application/json; charset="utf-8"');
         $response->addHeader('Pragma', 'no-cache');
         $response->addHeader('cache-control', 'no-cache, no-store, must-revalidate');
@@ -552,10 +555,11 @@ class View extends ContentController implements Flushable
                 $this->endLimit = $this->limit * ($this->pageNumber);
             }
         }
+
         return self::$allFilesProvider;
     }
 
-    private const SORTERS = [
+    private const array SORTERS = [
         'byfolder' => [
             'Title' => 'Folder',
             'Sort' => 'PathFolderFromAssets',
@@ -608,7 +612,7 @@ class View extends ContentController implements Flushable
         ],
     ];
 
-    private const FILTERS = [
+    private const array FILTERS = [
         'byanyerror' => [
             'Title' => 'Any Error',
             'Field' => 'ErrorHasAnyError',
@@ -674,7 +678,7 @@ class View extends ContentController implements Flushable
     /**
      * @var array<string, string>
      */
-    private const DISPLAYERS = [
+    private const array DISPLAYERS = [
         'thumbs' => 'Thumbnails',
         'rawlist' => 'File List',
         'rawlistfull' => 'Raw Data',

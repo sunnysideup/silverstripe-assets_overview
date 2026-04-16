@@ -4,24 +4,39 @@ namespace Vendor\Sunnysideup\AssetsOverview\Tasks;
 
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Dev\BuildTask;
-use SilverStripe\ORM\DB;
+use SilverStripe\PolyExecution\PolyOutput;
 use Sunnysideup\AssetsOverview\Api\AddAndRemoveFromDb;
 use Sunnysideup\AssetsOverview\Files\AllFilesInfo;
+use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
 
 class AddAllFilesFromDiskToDB extends BuildTask
 {
-    protected $title = 'Add all files from disk to database';
+    protected string $title = 'Add all files from disk to database';
 
-    protected $description = 'This task will add all files from the disk to the database.';
+    protected static string $description = 'This task will add all files from the disk to the database.';
 
-    private static $segment = 'add-all-files-from-disk-to-db';
+    protected static string $commandName = 'add-all-files-from-disk-to-db';
 
-    protected $dryRun = true;
+    protected bool $dryRun = true;
 
-    public function run($request)
+    public function getOptions(): array
     {
-        $this->dryRun = ! (bool) $request->getVar('forreal');
-        $this->dryRunMessage();
+        return [
+            new InputOption(
+                'forreal',
+                'f',
+                InputOption::VALUE_NONE,
+                'Execute the task for real (not a dry run)'
+            ),
+        ];
+    }
+
+    protected function execute(InputInterface $input, PolyOutput $output): int
+    {
+        $this->dryRun = !$input->getOption('forreal');
+        $this->dryRunMessage($output);
 
         $files = AllFilesInfo::inst()->getAllFiles();
         $obj = Injector::inst()->get(AddAndRemoveFromDb::class);
@@ -30,16 +45,18 @@ class AddAllFilesFromDiskToDB extends BuildTask
             $array = $file->toMap();
             $obj->run($array, 'add');
         }
-        $this->dryRunMessage();
-        DB::alteration_message('=== DONE ===', '');
+
+        $this->dryRunMessage($output);
+
+        return Command::SUCCESS;
     }
 
-    protected function dryRunMessage()
+    protected function dryRunMessage(PolyOutput $output): void
     {
         if ($this->dryRun) {
-            DB::alteration_message('Please set forreal=true to actually do this', 'created');
+            $output->writeln('Please set --forreal to actually do this');
         } else {
-            DB::alteration_message('Doing it for real!', 'created');
+            $output->writeln('Doing it for real!');
         }
     }
 }
