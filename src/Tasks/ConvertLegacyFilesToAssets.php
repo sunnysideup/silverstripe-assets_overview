@@ -119,7 +119,7 @@ class ConvertLegacyFilesToAssets extends BuildTask
                     }
 
                     $this->processedCount++;
-                    $obj = DataObject::get_by_id($className, $id);
+                    $obj = $className::get()->setUseCache(true)->byID($id);
                     if ($obj && $obj->$fieldName) {
                         $content = $obj->$fieldName;
                         if ($content) {
@@ -743,7 +743,7 @@ class ConvertLegacyFilesToAssets extends BuildTask
                 $className = $vars[0];
                 $id = $vars[1];
                 $fieldName = $vars[2];
-                $obj = DataObject::get_by_id($className, $id);
+                $obj = $className::get()->setUseCache(true)->byID($id);
                 if ($obj) {
                     $this->output->writeForHtml(
                         ($obj->getTitle() ?: '[NO TITLE]') . '|'

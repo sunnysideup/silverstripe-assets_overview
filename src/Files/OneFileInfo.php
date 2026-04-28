@@ -12,7 +12,6 @@ use SilverStripe\Core\Config\Config;
 use SilverStripe\Core\Config\Configurable;
 use SilverStripe\Core\Injector\Injectable;
 use SilverStripe\Core\Injector\Injector;
-use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\DB;
 use SilverStripe\ORM\FieldType\DBDate;
 use SilverStripe\ORM\FieldType\DBDatetime;
@@ -83,7 +82,7 @@ class OneFileInfo implements FileInfo
         $this->intel['IsProtected'] = false;
         $this->pathHash = md5($this->path);
         $this->physicalFileExists = file_exists($this->intel['AbsolutePath']);
-        $this->file = DataObject::get_one(File::class, ['FileFilename' => $this->path]);
+        $this->file = File::get()->setUseCache(true)->filter(['FileFilename' => $this->path])->first();
         if (! $this->physicalFileExists && ($this->file && $this->file->exists())) {
             $this->physicalFileExists = true;
             $this->intel['IsProtected'] = true;
