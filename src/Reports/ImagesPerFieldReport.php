@@ -2,6 +2,8 @@
 
 namespace Sunnysideup\AssetsOverview\Reports;
 
+use SilverStripe\Model\List\SS_List;
+use SilverStripe\Model\ArrayData;
 use Override;
 use RuntimeException;
 use SilverStripe\Model\List\ArrayList;
@@ -156,7 +158,7 @@ class ImagesPerFieldReport extends Report
      *
      * @param array $params
      *
-     * @return \SilverStripe\Model\List\SS_List
+     * @return SS_List
      */
     #[Override]
     public function records($params)
@@ -226,7 +228,7 @@ class ImagesPerFieldReport extends Report
     /**
      * Return additional breadcrumbs for this report. Useful when this report is a child of another.
      *
-     * @return \SilverStripe\Model\ArrayData[]
+     * @return ArrayData[]
      */
     #[Override]
     public function getBreadcrumbs()

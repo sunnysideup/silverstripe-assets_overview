@@ -2,6 +2,7 @@
 
 namespace Vendor\Sunnysideup\AssetsOverview\Tasks;
 
+use Override;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Dev\BuildTask;
 use SilverStripe\PolyExecution\PolyOutput;
@@ -21,6 +22,7 @@ class AddAllFilesFromDiskToDB extends BuildTask
 
     protected bool $dryRun = true;
 
+    #[Override]
     public function getOptions(): array
     {
         return [

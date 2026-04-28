@@ -2,13 +2,14 @@
 
 namespace Sunnysideup\AssetsOverview\Control;
 
+use SilverStripe\AssetAdmin\Controller\AssetAdmin;
 use SilverStripe\Core\Extension;
 use SilverStripe\Forms\LiteralField;
 
 /**
  * Class \Sunnysideup\AssetsOverview\Control\AssetAdminExtension
  *
- * @property \SilverStripe\AssetAdmin\Controller\AssetAdmin|AssetAdminExtension $owner
+ * @property AssetAdmin|AssetAdminExtension $owner
  */
 class AssetAdminExtension extends Extension
 {

@@ -2,6 +2,7 @@
 
 namespace Vendor\Sunnysideup\AssetsOverview\Tasks;
 
+use Override;
 use Exception;
 use SilverStripe\Dev\BuildTask;
 use SilverStripe\PolyExecution\PolyOutput;
@@ -20,6 +21,7 @@ class DeleteFilesFromDiskNotFoundInDatabase extends BuildTask
 
     protected bool $dryRun = true;
 
+    #[Override]
     public function getOptions(): array
     {
         return [

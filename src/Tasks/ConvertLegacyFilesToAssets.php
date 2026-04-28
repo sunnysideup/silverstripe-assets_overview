@@ -2,6 +2,7 @@
 
 namespace Vendor\Sunnysideup\AssetsOverview\Tasks;
 
+use Override;
 use DOMDocument;
 use DOMElement;
 use DOMXPath;
@@ -57,6 +58,7 @@ class ConvertLegacyFilesToAssets extends BuildTask
 
     private PolyOutput $output;
 
+    #[Override]
     public function getOptions(): array
     {
         return [
@@ -228,7 +230,7 @@ class ConvertLegacyFilesToAssets extends BuildTask
             }
 
             if (!str_starts_with($src, '' . $path . '') && !str_contains($src, $patWithURL)) {
-                $this->output->writeln("FALSE src ({$src}) does not contain {$path}");
+                $this->output->writeln(sprintf('FALSE src (%s) does not contain %s', $src, $path));
                 continue;
             }
 
@@ -750,7 +752,7 @@ class ConvertLegacyFilesToAssets extends BuildTask
                         . ($obj->hasMethod('Link') ? $obj->Link() : '[NO LINK]')
                     );
                 } else {
-                    $this->output->writeln("Could not find object with ID {$id} in class {$className} and field: {$fieldName}");
+                    $this->output->writeln(sprintf('Could not find object with ID %s in class %s and field: %s', $id, $className, $fieldName));
                 }
 
                 foreach ($messages as $message) {
