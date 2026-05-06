@@ -540,7 +540,7 @@ class AllFilesInfo implements FileInfo
             $files = File::get()->exclude(['ClassName' => Folder::class]);
             foreach ($files as $file) {
                 $row = $file->toMap();
-                $location = trim($file->getFilename(), '/');
+                $location = trim((string) $file->getFilename(), '/');
                 if ($location === '' || $location === '0') {
                     $location = $file->generateFilename();
                 }
