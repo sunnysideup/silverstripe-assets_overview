@@ -83,7 +83,7 @@ class OneFileInfo implements FileInfo
         $this->intel['Path'] = $this->path;
         $this->intel['AbsolutePath'] = Controller::join_links(ASSETS_PATH, $this->intel['Path']);
         $this->intel['IsProtected'] = false;
-        $this->pathHash = md5($this->path);
+        $this->pathHash = hash('sha256', $this->path);
         $this->physicalFileExists = file_exists($this->intel['AbsolutePath']);
         $this->file = DataObject::get_one(File::class, ['FileFilename' => $this->path]);
         if (! $this->physicalFileExists && ($this->file && $this->file->exists())) {
@@ -296,7 +296,8 @@ class OneFileInfo implements FileInfo
             $this->intel['DBCMSEditLink'] = '/admin/assets/EditForm/field/File/item/' . $this->intel['DBID'] . '/edit';
             $this->intel['DBTitle'] = $dbFileData['Title'];
             $this->intel['DBFilenameSS4'] = $dbFileData['FileFilename'] ?? 'none';
-            $this->intel['DBFilenameSS3'] = $dbFileData['Filename'] ?? 'none';;
+            $this->intel['DBFilenameSS3'] = $dbFileData['Filename'] ?? 'none';
+            ;
             $this->intel['ErrorInFilename'] = $this->intel['Path'] !== $this->intel['DBPath'];
             $ss3FileName = $dbFileData['Filename'] ?? '';
             if ('assets/' === substr((string) $ss3FileName, 0, strlen('assets/'))) {
