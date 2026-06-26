@@ -3,6 +3,7 @@
 namespace Sunnysideup\AssetsOverview\Api;
 
 use Exception;
+use InvalidArgumentException;
 use SilverStripe\AssetAdmin\Controller\AssetAdmin;
 use SilverStripe\Assets\File;
 use SilverStripe\Assets\Image;
@@ -32,7 +33,7 @@ class AddAndRemoveFromDb
     public function run(array $oneFileInfoArray, ?string $mode = null)
     {
         if (! in_array($mode, ['add', 'remove', null], true)) {
-            user_error('Mode must be either "add" or "remove" or not set at all', E_USER_ERROR);
+            throw new InvalidArgumentException('Mode must be either "add" or "remove" or not set at all');
         }
 
         $pathFromAssetsFolder = $oneFileInfoArray['Path'];
