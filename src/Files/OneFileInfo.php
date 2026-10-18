@@ -132,7 +132,7 @@ class OneFileInfo implements FileInfo
     {
         return in_array(
             strtolower($extension),
-            ['jpg', 'gif', 'png', 'webp', 'jpeg', 'bmp', 'tiff', 'svg'],
+            ['jpg', 'gif', 'png', 'webp', 'jpeg', 'bmp', 'tiff', 'svg', 'avif'],
             true
         );
     }
