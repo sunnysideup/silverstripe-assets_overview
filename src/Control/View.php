@@ -20,8 +20,10 @@ use SilverStripe\Forms\OptionsetField;
 use SilverStripe\Forms\TextField;
 use SilverStripe\ORM\ArrayList;
 use SilverStripe\ORM\FieldType\DBField;
+use SilverStripe\Core\Convert;
 use SilverStripe\Security\Permission;
 use SilverStripe\Security\Security;
+use SilverStripe\Security\SecurityToken;
 use SilverStripe\Versioned\Versioned;
 use SilverStripe\View\ArrayData;
 use SilverStripe\View\Requirements;
@@ -250,7 +252,11 @@ class View extends ContentController implements Flushable
 
     public function jsonone($request)
     {
-        $location = $this->request->getVar('path');
+        $location = $this->getValidatedPathFromRequest();
+        if (null === $location) {
+            return $this->httpError(404, 'File not found');
+        }
+
         $obj = OneFileInfo::inst($location);
         $obj->setNoCache(true);
 
@@ -259,6 +265,11 @@ class View extends ContentController implements Flushable
 
     public function sync()
     {
+        $confirm = $this->confirmDataChange('Updates the database based on the files on disk: adds files that are not in the database and removes records of files that are not on disk.');
+        if (null !== $confirm) {
+            return $confirm;
+        }
+
         $obj = $this->getAddAndRemoveFromDbClass();
         foreach ($this->getFilesAsArray() as $item) {
             $obj->run($item->toMap());
@@ -267,6 +278,11 @@ class View extends ContentController implements Flushable
 
     public function addtodb()
     {
+        $confirm = $this->confirmDataChange('Adds all files that are on disk, but not in the database, to the database.');
+        if (null !== $confirm) {
+            return $confirm;
+        }
+
         $obj = $this->getAddAndRemoveFromDbClass();
         foreach ($this->getFilesAsArray() as $item) {
             $obj->run($item->toMap(), 'add');
@@ -275,10 +291,66 @@ class View extends ContentController implements Flushable
 
     public function removefromdb()
     {
+        $confirm = $this->confirmDataChange('Removes all file records from the database for files that are not on disk.');
+        if (null !== $confirm) {
+            return $confirm;
+        }
+
         $obj = $this->getAddAndRemoveFromDbClass();
         foreach ($this->getFilesAsArrayList()->toArray() as $item) {
             $obj->run($item->toMap(), 'remove');
         }
+    }
+
+    /**
+     * Actions that change data only run after a POST that includes a valid SecurityID
+     * (otherwise another website could start them for a logged-in admin).
+     * Returns null if the change is allowed to go ahead, or the confirmation form (html) to show.
+     */
+    protected function confirmDataChange(string $whatItDoes): ?string
+    {
+        $request = $this->getRequest();
+        if ($request->isPOST() && SecurityToken::inst()->checkRequest($request)) {
+            return null;
+        }
+
+        $token = SecurityToken::inst();
+        $action = Director::baseURL() . ltrim($request->getURL(true), '/');
+
+        return '<form method="post" action="' . Convert::raw2att($action) . '" style="padding: 1rem; margin: 1rem 0; border: 2px solid #c00; background: #fff4f4;">'
+            . '<input type="hidden" name="' . Convert::raw2att($token->getName()) . '" value="' . Convert::raw2att($token->getValue()) . '" />'
+            . '<p><strong>' . Convert::raw2xml($whatItDoes) . '</strong></p>'
+            . '<p>Danger - Danger - Have you made a backup of files and database? Nothing has been changed yet.</p>'
+            . '<button type="submit">Yes, do it now</button> '
+            . '<a href="' . Convert::raw2att($this->Link()) . '">Cancel</a>'
+            . '</form>';
+    }
+
+    /**
+     * Returns the path (relative to the assets folder) from the request, but only if it is a
+     * file or folder that really is inside the assets folder.
+     */
+    protected function getValidatedPathFromRequest(): ?string
+    {
+        $location = $this->request->getVar('path');
+        if (! is_string($location) || '' === $location || false !== strpos($location, "\0")) {
+            return null;
+        }
+
+        $location = str_replace('\\', '/', $location);
+        foreach (explode('/', $location) as $segment) {
+            if ('..' === $segment) {
+                return null;
+            }
+        }
+
+        $base = realpath(ASSETS_PATH);
+        $full = realpath(ASSETS_PATH . DIRECTORY_SEPARATOR . ltrim($location, '/'));
+        if (false === $base || false === $full || 0 !== strpos($full, $base . DIRECTORY_SEPARATOR)) {
+            return null;
+        }
+
+        return $location;
     }
 
     protected function getAddAndRemoveFromDbClass(): AddAndRemoveFromDb
@@ -396,7 +468,6 @@ class View extends ContentController implements Flushable
         $response->addHeader('Content-Type', 'application/json; charset="utf-8"');
         $response->addHeader('Pragma', 'no-cache');
         $response->addHeader('cache-control', 'no-cache, no-store, must-revalidate');
-        $response->addHeader('Access-Control-Allow-Origin', '*');
         $response->addHeader('Expires', 0);
         HTTPCacheControlMiddleware::singleton()
             ->disableCache()

@@ -2,6 +2,7 @@
 
 namespace Vendor\Sunnysideup\AssetsOverview\Tasks;
 
+use SilverStripe\Control\Director;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Dev\BuildTask;
 use SilverStripe\ORM\DB;
@@ -21,6 +22,14 @@ class AddAllFilesFromDiskToDB extends BuildTask
     public function run($request)
     {
         $this->dryRun = ! (bool) $request->getVar('forreal');
+        if (! $this->dryRun) {
+            if (! Director::is_cli()) {
+                echo 'This task can only be run on the command line.';
+
+                return;
+            }
+        }
+
         $this->dryRunMessage();
 
         $files = AllFilesInfo::inst()->getAllFiles();
