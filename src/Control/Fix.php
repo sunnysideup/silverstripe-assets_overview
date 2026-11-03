@@ -7,6 +7,9 @@ use SilverStripe\CMS\Controllers\ContentController;
 use SilverStripe\Core\Environment;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\ORM\DB;
+use SilverStripe\Core\Convert;
+use SilverStripe\Control\Director;
+use SilverStripe\Security\SecurityToken;
 use SilverStripe\Security\Permission;
 use SilverStripe\Security\Security;
 use SilverStripe\Versioned\Versioned;
@@ -35,8 +38,22 @@ class Fix extends ContentController
 
     public function fix($request)
     {
-        $path = $this->request->getVar('path');
-        $error = $this->request->getVar('error');
+        // This changes the database and renames files, so it only runs after a POST with a valid SecurityID
+        // (otherwise another website could start it for a logged-in admin).
+        $confirm = $this->confirmDataChange();
+        if (null !== $confirm) {
+            return $confirm;
+        }
+
+        $path = $this->request->requestVar('path');
+        $error = $this->request->requestVar('error');
+        if (! empty($path)) {
+            $path = $this->getValidatedPath($path);
+            if (null === $path) {
+                return $this->httpError(400, 'The path has to be a file or folder inside the assets folder.');
+            }
+        }
+        $error = is_string($error) ? $error : '';
         $paths = empty($path) ? $this->getRawData() : [$path];
         foreach ($paths as $path) {
             if ($path) {
@@ -53,6 +70,57 @@ class Fix extends ContentController
                 }
             }
         }
+    }
+
+    /**
+     * Returns null if the change is allowed to go ahead, or the confirmation form (html) to show.
+     */
+    protected function confirmDataChange(): ?string
+    {
+        $request = $this->getRequest();
+        if ($request->isPOST() && SecurityToken::inst()->checkRequest($request)) {
+            return null;
+        }
+
+        $token = SecurityToken::inst();
+        $action = Director::baseURL() . ltrim($request->getURL(true), '/');
+        $path = $request->getVar('path');
+        $error = $request->getVar('error');
+        $what = (is_string($path) && '' !== $path)
+            ? 'Fix this file: ' . $path . (is_string($error) && '' !== $error ? ' (' . $error . ')' : '')
+            : 'Fix ALL files (this can take a long time).';
+
+        return '<form method="post" action="' . Convert::raw2att($action) . '" style="padding: 1rem; margin: 1rem 0; border: 2px solid #c00; background: #fff4f4;">'
+            . '<input type="hidden" name="' . Convert::raw2att($token->getName()) . '" value="' . Convert::raw2att($token->getValue()) . '" />'
+            . '<p><strong>' . Convert::raw2xml($what) . '</strong></p>'
+            . '<p>This changes the database and renames files. Have you made a backup? Nothing has been changed yet.</p>'
+            . '<button type="submit">Yes, do it now</button>'
+            . '</form>';
+    }
+
+    /**
+     * Returns the (absolute) path, but only if it is a file or folder that really is inside the assets folder.
+     */
+    protected function getValidatedPath($location): ?string
+    {
+        if (! is_string($location) || '' === $location || false !== strpos($location, "\0")) {
+            return null;
+        }
+
+        $base = realpath(ASSETS_PATH);
+        if (false === $base) {
+            return null;
+        }
+
+        $location = str_replace('\\', '/', $location);
+        // relative paths are relative to the assets folder.
+        $candidate = 0 === strpos($location, $base . '/') ? $location : $base . '/' . ltrim($location, '/');
+        $full = realpath($candidate);
+        if (false === $full || 0 !== strpos($full, $base . DIRECTORY_SEPARATOR)) {
+            return null;
+        }
+
+        return $full;
     }
 
     protected function init()
